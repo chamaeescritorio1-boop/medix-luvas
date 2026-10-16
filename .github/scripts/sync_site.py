@@ -7,6 +7,7 @@ def get(u):
         try: return urllib.request.urlopen(urllib.request.Request(u,headers=UA),timeout=30).read()
         except Exception as e: err=e; time.sleep(2)
     raise err
+os.makedirs('img',exist_ok=True)
 LOG=[]
 def log(*a):
     s=' '.join(map(str,a)); print(s); LOG.append(s)

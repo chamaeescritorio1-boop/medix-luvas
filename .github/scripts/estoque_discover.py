@@ -1,7 +1,7 @@
 # Descobre a estrutura do portal de estoque Medix (sem gravar dados de preço/estoque, só nomes de campos e links)
 import os, re, http.cookiejar, urllib.request, urllib.parse, html
 BASE='http://medixfv.com.br:2082/medixfv/'
-cj=http.cookiejar.CookieJar(); op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj)); op.addheaders=[('User-Agent','Mozilla/5.0')]
+cj=http.cookiejar.CookieJar(); op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj)); op.addheaders=[('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'),('Accept','text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),('Accept-Language','pt-BR,pt;q=0.9')]
 out=[]
 def summ(tag,h):
     out.append(f'== {tag} len={len(h)} title={re.search(r"<title>(.*?)</title>",h,re.S|re.I).group(1).strip() if re.search(r"<title>",h,re.I) else ""}')
@@ -12,7 +12,7 @@ def summ(tag,h):
 try:
     h=op.open(BASE+'login.php',timeout=40).read().decode('latin-1','ignore'); summ('login',h)
 except Exception as e:
-    out.append('ERRO login.php '+repr(e)); h=''
+    out.append('ERRO login.php '+repr(e)+' '+(e.read()[:300].decode('latin-1','ignore') if hasattr(e,'read') else '')); h=''
 u,p=os.environ.get('MEDIX_USER'),os.environ.get('MEDIX_PASS')
 if u and p and h:
     form=re.search(r'<form[^>]*action="([^"]*)"',h,re.I); act=urllib.parse.urljoin(BASE+'login.php',form.group(1) if form else 'login.php')

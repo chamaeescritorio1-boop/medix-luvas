@@ -1,0 +1,17 @@
+name: Estoque Medix (descoberta)
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/scripts/estoque_discover.py
+        env:
+          MEDIX_USER: ${{ secrets.MEDIX_USER }}
+          MEDIX_PASS: ${{ secrets.MEDIX_PASS }}
+      - run: |
+          git config user.name "medix-bot"; git config user.email "actions@users.noreply.github.com"
+          mkdir -p .diag && mv estoque_estrutura.txt .diag/ && git add .diag
+          git diff --cached --quiet || (git commit -m "diag estoque" && git pull --rebase -q && git push)

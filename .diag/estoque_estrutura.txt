@@ -1,0 +1,2 @@
+ERRO login.php <HTTPError 403: 'Forbidden'>
+Sem segredos MEDIX_USER/MEDIX_PASS

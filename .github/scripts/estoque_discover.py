@@ -9,9 +9,12 @@ def summ(tag,h):
     for i in re.findall(r'<(?:input|select|textarea)[^>]*>',h,re.I): out.append('  CAMPO '+re.sub(r'value="[^"]{12,}"','value="…"',i))
     for a in sorted(set(re.findall(r'(?:href|action|src)="([^"#]+\.php[^"]*)"',h,re.I)))[:80]: out.append('  LINK '+a)
     for s in re.findall(r'(?:url|fetch|ajax|\.php)[^\n]{0,120}',h)[:20]: out.append('  JS '+s.strip()[:160])
-h=op.open(BASE+'login.php',timeout=30).read().decode('latin-1','ignore'); summ('login',h)
+try:
+    h=op.open(BASE+'login.php',timeout=40).read().decode('latin-1','ignore'); summ('login',h)
+except Exception as e:
+    out.append('ERRO login.php '+repr(e)); h=''
 u,p=os.environ.get('MEDIX_USER'),os.environ.get('MEDIX_PASS')
-if u and p:
+if u and p and h:
     form=re.search(r'<form[^>]*action="([^"]*)"',h,re.I); act=urllib.parse.urljoin(BASE+'login.php',form.group(1) if form else 'login.php')
     names=[n for n in re.findall(r'<input[^>]*name="([^"]+)"',h,re.I)]
     data={}

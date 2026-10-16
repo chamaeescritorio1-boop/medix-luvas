@@ -1,0 +1,17 @@
+name: Fichas do Drive Medix
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7 */2 * * *'
+permissions:
+  contents: write
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/scripts/sync_drive.py
+      - run: |
+          git config user.name "medix-bot"; git config user.email "actions@users.noreply.github.com"
+          git add fichas_drive.json
+          git diff --cached --quiet || (git commit -m "Fichas do Drive" && git pull --rebase -q && git push)

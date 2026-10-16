@@ -1,2 +1,6 @@
-ERRO login.php <HTTPError 403: 'Forbidden'>
+ERRO login.php <HTTPError 403: 'Forbidden'> <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!
 Sem segredos MEDIX_USER/MEDIX_PASS

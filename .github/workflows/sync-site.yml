@@ -1,0 +1,19 @@
+name: Fotos do site Medix
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 9 * * 1'
+permissions:
+  contents: write
+jobs:
+  fotos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow
+      - run: python3 .github/scripts/sync_site.py
+      - run: |
+          git config user.name "medix-bot"; git config user.email "actions@users.noreply.github.com"
+          git add img
+          git diff --cached --quiet || (git commit -m "Fotos do site Medix" && git pull --rebase -q && git push)

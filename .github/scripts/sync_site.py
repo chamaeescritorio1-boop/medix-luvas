@@ -16,7 +16,8 @@ for mar in (1,2,3):
     for page in range(1,40):
         try: h=get(f'https://medixbrasil.com.br/index.php?page={page}&ipp=24&mar={mar}&pg=produtos').decode('utf-8','ignore')
         except Exception as e: log('lista erro',mar,page,repr(e)); break
-        found=set(re.findall(r'https://medixbrasil\.com\.br/produto/[a-z0-9\-]+',h))
+        found={'https://medixbrasil.com.br/produto/'+s for s in re.findall(r'produto/([a-z0-9\-]+)',h)}
+        if page==1 and not found: log('lista sem produtos',mar,len(h),h[:300].replace('\n',' '))
         if not found-prods: break
         prods|=found; time.sleep(.5)
 log(len(prods),'páginas de produto')

@@ -39,5 +39,6 @@ for u in sorted(prods):
         im.save(f'img/{s}.jpg','JPEG',quality=80,optimize=True); mapa[s]={'url':u,'img':img}
     time.sleep(.4)
 json.dump(mapa,open('img/mapa.json','w'),ensure_ascii=False,indent=0)
+json.dump({k:v['url'] for k,v in mapa.items()},open('fichas.json','w'),ensure_ascii=False,indent=0)
 log(len(mapa),'SKUs com foto')
 open('img/sync_log.txt','w').write('\n'.join(LOG))

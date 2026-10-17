@@ -1,6 +1,6 @@
 {
- "name": "Medix CA (TESTE)",
- "short_name": "Medix Teste",
+ "name": "Conversor CA Medix · Chamae",
+ "short_name": "Medix CA",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

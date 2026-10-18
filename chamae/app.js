@@ -44,6 +44,7 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 /* ---------- navegação ---------- */
 let route='home', ctx={};
 function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); ({home,rep:repView,orc,admin}[r]||home)()}
+$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
 /* ---------- início ---------- */

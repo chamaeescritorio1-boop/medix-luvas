@@ -32,7 +32,7 @@ label.f{display:grid;gap:5px;font-size:12px;color:var(--muted)}
 .grid{display:grid;gap:12px}
 .reps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px} @media(min-width:760px){.reps{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .rep{border:1px solid var(--line);border-radius:20px;padding:16px;min-height:118px;display:grid;align-content:space-between;gap:10px;cursor:pointer;color:var(--ink);text-align:left;background:linear-gradient(160deg,var(--c,#2a3157) -40%,var(--surface) 70%);font-family:inherit}
-.rep b{font-family:var(--display);font-size:24px;text-transform:uppercase;letter-spacing:.02em}
+.rep b{font-family:var(--display);font-size:21px;overflow-wrap:anywhere;text-transform:uppercase;letter-spacing:.02em}
 .rep small{color:var(--muted)} .rep.off{opacity:.45;cursor:default}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px} @media(max-width:560px){.r2{grid-template-columns:1fr}}
@@ -65,6 +65,16 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 @media(min-width:1000px){body{padding-bottom:0;padding-left:96px} nav{top:0;bottom:0;right:auto;width:96px;flex-direction:column;justify-content:flex-start;padding-top:80px;border-top:0;border-right:1px solid var(--line)} nav button{flex:0 0 auto;padding:14px 4px}
  main,.hrow{max-width:1320px} .reps{grid-template-columns:repeat(6,minmax(0,1fr))} .pl{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))} .toast{bottom:24px} .ov .sh{max-width:1100px}}
 @media(max-width:600px){.hrow .lbl{display:none}}
+.ricon{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:800;flex:0 0 auto;overflow:hidden;background:#fff;vertical-align:middle;font-family:var(--body);letter-spacing:0}
+.ricon img{width:100%;height:100%;object-fit:contain}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px} @media(min-width:900px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{background:var(--surface2);border-radius:14px;padding:12px;display:grid;gap:3px}.kpi b{font-family:var(--display);font-size:26px}.kpi small{color:var(--muted);font-size:12px}
+.spark{width:100%;height:auto;background:var(--surface2);border-radius:14px}.spark .sv{fill:var(--muted);font-size:11px}
+.dgrid{display:grid;gap:14px} @media(min-width:900px){.dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;width:100%;border:0;background:none;color:var(--ink);font:inherit;font-size:13px;padding:5px 0;cursor:pointer;text-align:left}
+.bar .bl{display:flex;gap:6px;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.bar .bt{height:10px;background:var(--surface2);border-radius:6px;overflow:hidden}.bar .bt i{display:block;height:100%;border-radius:6px}
+.bar.on{outline:2px solid var(--accent);border-radius:8px}
+@media(max-width:520px){nav button{font-size:10.5px;padding:9px 2px 11px}}
 </style>
 </head>
 <body>
@@ -72,6 +82,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 <main id="main"></main>
 <nav id="nav" hidden>
  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H5v-9"/></svg>Início</button>
+ <button data-go="cli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/></svg>Clientes</button>
  <button data-go="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/></svg><span>Orçamento <span class="badge" id="qn" hidden>0</span></span></button>
  <button data-go="ped"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Pedidos</button>
  <button data-go="rel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</button>
@@ -82,6 +93,6 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
 <script src="xlsx.full.min.js"></script>
-<script src="app.js?v=202610191450"></script>
+<script src="app.js?v=202610191523"></script>
 </body>
 </html>

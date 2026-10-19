@@ -54,25 +54,106 @@ async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregand
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><a class="btn ghost" href="/medix-luvas/teste/">Clientes, inativos e painel ↗</a>${ehGestor()?'<button class="btn ghost" data-go2="admin">Produtos e tabelas</button>':''}</div>`;
   m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(r.n) go('rep',{rep:id}); else if(EXTERNAL[id]) location.href=EXTERNAL[id]; return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}}
 
+/* ---------- grupos de produto ---------- */
+const GRUPOS={marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
+ ['Estantes e armazenagem',/^(ESTANTE|ESTRUTURA|PRATELEIRA|RACK|COLUNA|EXTENS)/],['Hidráulicos e elevação',/^(MACACO|PRENSA|GUINCHO|TALHA|ELEVADOR|CAVALETE|ESTICADOR|ESTICAPUXADOR|PUXADOR|PLATAFORMA|ALINHADOR|ALINH|SACA|ENCOLHEDOR|ENTONADOR|CURVADOR)/],
+ ['Movimentação de carga',/^(TRANSPALETE|TRANSP|EMPILHADEIRA|GARFO|ESTEIRA|TRANSPORTADOR|CACAMBA)/],['Rodas e rodízios',/^(RODA|RODIZIO|RODÍZIO|EIXO|ARO|ROLAMENTO)/],['Morsas, tornos e fixação',/^(TORNO|MORSA|GRAMPO|BIGORNA)/],['Lavadoras e bombas',/^(LAVADORA|ELETROBOMBA|MOTOBOMBA|ECOLIMP|MOTO)/]]};
+const grupoAuto=(rep,d)=>{const n=norm(d).trim(); for(const [g,r] of (GRUPOS[rep]||[])) if(r.test(n)) return g; return 'Outros'};
+const grupoOf=(rep,p)=>p.grupo||grupoAuto(rep,p.descricao);
+
+/* ---------- cliente → tabela ---------- */
+async function tabelaDoCliente(rep,cli,T){if(!cli) return null; const k=rep+'|'+cli.cnpj;
+  try{const r=await api(`cliente_tabela?select=tabela_id&rep=eq.${rep}&cnpj=eq.${cli.cnpj}`); if(r[0]&&T.some(t=>t.id==r[0].tabela_id)) return r[0].tabela_id}catch(e){const m=(L('cliTab')||{})[k]; if(m&&T.some(t=>t.id==m)) return m}
+  const n=norm(cli.n), uf=(cli.uf||'SP'); const kw=[['GURGEL','GURGELMIX'],['PALACIO','PALACIO'],['COPERCANA','COPERCANA'],['SBARDEL','SBARDELINI'],['OXIMAQ','OXIMAQ']].find(([a])=>n.includes(a));
+  const pick=pre=>T.find(t=>norm(t.nome).startsWith(pre)&&norm(t.nome).endsWith(' '+uf))||T.find(t=>norm(t.nome).startsWith(pre));
+  const t=(kw&&pick(kw[1]))||pick('GERAL'); return t?t.id:null}
+async function lembrarTabela(rep,cli,tid){if(!cli||!tid) return; const m=L('cliTab')||{}; m[rep+'|'+cli.cnpj]=tid; LS('cliTab',m);
+  try{await api('cliente_tabela?on_conflict=cnpj,rep',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({cnpj:cli.cnpj,rep,tabela_id:tid})})}catch(e){}}
+async function escolherCliente(rep,o,cnpj){const C2=await clientes(); const cl=C2.find(x=>x.cnpj===cnpj); if(!cl) return; o.cli={cnpj:cl.cnpj,n:cl.n,cid:cl.cid,ult:cl.reps[HIST_REP[rep]]||null}; if(o.cli.ult&&!o.prazo) o.prazo=o.cli.ult.ultimo_prazo||'';
+  const T=await tabelas(rep); const tid=await tabelaDoCliente(rep,o.cli,T); if(tid&&tid!=o.tabela){o.tabela=tid; toast('Tabela do cliente: '+(T.find(t=>t.id==tid)||{}).nome)} saveQ(o)}
+function cliBusca(inp,res,rep){let tt; inp.oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C2=await clientes(); const d=v.replace(/\D/g,''); const r=v.length<2?[]:C2.filter(c=>norm(c.n+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,8);
+  res.innerHTML=r.map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:4px 0" data-cli="${c.cnpj}"><b>${esc(c.n)}</b> · ${esc(c.cid||'')}${c.reps[HIST_REP[rep]]?' · já compra '+esc(repName(rep)):''}</button>`).join('')},250)}}
+
 /* ---------- módulo da representada: catálogo ---------- */
 async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p class="hint">Carregando catálogo…</p>';
   let C,T; try{[C,T]=await Promise.all([catalog(rep),tabelas(rep)])}catch(e){m.innerHTML=`<p class="bad">${esc(e.message)}</p>`;return}
   const o=curQ(rep); if(!o.tabela&&T.length){o.tabela=T[0].id; saveQ(o)} const P=o.tabela?await prices(o.tabela):{};
-  let qtxt=''; const render=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); const list=C.filter(p=>!w.length||w.every(x=>norm(p.cod+' '+p.descricao+' '+(p.attrs&&p.attrs.ean||'')).includes(x))).filter(p=>!o.tabela||P[p.id]);
-    $('#pl').innerHTML=list.slice(0,80).map(p=>{const pr=P[p.id]||{}; const inQ=o.itens.find(i=>i.pid===p.id);
-      return `<div class="card pc"><img src="${esc(p.img||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:5px;min-width:0"><div class="cod">${esc(p.cod)}</div><div class="d">${esc(p.descricao)}</div>
-       <div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div><div class="tags"><span class="tag">IPI ${pct(p.ipi)}</span>${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}${pr.base?`<span class="tag">Bruto ${brl(pr.base)}</span>`:''}</div>
-       <div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div></div></div>`}).join('')||'<p class="hint">Nenhum produto nesta tabela.</p>';
-    $('#cnt').textContent=`${list.length} produtos${list.length>80?' · mostrando 80, refine a busca':''}`};
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${esc(repName(rep))}</div><button class="btn sm" data-go2="orc">Ver orçamento (${o.itens.length})</button></div>
-   <div class="r2" style="margin:10px 0"><label class="f">Tabela de preço<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
-   <label class="f">Buscar<input id="q" type="search" placeholder="Código, descrição ou EAN"></label></div><p class="hint" id="cnt"></p><div class="pl" id="pl"></div>`;
-  $('#tab').onchange=async e=>{if(o.itens.length&&!confirm('Trocar a tabela recalcula os preços do orçamento desta representada. Continuar?')){e.target.value=o.tabela;return} o.tabela=+e.target.value; saveQ(o); repView()};
+  const grupos=[...new Set(C.map(p=>grupoOf(rep,p)))].sort((a,b)=>a==='Outros'?1:b==='Outros'?-1:a.localeCompare(b));
+  const enc=L('enc_'+rep)||{on:false,sel:[]}; let qtxt='', gsel=L('grp_'+rep)||'';
+  const render=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); const list=C.filter(p=>(!gsel||grupoOf(rep,p)===gsel)&&(!w.length||w.every(x=>norm(p.cod+' '+p.descricao+' '+(p.attrs&&p.attrs.ean||'')).includes(x)))).filter(p=>!o.tabela||P[p.id]);
+    $('#pl').innerHTML=list.slice(0,80).map(p=>{const pr=P[p.id]||{}; const inQ=o.itens.find(i=>i.pid===p.id); const es=enc.sel.includes(p.id);
+      return `<div class="card pc"${enc.on&&es?' style="border-color:var(--accent);border-width:2px"':''}><img src="${esc(p.img||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:5px;min-width:0"><div class="cod">${esc(p.cod)}</div><div class="d">${esc(p.descricao)}</div>
+       <div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div><div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span><span class="tag">IPI ${pct(p.ipi)}</span>${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
+       ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
+    $('#cnt').textContent=`${list.length} produtos${list.length>80?' · mostrando 80, refine a busca':''}`; $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${esc(repName(rep))}</div><div class="row"><button class="chip${enc.on?' on':''}" id="encT">Encarte</button><button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
+   <div class="card grid" style="margin:10px 0"><label class="f">Cliente<input id="cq" type="search" placeholder="Buscar cliente por nome, CNPJ ou cidade" value="${o.cli?esc(o.cli.n):''}"></label><div id="cres"></div>
+    ${o.cli&&o.cli.ult?`<p class="hint" style="margin:0">Último pedido: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))} · prazo ${esc(o.cli.ult.ultimo_prazo||'—')}</p>`:''}
+    <div class="r2"><label class="f">Tabela de preço${o.cli?' (do cliente)':''}<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
+    <label class="f">Buscar produto<input id="q" type="search" placeholder="Código, descrição ou EAN"></label></div></div>
+   <div class="row" style="margin-bottom:8px"><button class="chip${!gsel?' on':''}" data-g="">Todos</button>${grupos.map(g=>`<button class="chip${g===gsel?' on':''}" data-g="${esc(g)}">${esc(g)} (${C.filter(p=>grupoOf(rep,p)===g).length})</button>`).join('')}</div>
+   <div class="card row" id="encBar" style="position:sticky;top:64px;z-index:3;margin-bottom:10px;justify-content:space-between" hidden><span><b id="encN">0</b> no encarte</span><div class="row"><button class="btn ghost sm" id="encAll">Selecionar todos da lista</button><button class="btn ghost sm" id="encClr">Limpar</button><button class="btn sm" id="encCat">PDF catálogo</button><button class="btn sm" id="encPromo">PDF promoção</button></div></div>
+   <p class="hint" id="cnt"></p><div class="pl" id="pl"></div>`;
+  cliBusca($('#cq'),$('#cres'),rep);
+  $('#tab').onchange=async e=>{if(o.itens.length&&!confirm('Trocar a tabela recalcula os preços do orçamento desta representada. Continuar?')){e.target.value=o.tabela;return} o.tabela=+e.target.value; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); repView()};
   let t; $('#q').oninput=e=>{clearTimeout(t); t=setTimeout(()=>{qtxt=e.target.value; render()},200)};
-  const setQt=(pid,v)=>{const p=C.find(x=>x.id===pid); const mult=p.mult||1; v=Math.max(0,Math.round(v/mult)*mult||0); let it=o.itens.find(i=>i.pid===pid); if(v&&!it){it={pid,qt:0}; o.itens.push(it)} if(it){it.qt=v; if(!v) o.itens=o.itens.filter(i=>i!==it)} saveQ(o); const inp=document.querySelector(`[data-q="${pid}"]`); if(inp) inp.value=v||''; m.querySelector('[data-go2]').textContent=`Ver orçamento (${o.itens.length})`};
-  m.onclick=e=>{const a=e.target.closest('[data-go2]'); if(a) return go('orc',{rep}); const mi=e.target.closest('[data-m]'),pl=e.target.closest('[data-p]'); if(mi||pl){const pid=+(mi||pl).dataset[mi?'m':'p']; const p=C.find(x=>x.id===pid); const cur=(o.itens.find(i=>i.pid===pid)||{}).qt||0; setQt(pid,cur+(pl?1:-1)*(p.mult||1))}};
+  const setQt=(pid,v)=>{const p=C.find(x=>x.id===pid); const mult=p.mult||1; v=Math.max(0,Math.round(v/mult)*mult||0); let it=o.itens.find(i=>i.pid===pid); if(v&&!it){it={pid,qt:0}; o.itens.push(it)} if(it){it.qt=v; if(!v) o.itens=o.itens.filter(i=>i!==it)} saveQ(o); const inp=document.querySelector(`[data-q="${pid}"]`); if(inp) inp.value=v||''; m.querySelector('[data-go2]').textContent=`Orçamento (${o.itens.length})`};
+  const curList=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); return C.filter(p=>(!gsel||grupoOf(rep,p)===gsel)&&(!w.length||w.every(x=>norm(p.cod+' '+p.descricao).includes(x)))&&P[p.id])};
+  m.onclick=async e=>{const tg=e.target; const a=tg.closest('[data-go2]'); if(a) return go('orc',{rep});
+    const c=tg.closest('[data-cli]'); if(c){await escolherCliente(rep,o,c.dataset.cli); return repView()}
+    const g=tg.closest('[data-g]'); if(g){gsel=g.dataset.g; LS('grp_'+rep,gsel); m.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('on',x===g)); return render()}
+    if(tg.id==='encT'){enc.on=!enc.on; LS('enc_'+rep,enc); tg.classList.toggle('on',enc.on); return render()}
+    const es=tg.closest('[data-es]'); if(es){const id=+es.dataset.es; enc.sel=enc.sel.includes(id)?enc.sel.filter(x=>x!==id):[...enc.sel,id]; LS('enc_'+rep,enc); return render()}
+    if(tg.id==='encAll'){const ids=curList().map(p=>p.id); enc.sel=[...new Set([...enc.sel,...ids])]; LS('enc_'+rep,enc); toast(ids.length+' adicionados — toque para tirar os que não quiser'); return render()}
+    if(tg.id==='encClr'){enc.sel=[]; LS('enc_'+rep,enc); return render()}
+    if(tg.id==='encCat'||tg.id==='encPromo'){const its=enc.sel.map(id=>C.find(p=>p.id===id)).filter(Boolean); if(!its.length) return toast('Selecione produtos para o encarte'); return tg.id==='encCat'?encCatalogo(rep,o,its,P,tg):encPromoForm(rep,o,its,P)}
+    const mi=tg.closest('[data-m]'),pl=tg.closest('[data-p]'); if(mi||pl){const pid=+(mi||pl).dataset[mi?'m':'p']; const p=C.find(x=>x.id===pid); const cur=(o.itens.find(i=>i.pid===pid)||{}).qt||0; setQt(pid,cur+(pl?1:-1)*(p.mult||1))}};
   m.onchange=e=>{const i=e.target.closest('[data-q]'); if(i) setQt(+i.dataset.q,+i.value)};
   render()}
+
+/* ---------- encartes (PDF) ---------- */
+const PNAVY=[28,35,64],PGOLD=[242,182,50],PGREY=[74,80,104],PLINE=[223,226,236],PSOFT=[244,245,249];
+const fitImg=(doc,im,x,y,w,h)=>{if(!im) return; const s=Math.min(w/im.w,h/im.h); doc.addImage(im.d,'JPEG',x+(w-im.w*s)/2,y+(h-im.h*s)/2,im.w*s,im.h*s)};
+async function encCatalogo(rep,o,its,P,btn){btn.disabled=true; btn.textContent='Gerando…'; try{await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,H=297,M=12; const logo=await imgData('logo.jpg',900);
+  const ims=[]; for(let i=0;i<its.length;i+=6) ims.push(...await Promise.all(its.slice(i,i+6).map(p=>p.img?imgData(p.img,500):null)));
+  const head=()=>{doc.setFillColor(...PNAVY); doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24); doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.text('CATÁLOGO '+repName(rep).toUpperCase(),W-M,12,{align:'right'}); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); if(o.cli) doc.text(doc.splitTextToSize('Para '+o.cli.n,85)[0],W-M,18,{align:'right'}); doc.text(new Date().toLocaleDateString('pt-BR')+((perfil&&perfil.nome)?'  ·  '+perfil.nome:''),W-M,23,{align:'right'}); doc.setFillColor(...PGOLD); doc.rect(0,30,W,1.2,'F')};
+  const foot=(p,t)=>{doc.setDrawColor(...PGOLD); doc.setLineWidth(.6); doc.line(M,H-14,W-M,H-14); doc.setTextColor(...PGREY); doc.setFont('helvetica','normal'); doc.setFontSize(7.2); doc.text('Preços sem IPI (IPI destacado por item). Sujeito a alteração, disponibilidade e prazo de entrega da fábrica.',M,H-9.5); doc.text(`Chamae Representações · pág. ${p}/${t}`,W-M,H-5.5,{align:'right'})};
+  const cols=3,gap=5,cw=(W-2*M-gap*2)/3,ch=74,top=37,per=9,pages=Math.ceil(its.length/per);
+  its.forEach((p,i)=>{const pi=Math.floor(i/per),k=i%per; if(!k){if(pi) doc.addPage(); head(); foot(pi+1,pages)} const x=M+(k%cols)*(cw+gap), y=top+Math.floor(k/cols)*(ch+gap); const pr=(P[p.id]||{}).liq||0;
+    doc.setDrawColor(...PLINE); doc.setLineWidth(.3); doc.roundedRect(x,y,cw,ch,3,3,'S'); doc.setFillColor(...PSOFT); doc.roundedRect(x+.3,y+.3,cw-.6,36,3,3,'F'); fitImg(doc,ims[i],x+4,y+3,cw-8,31);
+    doc.setTextColor(...PNAVY); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.text(String(p.cod),x+3,y+42); doc.setFont('helvetica','normal'); doc.setFontSize(7.4); doc.setTextColor(...PGREY); doc.text(doc.splitTextToSize(String(p.descricao||''),cw-6).slice(0,3),x+3,y+46.5);
+    doc.setFontSize(6.8); doc.text(`IPI ${pct(p.ipi)}${p.mult>1?' · múlt. '+p.mult:''}${p.attrs&&p.attrs.prazo?' · entrega '+p.attrs.prazo+' dias':''}`,x+3,y+ch-12);
+    doc.setDrawColor(...PLINE); doc.setLineDashPattern([1,1],0); doc.line(x+3,y+ch-10,x+cw-3,y+ch-10); doc.setLineDashPattern([],0);
+    doc.setFontSize(6.8); doc.text(p.attrs&&p.attrs.ean?'EAN '+p.attrs.ean:'',x+3,y+ch-4.5); doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(...PNAVY); doc.text(brl(pr),x+cw-3,y+ch-4.3,{align:'right'})});
+  doc.save(`Catalogo_${repName(rep)}${o.cli?'_'+o.cli.n.split(' ')[0]:''}.pdf`); toast('PDF salvo')}catch(e){toast('Erro: '+e.message)} btn.disabled=false; btn.textContent='PDF catálogo'}
+function encPromoForm(rep,o,its,P){const ov=document.createElement('div'); ov.className='ov'; const pr=p=>(P[p.id]||{}).liq||0;
+  ov.innerHTML=`<div class="sh"><div class="sec" style="font-size:20px">Promoção de volume</div><p class="hint">O primeiro item é o destaque; os demais entram como ofertas complementares. Use o preço da tabela ou digite um menor.</p>
+   <label class="f">Válida até<input id="pv" type="date"></label>
+   ${its.map((p,k)=>`<div class="card" style="margin-top:8px;display:grid;gap:6px"><b>${k?'Complementar':'Destaque'}: ${esc(p.cod)}</b><small class="hint">${esc(p.descricao)} · tabela ${brl(pr(p))}</small><div class="r2"><label class="f">Quantidade<input data-pq="${k}" type="number" inputmode="numeric" placeholder="${k?'':'ex.: 50'}"></label><label class="f">Preço da oferta (R$)<input data-pp="${k}" inputmode="decimal" value="${pr(p).toFixed(2).replace('.',',')}"></label></div></div>`).join('')}
+   <div class="row" style="margin-top:12px"><button class="btn" id="pgo">Gerar PDF</button><button class="btn ghost" id="pno">Cancelar</button></div></div>`;
+  document.body.appendChild(ov); $('#pno').onclick=()=>ov.remove();
+  $('#pgo').onclick=async()=>{const num=v=>+String(v||'').replace(/\./g,'').replace(',','.')||0; const rows=its.map((p,k)=>({p,q:num(ov.querySelector(`[data-pq="${k}"]`).value),pr:num(ov.querySelector(`[data-pp="${k}"]`).value),de:pr(p)}));
+    try{await encPromo(rep,o,rows,$('#pv').value); ov.remove()}catch(e){toast('Erro: '+e.message)}}}
+async function encPromo(rep,o,rows,val){await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,H=297,M=12; const logo=await imgData('logo.jpg',900);
+  const [m,...cs]=rows; const im=m.p.img?await imgData(m.p.img,900):null; const cim=await Promise.all(cs.map(c=>c.p.img?imgData(c.p.img,400):null));
+  const bg=()=>{doc.setFillColor(...PNAVY); doc.rect(0,0,W,H,'F')}; bg(); if(logo) doc.addImage(logo.d,'JPEG',M,8,55,20);
+  if(val){doc.setFont('helvetica','bold'); doc.setFontSize(9); const t='Válida até '+val.split('-').reverse().join('/'); const w=doc.getTextWidth(t)+8; doc.setFillColor(...PGOLD); doc.roundedRect(W-M-w,12,w,9,4.5,4.5,'F'); doc.setTextColor(...PNAVY); doc.text(t,W-M-w+4,17.9)}
+  doc.setTextColor(255); doc.setFont('helvetica','normal'); doc.setFontSize(9.5); if(o.cli) doc.text(doc.splitTextToSize('Oferta exclusiva para '+o.cli.n,120)[0],M,35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(40); doc.text('OFERTA DE',M,52); doc.setTextColor(...PGOLD); doc.text('VOLUME',M+doc.getTextWidth('OFERTA DE '),52);
+  doc.setTextColor(220); doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(repName(rep)+' · preço especial para compra fechada',M,59);
+  const by=66,bh=108; doc.setFillColor(255,255,255); doc.roundedRect(M,by,W-2*M,bh,6,6,'F'); doc.setFillColor(...PSOFT); doc.roundedRect(M,by,84,bh,6,6,'F'); doc.rect(M+78,by,6,bh,'F'); fitImg(doc,im,M+6,by+10,72,bh-20);
+  const rx=M+92,rw=W-M-rx-8; let y=by+12; doc.setTextColor(...PGREY); doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.text(`Cód. ${m.p.cod}${m.p.attrs&&m.p.attrs.ean?' · EAN '+m.p.attrs.ean:''}`,rx,y); y+=9;
+  doc.setTextColor(...PNAVY); doc.setFontSize(15); const nm=doc.splitTextToSize(String(m.p.descricao||'').toUpperCase(),rw).slice(0,3); doc.text(nm,rx,y); y+=nm.length*6.5+3;
+  doc.setFillColor(...PGOLD); doc.roundedRect(rx,y,rw,27,4,4,'F'); doc.setTextColor(...PNAVY); doc.setFontSize(9); doc.text(m.q?`COMPRANDO ${m.q.toLocaleString('pt-BR')} UNIDADES`:'PREÇO ESPECIAL',rx+5,y+7); doc.setFontSize(28); doc.text(brl(m.pr),rx+5,y+21); doc.setFontSize(9); doc.text('s/ IPI',rx+8+doc.getTextWidth(brl(m.pr))*28/9,y+21);
+  y+=34; doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...PGREY);
+  if(m.de>m.pr){doc.text('De ',rx,y); const dw=doc.getTextWidth('De '), dt=brl(m.de); doc.text(dt,rx+dw,y); doc.line(rx+dw,y-1.2,rx+dw+doc.getTextWidth(dt),y-1.2); doc.setFont('helvetica','bold'); doc.setTextColor(29,107,56); doc.text(`Economia de ${Math.round((1-m.pr/m.de)*100)}%`,rx+rw,y,{align:'right'}); y+=6}
+  doc.setFont('helvetica','normal'); doc.setTextColor(...PGREY); doc.text(`IPI ${pct(m.p.ipi)}${m.q?' · Total do lote: '+brl(m.q*m.pr)+' s/ IPI':''}`,rx,y);
+  if(cs.length){let cy=by+bh+12; doc.setTextColor(...PGOLD); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('APROVEITE E COMPLETE O PEDIDO',M,cy); cy+=5; const cw=(W-2*M-6)/2,chh=34;
+    cs.forEach((c,i)=>{const col=i%2; if(col===0&&i>0) cy+=chh+5; if(cy+chh>H-22){doc.addPage(); bg(); cy=16} const cx=M+col*(cw+6); doc.setFillColor(42,49,87); doc.roundedRect(cx,cy,cw,chh,4,4,'F'); doc.setFillColor(255,255,255); doc.roundedRect(cx+3,cy+3,28,28,3,3,'F'); fitImg(doc,cim[i],cx+4,cy+4,26,26);
+      doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.text(String(c.p.cod),cx+35,cy+8.5); doc.setFont('helvetica','normal'); doc.setFontSize(7.4); doc.setTextColor(210); doc.text(doc.splitTextToSize(String(c.p.descricao||''),cw-38).slice(0,2),cx+35,cy+13); if(c.q) doc.text('A partir de '+c.q.toLocaleString('pt-BR'),cx+35,cy+21.5);
+      doc.setTextColor(...PGOLD); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text(brl(c.pr),cx+35,cy+29)})}
+  doc.setDrawColor(61,70,117); doc.line(M,H-18,W-M,H-18); doc.setTextColor(210); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.text('Condição válida para pedido único na quantidade indicada · Preços sem IPI · Sujeito à disponibilidade.',M,H-12); doc.text(((perfil&&perfil.nome)?'Vendedor: '+perfil.nome+'  ·  ':'')+'Chamae Representações · '+new Date().toLocaleDateString('pt-BR'),M,H-7);
+  doc.save(`Promocao_${repName(rep)}_${m.p.cod}.pdf`); toast('PDF salvo')}
 
 /* ---------- orçamento ---------- */
 async function orc(){const m=$('#main'); const q=Q(); const reps_=Object.keys(q).filter(r=>q[r].itens.length||r===ctx.rep); if(!reps_.length){m.innerHTML='<div class="sec">Orçamento</div><p class="hint">Nenhum item. Escolha uma representada na tela inicial.</p>';return}
@@ -96,15 +177,14 @@ async function orc(){const m=$('#main'); const q=Q(); const reps_=Object.keys(q)
    <div class="row" style="margin-top:12px"><button class="btn" id="opdf">Gerar PDF</button><button class="btn ghost" id="osave">Salvar</button><button class="btn ghost" data-go3="${rep}">+ Produtos</button><button class="btn ghost" id="oclr">Novo orçamento</button></div>`;
   const re=()=>orc.call(null);
   m.onclick=async e=>{const t=e.target; const r=t.closest('[data-r]'); if(r){ctx.rep=r.dataset.r; return orc()} const d=t.closest('[data-del]'); if(d){o.itens=o.itens.filter(i=>i.pid!=d.dataset.del); saveQ(o); return orc()}
-    const g=t.closest('[data-go3]'); if(g) return go('rep',{rep}); const c=t.closest('[data-cli]'); if(c){const cl=(CLIS||[]).find(x=>x.cnpj===c.dataset.cli); o.cli={cnpj:cl.cnpj,n:cl.n,cid:cl.cid,ult:cl.reps[HIST_REP[rep]]||null}; if(o.cli.ult&&!o.prazo) o.prazo=o.cli.ult.ultimo_prazo||''; saveQ(o); return orc()}
+    const g=t.closest('[data-go3]'); if(g) return go('rep',{rep}); const c=t.closest('[data-cli]'); if(c){await escolherCliente(rep,o,c.dataset.cli); return orc()}
     if(t.id==='usePz'){o.prazo=o.cli.ult.ultimo_prazo||''; saveQ(o); return orc()}
     if(t.id==='oclr'){if(confirm('Começar um novo orçamento desta representada? O atual fica salvo se você tiver tocado em Salvar.')){const q=Q(); delete q[rep]; setQ(q); go('home')}}
     if(t.id==='osave'){await salvar(o,sub+ipi+fr,'rascunho'); toast('Orçamento salvo')}
     if(t.id==='opdf'){t.disabled=true; try{await pdf(o,rows,{sub,ipi,fr,tab,tr:tr[o.transp]}); await salvar(o,sub+ipi+fr,'enviado')}catch(err){toast('Erro no PDF: '+err.message)} t.disabled=false}};
   m.onchange=e=>{const t=e.target; if(t.dataset.oq){const it=o.itens.find(i=>i.pid==t.dataset.oq); it.qt=Math.max(0,+t.value||0); if(!it.qt) o.itens=o.itens.filter(i=>i!==it); saveQ(o); orc()}
-    if(t.id==='otab'){o.tabela=+t.value; saveQ(o); orc()} if(t.id==='opz'){o.prazo=t.value; saveQ(o)} if(t.id==='oobs'){o.obs=t.value; saveQ(o)} if(t.id==='otr'){o.transp=+t.value; saveQ(o); orc()}};
-  let tt; $('#cq').oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C2=await clientes(); const d=v.replace(/\D/g,''); const r=v.length<2?[]:C2.filter(c=>norm(c.n+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,8);
-    $('#cres').innerHTML=r.map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:4px 0" data-cli="${c.cnpj}"><b>${esc(c.n)}</b> · ${esc(c.cid||'')}${c.reps[HIST_REP[rep]]?' · já compra '+esc(repName(rep)):''}</button>`).join('')},250)}}
+    if(t.id==='otab'){o.tabela=+t.value; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); orc()} if(t.id==='opz'){o.prazo=t.value; saveQ(o)} if(t.id==='oobs'){o.obs=t.value; saveQ(o)} if(t.id==='otr'){o.transp=+t.value; saveQ(o); orc()}};
+  cliBusca($('#cq'),$('#cres'),rep);}
 async function salvar(o,total,sit){try{await api('orcamentos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:sess.uid.slice(0,8)+'-'+o.rep+'-'+o.id,app:o.rep,cliente:o.cli&&o.cli.n,cnpj:o.cli&&o.cli.cnpj,total:Math.round(total*100)/100,itens:o.itens.length,situacao:sit,dados:o,atualizado_em:new Date().toISOString()})})}catch(e){toast('Salvo no aparelho; sincroniza depois')}}
 
 /* ---------- PDF ---------- */
@@ -174,10 +254,10 @@ async function admEd(rep){const a=$('#adm'); a.innerHTML='<p class="hint">Carreg
     $('#eform').innerHTML=`<div class="sec" style="font-size:18px">${esc(p.cod)}</div><div class="grid"><label class="f">Descrição<input id="fd" value="${esc(p.descricao)}"></label>
      <div class="r2"><label class="f">Unidade<input id="fu" value="${esc(p.un||'')}"></label><label class="f">Múltiplo<input id="fm" type="number" value="${p.mult||1}"></label><label class="f">IPI %<input id="fi" type="number" step="0.01" value="${p.ipi??''}"></label><label class="f">NCM<input id="fn" value="${esc(p.ncm||'')}"></label>
      <label class="f">EAN<input id="fe" value="${esc(p.attrs&&p.attrs.ean||'')}"></label><label class="f">Prazo de entrega (dias)<input id="fp" value="${esc(p.attrs&&p.attrs.prazo||'')}"></label></div>
-     <label class="f">Link da foto<input id="fimg" value="${esc(p.img||'')}"></label><label class="f" style="display:flex;gap:8px;align-items:center"><input id="fat" type="checkbox"${p.ativo!==false?' checked':''}> Produto ativo</label>
+     <label class="f">Grupo<input id="fg" list="glist" value="${esc(grupoOf(rep,p))}"><datalist id="glist">${[...new Set(C.map(x=>grupoOf(rep,x)))].map(g=>`<option value="${esc(g)}">`).join('')}</datalist></label><label class="f">Link da foto<input id="fimg" value="${esc(p.img||'')}"></label><label class="f" style="display:flex;gap:8px;align-items:center"><input id="fat" type="checkbox"${p.ativo!==false?' checked':''}> Produto ativo</label>
      <table class="t"><tr><th>Tabela</th><th class="n">Bruto</th><th class="n">Líquido (orçamento)</th></tr>${T.map(t=>`<tr><td>${esc(t.nome)}</td><td class="n"><input data-pb="${t.id}" type="number" step="0.01" value="${PR[t.id].base??''}" style="width:110px;padding:6px"></td><td class="n"><input data-pl="${t.id}" type="number" step="0.01" value="${PR[t.id].liq??''}" style="width:110px;padding:6px"></td></tr>`).join('')}</table>
      <button class="btn" id="fsave">Salvar alterações</button></div>`;
-    $('#fsave').onclick=async()=>{try{await api(`produtos?id=eq.${p.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({descricao:$('#fd').value,un:$('#fu').value,mult:+$('#fm').value||1,ipi:$('#fi').value===''?null:+$('#fi').value,ncm:$('#fn').value,img:$('#fimg').value||null,ativo:$('#fat').checked,attrs:{...(p.attrs||{}),ean:$('#fe').value||null,prazo:$('#fp').value||null},atualizado_em:new Date().toISOString()})});
+    $('#fsave').onclick=async()=>{try{await api(`produtos?id=eq.${p.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({grupo:$('#fg').value||null,descricao:$('#fd').value,un:$('#fu').value,mult:+$('#fm').value||1,ipi:$('#fi').value===''?null:+$('#fi').value,ncm:$('#fn').value,img:$('#fimg').value||null,ativo:$('#fat').checked,attrs:{...(p.attrs||{}),ean:$('#fe').value||null,prazo:$('#fp').value||null},atualizado_em:new Date().toISOString()})});
       const pr=[]; T.forEach(t=>{const b=document.querySelector(`[data-pb="${t.id}"]`).value, l=document.querySelector(`[data-pl="${t.id}"]`).value; if(b!=='') pr.push({tabela_id:t.id,produto_id:p.id,nivel:'base',preco:+b}); if(l!=='') pr.push({tabela_id:t.id,produto_id:p.id,nivel:'liq',preco:+l})});
       if(pr.length) await api('precos?on_conflict=tabela_id,produto_id,nivel',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(pr)});
       await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:'edicao',resumo:{cod:p.cod}})}).catch(()=>{});

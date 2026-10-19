@@ -22,7 +22,7 @@ $('#lf').onsubmit=async e=>{e.preventDefault(); const b=$('#lf button'); b.disab
 async function afterLogin(){try{const p=await api('perfis?select=id,nome,email,papel&id=eq.'+sess.uid); perfil=p[0]||null; S('perfil',perfil)}catch(e){}
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
   $('#lock').hidden=true; $('#nav').hidden=false; $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=(perfil&&perfil.nome)||sess.email;
-  w.onclick=()=>{if(confirm('Sair da conta?')){sess=null;S('sess',null);try{localStorage.removeItem('chamae_tp');localStorage.removeItem('mdx_k');localStorage.removeItem('cca_k')}catch(e){} showLock()}}; go(L('route')||'home')}
+  w.onclick=()=>go('aj'); go(L('route')||'home')}
 
 /* ---------- dados ---------- */
 let REPS=null; const CAT={}, TABS={}, PRICES={};
@@ -44,16 +44,16 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); ({home,rep:repView,orc,admin,ped,rel}[r]||home)()}
+function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); ({home,rep:repView,orc,admin,ped,rel,aj:ajustes}[r]||home)()}
 $('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
 /* ---------- início ---------- */
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
-  const q=Q(); m.innerHTML=`<div class="sec">Representadas</div><div class="reps">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=r.n||ext; const qn=(q[r.id]||{itens:[]}).itens.length;
-     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><b>${esc(r.nome)}</b><small>${r.n?r.n+' produtos':ext?'App próprio (por enquanto)':'Em breve'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
+  const q=Q(); m.innerHTML=`<div class="sec">Representadas</div><div class="reps">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
+     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><b>${esc(r.nome)}</b><small>${r.n?r.n+' produtos':ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><a class="btn ghost" href="/medix-luvas/teste/">Clientes, inativos e painel ↗</a>${ehGestor()?'<button class="btn ghost" data-go2="admin">Produtos e tabelas</button>':''}</div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(r.n) go('rep',{rep:id}); else if(EXTERNAL[id]) location.href=EXTERNAL[id]; return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}}
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!r.n) location.href=EXTERNAL[id]; else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -78,6 +78,7 @@ function cliBusca(inp,res,rep){let tt; inp.oninput=e=>{clearTimeout(tt); tt=setT
 /* ---------- módulo da representada: catálogo ---------- */
 async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p class="hint">Carregando catálogo…</p>';
   let C,T; try{[C,T]=await Promise.all([catalog(rep),tabelas(rep)])}catch(e){m.innerHTML=`<p class="bad">${esc(e.message)}</p>`;return}
+  if(!C.length){const R2=await reps(); const nm=(R2.find(x=>x.id===rep)||{}).nome||rep; m.innerHTML=`<div class="sec">${esc(nm)}</div><div class="card grid"><p>Ainda não há produtos cadastrados para ${esc(nm)}.</p><p class="hint">Ela vai funcionar igual à Marcon: catálogo por grupos, tabela de preço do cliente, orçamento e encarte. Basta um gestor subir as planilhas de produtos e preços.</p>${ehGestor()?'<button class="btn" id="impHere">Importar planilhas de '+esc(nm)+'</button>':''}</div>`; const b=$('#impHere'); if(b) b.onclick=()=>go('admin',{rep}); return}
   const o=curQ(rep); if(!o.tabela&&T.length){o.tabela=T[0].id; saveQ(o)} const P=o.tabela?await prices(o.tabela):{};
   const grupos=[...new Set(C.map(p=>grupoOf(rep,p)))].sort((a,b)=>a==='Outros'?1:b==='Outros'?-1:a.localeCompare(b));
   const enc=L('enc_'+rep)||{on:false,sel:[]}; let qtxt='', gsel=L('grp_'+rep)||'';
@@ -407,6 +408,39 @@ async function admTab(rep){const a=$('#adm'); const T=await api(`tabelas?select=
   a.innerHTML=`<div class="card"><table class="t"><tr><th>Tabela</th><th>Vigência</th><th>Ativa</th></tr>${T.map(t=>`<tr><td>${esc(t.nome)}</td><td>${esc(t.vigencia||'')}</td><td><input type="checkbox" data-at="${t.id}"${t.ativa?' checked':''} aria-label="Ativa"></td></tr>`).join('')||'<tr><td colspan="3">Nenhuma tabela.</td></tr>'}</table></div>
    <div class="card" style="margin-top:12px"><b>Últimas alterações</b>${H.map(h=>`<p class="hint">${new Date(h.criado_em).toLocaleString('pt-BR')} · ${esc(h.tipo)} · ${esc(JSON.stringify(h.resumo).slice(0,160))}</p>`).join('')||'<p class="hint">Nenhuma.</p>'}</div>`;
   a.onchange=async e=>{const c=e.target.closest('[data-at]'); if(c){await api(`tabelas?id=eq.${c.dataset.at}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({ativa:c.checked})}); delete TABS[rep]; toast('Tabela '+(c.checked?'ativada':'desativada'))}}}
+
+/* ---------- ajustes (vale para o sistema e para os apps Medix e Marluvas) ---------- */
+const RAW=k=>{try{return localStorage.getItem(k)}catch(e){return null}}, RAWS=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+function aplicarVisual(){const t=L('tema')||'auto', lay=RAW('mdx_lay')||'premium'; const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme=dark?'dark':'light'; document.documentElement.dataset.lay=lay==='classico'?'classico':'premium';
+  const mt=document.querySelector('meta[name=theme-color]'); if(mt) mt.content=dark?'#0e1120':'#1c2340'}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',aplicarVisual)}catch(e){} aplicarVisual();
+async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=RAW('mdx_lay')||'premium'; const rk=RAW('chamae_rk')||RAW('mdx_rk')||RAW('cca_rk')||'';
+  const vend=G('repVend')||JSON.parse(RAW('mdx_repVend')||'""')||''; const V=await vendedores();
+  m.innerHTML=`<div class="sec">Ajustes</div><p class="hint" style="margin-top:-6px">Valem para o sistema inteiro, inclusive os apps Medix e Marluvas neste aparelho.</p><div class="grid">
+  <div class="card grid"><b>Aparência</b>
+   <label class="f">Visual<div class="row" id="ajLay">${[['premium','Premium'],['classico','Clássico']].map(([k,l])=>`<button type="button" class="chip${lay===k?' on':''}" data-lay="${k}">${l}</button>`).join('')}</div></label>
+   <label class="f">Tema da tela<select id="ajTema"><option value="auto">Automático (segue o aparelho)</option><option value="light">Claro (dia)</option><option value="dark">Escuro (noite)</option></select></label></div>
+  <div class="card grid"><b>Integração Reprio</b><p class="hint" style="margin:0">A chave da API fica guardada só neste aparelho e vale para todas as representadas.</p>
+   <label class="f">Chave da API<input id="ajRk" type="password" autocomplete="off" placeholder="${rk?'•••••• (chave salva)':'Cole a chave aqui'}"></label>
+   <label class="f">Vendedor padrão (este aparelho)<select id="ajVend"><option value="">Selecione…</option>${V.map(v=>`<option${v===vend?' selected':''}>${esc(v)}</option>`).join('')}</select></label>
+   <div class="row"><button class="btn sm" id="ajRkS">Salvar</button><button class="btn sm ghost" id="ajRkT"${rk?'':' disabled'}>Testar conexão</button><button class="btn sm ghost" id="ajRkR"${rk?'':' disabled'}>Remover chave</button></div><div id="ajRkM" class="hint"></div></div>
+  <div class="card grid"><b>Dados</b><div id="ajSync" class="hint">Verificando última sincronização…</div>
+   <div class="row"><button class="btn sm ghost" id="ajCache">Recarregar catálogos e preços</button>${ehGestor()?'<button class="btn sm ghost" id="ajAdm">Produtos e tabelas</button>':''}</div></div>
+  <div class="card grid"><b>Conta</b><div>${esc((perfil&&perfil.nome)||sess.email)} <span class="hint">· ${esc(sess.email)} · ${ehGestor()?'gestor':'vendedor'}</span></div>
+   <div class="row"><button class="btn sm ghost" id="ajSair">Sair da conta</button></div></div>
+  <p class="hint">Conversão de CA, base do CAEPI, fichas técnicas e conversões da equipe continuam nos Ajustes dos apps Medix e Marluvas, porque só existem lá.</p></div>`;
+  $('#ajTema').value=tema; $('#ajTema').onchange=e=>{const v=e.target.value; LS('tema',v); RAWS('mdx_theme',JSON.stringify(v)); RAWS('cca_theme',JSON.stringify(v)); aplicarVisual(); toast('Tema aplicado')};
+  $('#ajLay').onclick=e=>{const b=e.target.closest('[data-lay]'); if(!b) return; RAWS('mdx_lay',b.dataset.lay); RAWS('cca_lay',b.dataset.lay); aplicarVisual(); ajustes()};
+  const msg=t=>$('#ajRkM').textContent=t;
+  $('#ajVend').onchange=e=>{const v=e.target.value; S('repVend',v); RAWS('mdx_repVend',JSON.stringify(v)); RAWS('cca_repVend',JSON.stringify(v)); toast('Vendedor padrão salvo')};
+  $('#ajRkS').onclick=()=>{const v=$('#ajRk').value.trim(); if(!v){msg('Cole a chave antes de salvar.');return} ['chamae_rk','mdx_rk','cca_rk'].forEach(k=>RAWS(k,v)); $('#ajRk').value=''; toast('Chave salva'); ajustes()};
+  $('#ajRkR').onclick=()=>{if(!confirm('Remover a chave do Reprio deste aparelho?')) return; ['chamae_rk','mdx_rk','cca_rk'].forEach(k=>RAWS(k,null)); ajustes()};
+  $('#ajRkT').onclick=async()=>{msg('Testando…'); try{const r=await fetch('https://yahrccahjmybgolvhbkd.supabase.co/functions/v1/api-pedidos?limit=1',{headers:{Authorization:'Bearer '+(RAW('chamae_rk')||RAW('mdx_rk')||RAW('cca_rk'))}}); msg(r.ok?'Conexão OK ✔':'O Reprio recusou a chave (HTTP '+r.status+').')}catch(e){msg('Sem conexão com o Reprio agora.')}};
+  $('#ajCache').onclick=()=>{try{Object.keys(localStorage).filter(k=>/^chs_(cat_|tab_|pr_)/.test(k)).forEach(k=>localStorage.removeItem(k))}catch(e){} for(const o of [CAT,TABS,PRICES]) Object.keys(o).forEach(k=>delete o[k]); REPS=null; toast('Catálogos serão baixados de novo')};
+  const ad=$('#ajAdm'); if(ad) ad.onclick=()=>go('admin');
+  $('#ajSair').onclick=()=>{if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}};
+  try{const [u]=await api('pedidos?select=data,num&origem=eq.reprio&order=data.desc&limit=1'); $('#ajSync').innerHTML=u?`Pedidos do Reprio sincronizados automaticamente a cada 2 horas. Último pedido recebido: <b>${esc(u.data.split('-').reverse().join('/'))}</b> (nº ${esc(u.num)}).`:'Nenhum pedido do Reprio sincronizado ainda.'}catch(e){$('#ajSync').textContent='Não consegui verificar agora.'}}
 
 /* ---------- início ---------- */
 badge(); if(sess) afterLogin(); else showLock();

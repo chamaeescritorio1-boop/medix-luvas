@@ -57,6 +57,10 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 .badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:800}
 .ov{position:fixed;inset:0;z-index:30;background:rgba(6,8,18,.7);display:flex;align-items:flex-end;justify-content:center}
 .ov .sh{background:var(--surface);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px} @media(min-width:700px){.ov{align-items:center}.ov .sh{border-radius:20px}}
+:root[data-theme=light]{--bg:#f3f4f8;--surface:#ffffff;--surface2:#eceef5;--ink:#1c2340;--muted:#5d6480;--line:#dcdfea;--accent:#1c2340;--accent-ink:#fff;--ok:#1f9d55;--bad:#c62828;--warn:#b7791f;color-scheme:light}
+:root[data-theme=light] body{background:var(--bg)} :root[data-theme=light] header{background:rgba(255,255,255,.92)} :root[data-theme=light] nav{background:rgba(255,255,255,.96)}
+:root[data-theme=light] input,:root[data-theme=light] select,:root[data-theme=light] textarea{background:#fff} :root[data-theme=light] .tag{background:#eceef5} :root[data-theme=light] .pc .pr{color:#1c2340}
+:root[data-lay=classico] body{background:var(--bg)} :root[data-lay=classico] .card,:root[data-lay=classico] .rep{background:var(--surface);border-radius:12px} :root[data-lay=classico] .rep{border-left:5px solid var(--c,#2a3157)}
 </style>
 </head>
 <body>
@@ -67,7 +71,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <button data-go="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/></svg><span>Orçamento <span class="badge" id="qn" hidden>0</span></span></button>
  <button data-go="ped"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Pedidos</button>
  <button data-go="rel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</button>
- <button data-go="admin" id="navAdm" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="3"/></svg>Produtos</button>
+ <button data-go="aj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Ajustes</button><span id="navAdm" hidden></span>
 </nav>
 <div id="lock"><form id="lf"><img src="icon-192.png" alt="" width="84" height="84" style="margin:0 auto;border-radius:50%">
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>

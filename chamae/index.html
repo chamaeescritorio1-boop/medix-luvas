@@ -61,10 +61,14 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 :root[data-theme=light] body{background:var(--bg)} :root[data-theme=light] header{background:rgba(255,255,255,.92)} :root[data-theme=light] nav{background:rgba(255,255,255,.96)}
 :root[data-theme=light] input,:root[data-theme=light] select,:root[data-theme=light] textarea{background:#fff} :root[data-theme=light] .tag{background:#eceef5} :root[data-theme=light] .pc .pr{color:#1c2340}
 :root[data-lay=classico] body{background:var(--bg)} :root[data-lay=classico] .card,:root[data-lay=classico] .rep{background:var(--surface);border-radius:12px} :root[data-lay=classico] .rep{border-left:5px solid var(--c,#2a3157)}
+.sem{display:grid;gap:12px;margin-top:10px} @media(min-width:900px){.sem{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1000px){body{padding-bottom:0;padding-left:96px} nav{top:0;bottom:0;right:auto;width:96px;flex-direction:column;justify-content:flex-start;padding-top:80px;border-top:0;border-right:1px solid var(--line)} nav button{flex:0 0 auto;padding:14px 4px}
+ main,.hrow{max-width:1320px} .reps{grid-template-columns:repeat(6,minmax(0,1fr))} .pl{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))} .toast{bottom:24px} .ov .sh{max-width:1100px}}
+@media(max-width:600px){.hrow .lbl{display:none}}
 </style>
 </head>
 <body>
-<header><div class="hrow"><a href="#" id="homeLnk" style="display:flex;align-items:center;gap:10px;flex:1;color:inherit;text-decoration:none" aria-label="Ir para o início"><img src="icon-192.png" alt=""><h1>Chamae <span>·</span> Sistema<small>teste</small></h1></a><button class="chip" id="homeBtn" type="button">⌂ Início</button><button class="chip" id="who" hidden></button></div></header>
+<header><div class="hrow"><a href="#" id="homeLnk" style="display:flex;align-items:center;gap:10px;flex:1;color:inherit;text-decoration:none" aria-label="Ir para o início"><img src="icon-192.png" alt=""><h1>Chamae <span>·</span> Sistema<small>teste</small></h1></a><button class="chip" id="srchBtn" type="button" aria-label="Buscar">🔍<span class="lbl"> Buscar</span></button><button class="chip" id="homeBtn" type="button" aria-label="Início">⌂<span class="lbl"> Início</span></button><button class="chip" id="who" hidden></button></div></header>
 <main id="main"></main>
 <nav id="nav" hidden>
  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H5v-9"/></svg>Início</button>
@@ -78,6 +82,6 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
 <script src="xlsx.full.min.js"></script>
-<script src="app.js?v=202610191411"></script>
+<script src="app.js?v=202610191414"></script>
 </body>
 </html>

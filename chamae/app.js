@@ -65,9 +65,11 @@ const grupoOf=(rep,p)=>p.grupo||grupoAuto(rep,p.descricao);
 /* ---------- cliente → tabela ---------- */
 async function tabelaDoCliente(rep,cli,T){if(!cli) return null; const k=rep+'|'+cli.cnpj;
   try{const r=await api(`cliente_tabela?select=tabela_id&rep=eq.${rep}&cnpj=eq.${cli.cnpj}`); if(r[0]&&T.some(t=>t.id==r[0].tabela_id)) return r[0].tabela_id}catch(e){const m=(L('cliTab')||{})[k]; if(m&&T.some(t=>t.id==m)) return m}
+  try{const u=await api(`pedidos?select=tabela&cnpj=eq.${cli.cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||rep)}&tabela=not.is.null&order=data.desc&limit=1`); const tn=u[0]&&norm(u[0].tabela).replace(/^TABELA\s+/,'').trim();
+    if(tn){const t=T.find(t=>norm(t.nome).replace(/^TABELA\s+/,'').trim()===tn)||T.find(t=>norm(t.nome).replace(/^TABELA\s+/,'').startsWith(tn+' ')); if(t) return t.id}}catch(e){}
   const n=norm(cli.n), uf=(cli.uf||'SP'); const kw=[['GURGEL','GURGELMIX'],['PALACIO','PALACIO'],['COPERCANA','COPERCANA'],['SBARDEL','SBARDELINI'],['OXIMAQ','OXIMAQ']].find(([a])=>n.includes(a));
   const pick=pre=>T.find(t=>norm(t.nome).startsWith(pre)&&norm(t.nome).endsWith(' '+uf))||T.find(t=>norm(t.nome).startsWith(pre));
-  const t=(kw&&pick(kw[1]))||pick('GERAL'); return t?t.id:null}
+  const t=(kw&&pick(kw[1]))||pick('GERAL')||(rep==='medix'&&pick('SUDESTE 3')); return t?t.id:null}
 async function lembrarTabela(rep,cli,tid){if(!cli||!tid) return; const m=L('cliTab')||{}; m[rep+'|'+cli.cnpj]=tid; LS('cliTab',m);
   try{await api('cliente_tabela?on_conflict=cnpj,rep',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({cnpj:cli.cnpj,rep,tabela_id:tid})})}catch(e){}}
 async function escolherCliente(rep,o,cnpj){const C2=await clientes(); const cl=C2.find(x=>x.cnpj===cnpj); if(!cl) return; o.cli={cnpj:cl.cnpj,n:cl.n,cid:cl.cid,ult:cl.reps[HIST_REP[rep]]||null}; if(o.cli.ult&&!o.prazo) o.prazo=o.cli.ult.ultimo_prazo||'';
@@ -82,17 +84,17 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   const o=curQ(rep); if(!o.tabela&&T.length){o.tabela=T[0].id; saveQ(o)} const P=o.tabela?await prices(o.tabela):{};
   const grupos=[...new Set(C.map(p=>grupoOf(rep,p)))].sort((a,b)=>a==='Outros'?1:b==='Outros'?-1:a.localeCompare(b));
   const enc=L('enc_'+rep)||{on:false,sel:[]}; let qtxt='', gsel=L('grp_'+rep)||'';
-  const render=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); const list=C.filter(p=>(!gsel||grupoOf(rep,p)===gsel)&&(!w.length||w.every(x=>norm(p.cod+' '+p.descricao+' '+(p.attrs&&p.attrs.ean||'')).includes(x)))).filter(p=>!o.tabela||P[p.id]);
+  const render=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); const list=C.filter(p=>(!gsel||grupoOf(rep,p)===gsel)&&(!w.length||w.every(x=>norm(p.cod+' '+(p.ref||'')+' '+p.descricao+' '+(p.ca?'CA'+p.ca+' '+p.ca:'')+' '+(p.attrs&&p.attrs.ean||'')).includes(x)))).filter(p=>!o.tabela||P[p.id]);
     $('#pl').innerHTML=list.slice(0,80).map(p=>{const pr=P[p.id]||{}; const inQ=o.itens.find(i=>i.pid===p.id); const es=enc.sel.includes(p.id);
       return `<div class="card pc"${enc.on&&es?' style="border-color:var(--accent);border-width:2px"':''}><img src="${esc(p.img||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:5px;min-width:0"><div class="cod">${esc(p.cod)}</div><div class="d">${esc(p.descricao)}</div>
-       <div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div><div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span><span class="tag">IPI ${pct(p.ipi)}</span>${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
+       <div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div><div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span>${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
        ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
     $('#cnt').textContent=`${list.length} produtos${list.length>80?' · mostrando 80, refine a busca':''}`; $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${esc(repName(rep))}</div><div class="row"><button class="chip${enc.on?' on':''}" id="encT">Encarte</button><button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${esc(repName(rep))}</div><div class="row">${EXTERNAL[rep]?`<a class="chip" href="${EXTERNAL[rep]}" style="text-decoration:none">Converter CA ↗</a>`:''}<button class="chip${enc.on?' on':''}" id="encT">Encarte</button><button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
    <div class="card grid" style="margin:10px 0"><label class="f">Cliente<input id="cq" type="search" placeholder="Buscar cliente por nome, CNPJ ou cidade" value="${o.cli?esc(o.cli.n):''}"></label><div id="cres"></div>
     ${o.cli&&o.cli.ult?`<p class="hint" style="margin:0">Último pedido: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))} · prazo ${esc(o.cli.ult.ultimo_prazo||'—')}</p>`:''}
     <div class="r2"><label class="f">Tabela de preço${o.cli?' (do cliente)':''}<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
-    <label class="f">Buscar produto<input id="q" type="search" placeholder="Código, descrição ou EAN"></label></div></div>
+    <label class="f">Buscar produto<input id="q" type="search" placeholder="Código, referência, CA, descrição ou EAN"></label></div></div>
    <div class="row" style="margin-bottom:8px"><button class="chip${!gsel?' on':''}" data-g="">Todos</button>${grupos.map(g=>`<button class="chip${g===gsel?' on':''}" data-g="${esc(g)}">${esc(g)} (${C.filter(p=>grupoOf(rep,p)===g).length})</button>`).join('')}</div>
    <div class="card row" id="encBar" style="position:sticky;top:64px;z-index:3;margin-bottom:10px;justify-content:space-between" hidden><span><b id="encN">0</b> no encarte</span><div class="row"><button class="btn ghost sm" id="encAll">Selecionar todos da lista</button><button class="btn ghost sm" id="encClr">Limpar</button><button class="btn sm" id="encCat">PDF catálogo</button><button class="btn sm" id="encPromo">PDF promoção</button></div></div>
    <p class="hint" id="cnt"></p><div class="pl" id="pl"></div>`;
@@ -100,7 +102,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   $('#tab').onchange=async e=>{if(o.itens.length&&!confirm('Trocar a tabela recalcula os preços do orçamento desta representada. Continuar?')){e.target.value=o.tabela;return} o.tabela=+e.target.value; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); repView()};
   let t; $('#q').oninput=e=>{clearTimeout(t); t=setTimeout(()=>{qtxt=e.target.value; render()},200)};
   const setQt=(pid,v)=>{const p=C.find(x=>x.id===pid); const mult=p.mult||1; v=Math.max(0,Math.round(v/mult)*mult||0); let it=o.itens.find(i=>i.pid===pid); if(v&&!it){it={pid,qt:0}; o.itens.push(it)} if(it){it.qt=v; if(!v) o.itens=o.itens.filter(i=>i!==it)} saveQ(o); const inp=document.querySelector(`[data-q="${pid}"]`); if(inp) inp.value=v||''; m.querySelector('[data-go2]').textContent=`Orçamento (${o.itens.length})`};
-  const curList=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); return C.filter(p=>(!gsel||grupoOf(rep,p)===gsel)&&(!w.length||w.every(x=>norm(p.cod+' '+p.descricao).includes(x)))&&P[p.id])};
+  const curList=()=>{const w=norm(qtxt).split(/\s+/).filter(Boolean); return C.filter(p=>(!gsel||grupoOf(rep,p)===gsel)&&(!w.length||w.every(x=>norm(p.cod+' '+(p.ref||'')+' '+p.descricao+' '+(p.ca||'')).includes(x)))&&P[p.id])};
   m.onclick=async e=>{const tg=e.target; const a=tg.closest('[data-go2]'); if(a) return go('orc',{rep});
     const c=tg.closest('[data-cli]'); if(c){await escolherCliente(rep,o,c.dataset.cli); return repView()}
     const g=tg.closest('[data-g]'); if(g){gsel=g.dataset.g; LS('grp_'+rep,gsel); m.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('on',x===g)); return render()}
@@ -355,9 +357,9 @@ const keyOf=h=>{const n=String(h||'').trim().toLowerCase(); for(const k in COLS)
 const nameFromFile=f=>{const m=f.match(/reprio_(.+?)_(\w{2})_\d{4}/i); return m?(m[1].replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())+' '+m[2].toUpperCase()):f.replace(/\.\w+$/,'')};
 async function admin(){const m=$('#main'); if(!ehGestor()){m.innerHTML='<p class="hint">Só gestores.</p>';return} const R=await reps();
   const rep=ctx.rep||L('admRep')||'marcon';
-  m.innerHTML=`<div class="sec">Produtos e tabelas</div><div class="row"><select id="arep">${R.map(r=>`<option value="${r.id}"${r.id===rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="chip on" data-t="imp">Importar planilhas</button><button class="chip" data-t="ed">Editar produto</button><button class="chip" data-t="tb">Tabelas</button></div><div id="adm" style="margin-top:12px"></div>`;
+  m.innerHTML=`<div class="sec">Produtos e tabelas</div><div class="row"><select id="arep">${R.map(r=>`<option value="${r.id}"${r.id===rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="chip on" data-t="imp">Importar planilhas</button><button class="chip" data-t="ed">Editar produto</button><button class="chip" data-t="tb">Tabelas</button>${APPSRC[rep]?'<button class="chip" data-t="app">Trazer do app '+esc((R.find(r=>r.id===rep)||{}).nome||rep)+'</button>':''}</div><div id="adm" style="margin-top:12px"></div>`;
   $('#arep').onchange=e=>{LS('admRep',e.target.value); ctx.rep=e.target.value; admin()};
-  m.querySelector('.row').onclick=e=>{const b=e.target.closest('[data-t]'); if(!b) return; m.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); ({imp:admImp,ed:admEd,tb:admTab})[b.dataset.t](rep)};
+  m.querySelector('.row').onclick=e=>{const b=e.target.closest('[data-t]'); if(!b) return; m.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); ({imp:admImp,ed:admEd,tb:admTab,app:admApp})[b.dataset.t](rep)};
   admImp(rep)}
 function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p class="hint">Suba uma ou várias planilhas (uma por tabela de preço). O nome da tabela vem do arquivo e pode ser ajustado. Nada é gravado antes da sua aprovação.</p>
   <input id="files" type="file" accept=".xlsx,.xls,.csv" multiple style="width:100%"><div id="prev"></div></div>`;
@@ -366,11 +368,13 @@ function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p c
       const map={}; rows[hi].forEach((h,i)=>{const k=keyOf(h); if(k&&map[k]==null) map[k]=i}); const items=rows.slice(hi+1).filter(r=>String(r[map.cod]??'').trim()).map(r=>{const g=k=>map[k]!=null?r[map[k]]:''; const num=v=>{if(typeof v==='number') return v; const s=String(v).replace(/[^\d,.-]/g,''); return s?+(s.includes(',')?s.replace(/\./g,'').replace(',','.'):s):null};
         return {cod:String(g('cod')).trim(),desc:String(g('desc')).trim(),un:String(g('un')).trim(),mult:num(g('mult'))||1,base:num(g('base')),liq:num(g('liq')),ncm:String(g('ncm')).trim(),ean:String(g('ean')).trim(),ipi:num(g('ipi')),st:num(g('st')),icms:num(g('icms')),obs:String(g('obs')).trim(),prazo:String(g('prazo')).trim(),img:String(g('img')).trim()}});
       const nome=nameFromFile(f.name); const tab=T.find(t=>norm(t.nome)===norm(nome)); jobs.push({f:f.name,nome,map,items,tab})}
+    await prevJobs(rep,jobs,C,T,pv)}}
+async function prevJobs(rep,jobs,C,T,pv){
     // prévia
     const byCod={}; C.forEach(p=>byCod[p.cod]=p);
     for(const j of jobs){const old=j.tab?await prices(j.tab.id,true):{}; let novos=0,sub=0,desc=0,igual=0; const ch=[]; j.items.forEach(it=>{const p=byCod[it.cod]; if(!p){novos++; return} const o=(old[p.id]||{}).liq; if(o==null){novos++; return} const d=it.liq-o; if(Math.abs(d)<.005) igual++; else {d>0?sub++:desc++; ch.push({cod:it.cod,desc:it.desc,o,n:it.liq,p:o?d/o*100:0})}});
       const sai=j.tab?Object.keys(old).filter(pid=>{const p=C.find(x=>x.id==pid); return p&&!j.items.some(i=>i.cod===p.cod)}).length:0; Object.assign(j,{novos,sub,desc,igual,ch,sai})}
-    const miss=jobs.filter(j=>j.map.cod==null||j.map.liq==null);
+    const miss=jobs.filter(j=>j.map&&(j.map.cod==null||j.map.liq==null));
     pv.innerHTML=`${miss.length?`<p class="bad">Não reconheci as colunas de código/preço em: ${miss.map(j=>esc(j.f)).join(', ')}</p>`:''}
      <div style="overflow-x:auto"><table class="t"><tr><th>Arquivo</th><th>Tabela</th><th class="n">Itens</th><th class="n">Novos</th><th class="n">Subiram</th><th class="n">Caíram</th><th class="n">Iguais</th><th class="n">Saíram</th></tr>
      ${jobs.map((j,k)=>`<tr><td><small>${esc(j.f)}</small></td><td><input data-tn="${k}" value="${esc(j.nome)}" style="padding:6px;width:170px">${j.tab?'':' <small class="warn">nova</small>'}</td><td class="n">${j.items.length}</td><td class="n">${j.novos}</td><td class="n bad">${j.sub}</td><td class="n ok">${j.desc}</td><td class="n">${j.igual}</td><td class="n">${j.sai}</td></tr>`).join('')}</table></div>
@@ -379,16 +383,44 @@ function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p c
     pv.oninput=e=>{const i=e.target.closest('[data-tn]'); if(i) jobs[+i.dataset.tn].nome=i.value};
     $('#aprov').onclick=async()=>{const b=$('#aprov'); b.disabled=true; const st=$('#aprSt');
       try{// produtos: união de todos os arquivos (último vence)
-        const prod={}; jobs.forEach(j=>j.items.forEach(it=>{prod[it.cod]={rep,cod:it.cod,ref:it.cod,descricao:it.desc,un:it.un||null,mult:Math.max(1,Math.round(it.mult||1)),ncm:it.ncm||null,ipi:it.ipi,img:it.img||(byCod[it.cod]||{}).img||null,ativo:true,attrs:{...((byCod[it.cod]||{}).attrs||{}),ean:it.ean||null,prazo:it.prazo||null,st:it.st,obs:it.obs||null},atualizado_em:new Date().toISOString()}}));
+        const prod={}; jobs.forEach(j=>j.items.forEach(it=>{const ob=byCod[it.cod]||{}; prod[it.cod]={rep,cod:it.cod,ref:it.ref||ob.ref||it.cod,descricao:it.desc,un:it.un||null,emb:it.emb||ob.emb||null,mult:Math.max(1,Math.round(it.mult||1)),ncm:it.ncm||ob.ncm||null,ipi:it.ipi,ca:it.ca||ob.ca||null,grupo:ob.grupo||it.grupo||null,linha:it.linha||ob.linha||null,ficha:it.ficha||ob.ficha||null,img:it.img||ob.img||null,ativo:true,attrs:{...(ob.attrs||{}),...(it.attrs||{}),ean:it.ean||(ob.attrs||{}).ean||null,prazo:it.prazo||(ob.attrs||{}).prazo||null,st:it.st,obs:it.obs||null},atualizado_em:new Date().toISOString()}}));
         const arr=Object.values(prod); const ids={}; for(let i=0;i<arr.length;i+=400){st.textContent=`Gravando produtos ${i}/${arr.length}…`; const r=await api('produtos?on_conflict=rep,cod&select=id,cod',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(arr.slice(i,i+400))}); r.forEach(x=>ids[x.cod]=x.id)}
         for(const j of jobs){let tid=j.tab&&norm(j.tab.nome)===norm(j.nome)?j.tab.id:null; if(!tid){const r=await api('tabelas?on_conflict=rep,nome&select=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify([{rep,nome:j.nome,vigencia:new Date().toISOString().slice(0,10),ativa:true}])}); tid=r[0].id}
-          const pr=[]; j.items.forEach(it=>{const pid=ids[it.cod]; if(!pid) return; if(it.liq!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'liq',preco:it.liq}); if(it.base!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'base',preco:it.base}); if(it.icms!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'icms',preco:it.icms})});
+          const pr=[]; j.items.forEach(it=>{const pid=ids[it.cod]; if(!pid) return; if(it.liq!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'liq',preco:it.liq}); if(it.base!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'base',preco:it.base}); if(it.icms!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'icms',preco:it.icms}); if(it.enc!=null) pr.push({tabela_id:tid,produto_id:pid,nivel:'enc',preco:it.enc})});
           for(let i=0;i<pr.length;i+=800){st.textContent=`Tabela ${j.nome}: preços ${i}/${pr.length}…`; await api('precos?on_conflict=tabela_id,produto_id,nivel',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(pr.slice(i,i+800).map(x=>({...x,atualizado_em:new Date().toISOString()})))})}
           if(j.tab){const keep=new Set(j.items.map(it=>ids[it.cod])); const gone=Object.keys(await prices(tid,true)).filter(pid=>!keep.has(+pid)); for(let i=0;i<gone.length;i+=100) await api(`precos?tabela_id=eq.${tid}&produto_id=in.(${gone.slice(i,i+100).join(',')})`,{method:'DELETE'})}
           delete PRICES[tid]}
         await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:'importacao',resumo:jobs.map(j=>({arquivo:j.f,tabela:j.nome,itens:j.items.length,novos:j.novos,subiram:j.sub,cairam:j.desc,sairam:j.sai}))})}).catch(()=>{});
         delete CAT[rep]; delete TABS[rep]; REPS=null; st.textContent=''; toast('Importação concluída'); admImp(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">✓ ${jobs.length} tabela(s) e ${arr.length} produtos gravados.</p>`)}
-      catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}}}
+      catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}}
+
+
+/* ---------- trazer catálogo dos apps Medix/Marluvas (lê o pacote protegido com a senha da equipe; nada sai do aparelho além da gravação na base) ---------- */
+const APPSRC={marluvas:'/conversor-ca/teste/index.html',medix:'/medix-luvas/teste/index.html'};
+const MDX_LN={SAFE:'Safety',PROF:'Profissional',HOSP:'Hospitalar',VF:'Vida Fácil'};
+async function lerApp(rep){const tp=localStorage.getItem('chamae_tp'); if(!tp) throw new Error('Saia e entre de novo no sistema para liberar os apps.');
+  const h=await (await fetch(APPSRC[rep]+'?v='+Date.now(),{cache:'no-store'})).text(); const m=h.match(/const ENC=\{s:"([^"]+)",i:"([^"]+)",d:"([^"]+)",n:(\d+)\}/); if(!m) throw new Error('Não encontrei o pacote do app.');
+  const ub=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0)); const bk=await crypto.subtle.importKey('raw',new TextEncoder().encode(tp),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:ub(m[1]),iterations:+m[4],hash:'SHA-256'},bk,256); const k=await crypto.subtle.importKey('raw',bits,'AES-GCM',false,['decrypt']);
+  const js=new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(m[2])},k,ub(m[3])));
+  const a=js.indexOf('const CAT = ')+12, b=js.indexOf(';\nconst VIG'); const CATX=JSON.parse(js.slice(a,b)); const vig=(js.match(/const VIG = "([^"]*)"/)||[])[1]||'';
+  let CH=null; const c1=js.indexOf('const CHANNELS = ['); if(c1>=0){const c2=js.indexOf('];',c1); try{CH=Function('return '+js.slice(c1+17,c2+1))()}catch(e){}}
+  return {CATX,vig,CH}}
+const r2=v=>Math.round(v*100)/100;
+function jobsDoApp(rep,{CATX,CH}){const limpa=d=>String(d||'').split('|').map(x=>x.trim()).filter(Boolean).join(' · ');
+  if(rep==='marluvas'){const chs=(CH||[{c:'0',d:0}]); const base=CATX.filter(it=>it.p&&it.cod);
+    const mk=it=>({cod:String(it.cod),ref:it.ref,desc:(it.ref?it.ref+' — ':'')+limpa(it.d),un:'PAR',mult:1,ipi:it.ipi??null,ca:it.ca||null,grupo:it.a&&it.a.tipo?it.a.tipo.charAt(0)+it.a.tipo.slice(1).toLowerCase():null,img:it.img||null,ficha:it.ft?'https://drive.google.com/file/d/'+it.ft+'/view':null,prazo:it.pz?String(it.pz):'',attrs:{tam:it.tam||null,est:it.est||null,...(it.a||{})}});
+    return chs.map(ch=>({f:'app Marluvas',nome:ch.c==='0'?'TABELA GERAL SP':ch.c,items:base.map(it=>({...mk(it),liq:r2(it.p*(1-(ch.d||0)/100))}))}))}
+  if(rep==='medix'){const base=CATX.filter(it=>it.cod&&it.pt&&Object.keys(it.pt).length); const lv=['1','2','3','4','5'];
+    const fit=(pt,c)=>{if(pt[c]!=null) return pt[c]; const ks=Object.keys(pt).filter(k=>k!=='E'); let best=ks[0]; ks.forEach(k=>{if(Math.abs(+k-+c)<Math.abs(+best-+c)) best=k}); return pt[best]};
+    const mk=it=>({cod:String(it.cod),ref:it.ref,desc:it.d,un:it.un||null,emb:it.emb||null,mult:it.mult||1,ipi:it.ipi??null,ca:it.ca||null,grupo:MDX_LN[it.ln]||it.ln||null,linha:it.sec||null,img:'/medix-luvas/img/'+(it.im||it.cod)+'.jpg',attrs:{sec:it.sec||null}});
+    return lv.map(c=>({f:'app Medix',nome:'SUDESTE '+c+' (comissão '+c+'%)',items:base.map(it=>({...mk(it),liq:fit(it.pt,c),enc:it.pt.E??null}))}))}
+  return []}
+async function admApp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p class="hint">Copia para a base os produtos e preços que estão hoje no app ${rep==='medix'?'Medix':'Marluvas'} (versão de teste). Você vê a prévia antes; nada é gravado sem aprovar. Depois disso, o orçamento único do sistema usa esses preços.</p><button class="btn" id="lerApp">Ler catálogo do app</button><div id="prev"></div></div>`;
+  $('#lerApp').onclick=async()=>{const b=$('#lerApp'); b.disabled=true; const pv=$('#prev'); pv.innerHTML='<p class="hint">Abrindo o pacote protegido…</p>';
+    try{const d=await lerApp(rep); const C=await catalog(rep,true).catch(()=>[]); const T=await tabelas(rep,true); const jobs=jobsDoApp(rep,d);
+      jobs.forEach(j=>j.tab=T.find(t=>norm(t.nome)===norm(j.nome))); pv.innerHTML=''; pv.insertAdjacentHTML('beforebegin',`<p class="hint">Catálogo ${esc(d.vig)} · ${jobs[0]?jobs[0].items.length:0} produtos · ${jobs.length} tabelas</p>`); await prevJobs(rep,jobs,C,T,pv)}
+    catch(e){pv.innerHTML=`<p class="bad">${esc(e.message)}</p>`; b.disabled=false}}}
 async function admEd(rep){const a=$('#adm'); a.innerHTML='<p class="hint">Carregando…</p>'; const C=await catalog(rep,true); const T=await tabelas(rep,true);
   a.innerHTML=`<div class="card grid"><input id="eq" type="search" placeholder="Buscar produto por código ou descrição"><div id="eres"></div><div id="eform"></div></div>`;
   $('#eq').oninput=e=>{const w=norm(e.target.value); $('#eres').innerHTML=w.length<2?'':C.filter(p=>norm(p.cod+' '+p.descricao).includes(w)).slice(0,12).map(p=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:3px 0" data-e="${p.id}"><b>${esc(p.cod)}</b> ${esc(p.descricao)}</button>`).join('')};

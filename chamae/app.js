@@ -90,7 +90,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
        <div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div><div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span>${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
        ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
     $('#cnt').textContent=`${list.length} produtos${list.length>80?' · mostrando 80, refine a busca':''}`; $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${esc(repName(rep))}</div><div class="row">${EXTERNAL[rep]?`<a class="chip" href="${EXTERNAL[rep]}" style="text-decoration:none">Converter CA ↗</a>`:''}<button class="chip${enc.on?' on':''}" id="encT">Encarte</button><button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${esc(repName(rep))}</div><div class="row">${EXTERNAL[rep]?`<button class="chip on" id="caBtn">⇄ Converter CA</button>`:''}<button class="chip${enc.on?' on':''}" id="encT">Encarte</button><button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
    <div class="card grid" style="margin:10px 0"><label class="f">Cliente<input id="cq" type="search" placeholder="Buscar cliente por nome, CNPJ ou cidade" value="${o.cli?esc(o.cli.n):''}"></label><div id="cres"></div>
     ${o.cli&&o.cli.ult?`<p class="hint" style="margin:0">Último pedido: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))} · prazo ${esc(o.cli.ult.ultimo_prazo||'—')}</p>`:''}
     <div class="r2"><label class="f">Tabela de preço${o.cli?' (do cliente)':''}<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
@@ -106,6 +106,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   m.onclick=async e=>{const tg=e.target; const a=tg.closest('[data-go2]'); if(a) return go('orc',{rep});
     const c=tg.closest('[data-cli]'); if(c){await escolherCliente(rep,o,c.dataset.cli); return repView()}
     const g=tg.closest('[data-g]'); if(g){gsel=g.dataset.g; LS('grp_'+rep,gsel); m.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('on',x===g)); return render()}
+    if(tg.id==='caBtn') return abrirCA(rep,o);
     if(tg.id==='encT'){enc.on=!enc.on; LS('enc_'+rep,enc); tg.classList.toggle('on',enc.on); return render()}
     const es=tg.closest('[data-es]'); if(es){const id=+es.dataset.es; enc.sel=enc.sel.includes(id)?enc.sel.filter(x=>x!==id):[...enc.sel,id]; LS('enc_'+rep,enc); return render()}
     if(tg.id==='encAll'){const ids=curList().map(p=>p.id); enc.sel=[...new Set([...enc.sel,...ids])]; LS('enc_'+rep,enc); toast(ids.length+' adicionados — toque para tirar os que não quiser'); return render()}
@@ -114,6 +115,16 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
     const mi=tg.closest('[data-m]'),pl=tg.closest('[data-p]'); if(mi||pl){const pid=+(mi||pl).dataset[mi?'m':'p']; const p=C.find(x=>x.id===pid); const cur=(o.itens.find(i=>i.pid===pid)||{}).qt||0; setQt(pid,cur+(pl?1:-1)*(p.mult||1))}};
   m.onchange=e=>{const i=e.target.closest('[data-q]'); if(i) setQt(+i.dataset.q,+i.value)};
   render()}
+
+/* ---------- conversor de CA (o mesmo motor dos apps, embutido; só Marluvas e Medix) ---------- */
+function abrirCA(rep,o){const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
+  const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh" style="max-width:960px;width:100%;height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"><div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">⇄ Converter CA · ${esc(repName(rep))}</b><span class="hint" id="caN">Toque em “+ orçamento” no produto escolhido</span><button class="btn sm" id="caX">Concluir</button></div><iframe title="Conversor de CA" src="${EXTERNAL[rep]}?embed=1&canal=${encodeURIComponent(canal)}" style="flex:1;border:0;width:100%;background:#fff"></iframe></div>`;
+  document.body.appendChild(ov); let n=0;
+  const onm=async e=>{if(e.origin!==location.origin||!e.data||e.data.t!=='chamae-add'||e.data.rep!==rep) return; const C=await catalog(rep); const P=await prices(o.tabela); const lst=e.data.items||[{ref:e.data.ref,cod:e.data.cod,qt:null}]; const falta=[];
+    for(const d of lst){const p=C.find(x=>(d.cod&&x.cod===d.cod))||C.find(x=>x.ref===d.ref||x.cod===d.ref); if(!p||!P[p.id]){falta.push(d.ref); continue}
+      let it=o.itens.find(i=>i.pid===p.id); if(!it){it={pid:p.id,qt:0}; o.itens.push(it)} it.qt+=d.qt||p.mult||1; n++; $('#caN').textContent=`${n} adicionado(s) · último: ${p.cod}`}
+    saveQ(o); badge(); if(falta.length) toast(`Sem preço na base para: ${falta.join(', ')}. Gestor: Ajustes › Produtos e tabelas › Trazer do app.`)};
+  window.addEventListener('message',onm); ov.querySelector('#caX').onclick=()=>{window.removeEventListener('message',onm); ov.remove(); repView()}}
 
 /* ---------- encartes (PDF) ---------- */
 const PNAVY=[28,35,64],PGOLD=[242,182,50],PGREY=[74,80,104],PLINE=[223,226,236],PSOFT=[244,245,249];

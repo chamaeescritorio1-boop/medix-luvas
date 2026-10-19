@@ -44,16 +44,17 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); ({home,rep:repView,orc,admin,ped,rel,aj:ajustes}[r]||home)()}
-$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home');
+function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca}[r]||home)()}
+$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
 /* ---------- início ---------- */
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
   const q=Q(); m.innerHTML=`<div class="sec">Representadas</div><div class="reps">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
      return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><b>${esc(r.nome)}</b><small>${r.n?r.n+' produtos':ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
+   <div id="semana"></div>
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><a class="btn ghost" href="/medix-luvas/teste/">Clientes, inativos e painel ↗</a>${ehGestor()?'<button class="btn ghost" data-go2="admin">Produtos e tabelas</button>':''}</div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!r.n) location.href=EXTERNAL[id]; else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}}
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!r.n) location.href=EXTERNAL[id]; else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; minhaSemana($('#semana'))}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -117,8 +118,8 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   render()}
 
 /* ---------- conversor de CA (o mesmo motor dos apps, embutido; só Marluvas e Medix) ---------- */
-function abrirCA(rep,o){const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
-  const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh" style="max-width:960px;width:100%;height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"><div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">⇄ Converter CA · ${esc(repName(rep))}</b><span class="hint" id="caN">Toque em “+ orçamento” no produto escolhido</span><button class="btn sm" id="caX">Concluir</button></div><iframe title="Conversor de CA" src="${EXTERNAL[rep]}?embed=1&canal=${encodeURIComponent(canal)}" style="flex:1;border:0;width:100%;background:#fff"></iframe></div>`;
+function abrirCA(rep,o,q){const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
+  const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh" style="max-width:960px;width:100%;height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"><div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">⇄ Converter CA · ${esc(repName(rep))}</b><span class="hint" id="caN">Toque em “+ orçamento” no produto escolhido</span><button class="btn sm" id="caX">Concluir</button></div><iframe title="Conversor de CA" src="${EXTERNAL[rep]}?embed=1&canal=${encodeURIComponent(canal)}${q?'&q='+encodeURIComponent(q):''}" style="flex:1;border:0;width:100%;background:#fff"></iframe></div>`;
   document.body.appendChild(ov); let n=0;
   const onm=async e=>{if(e.origin!==location.origin||!e.data||e.data.t!=='chamae-add'||e.data.rep!==rep) return; const C=await catalog(rep); const P=await prices(o.tabela); const lst=e.data.items||[{ref:e.data.ref,cod:e.data.cod,qt:null}]; const falta=[];
     for(const d of lst){const p=C.find(x=>(d.cod&&x.cod===d.cod))||C.find(x=>x.ref===d.ref||x.cod===d.ref); if(!p||!P[p.id]){falta.push(d.ref); continue}
@@ -485,6 +486,50 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   const ad=$('#ajAdm'); if(ad) ad.onclick=()=>go('admin');
   $('#ajSair').onclick=()=>{if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}};
   try{const [u]=await api('pedidos?select=data,num&origem=eq.reprio&order=data.desc&limit=1'); $('#ajSync').innerHTML=u?`Pedidos do Reprio sincronizados automaticamente a cada 2 horas. Último pedido recebido: <b>${esc(u.data.split('-').reverse().join('/'))}</b> (nº ${esc(u.num)}).`:'Nenhum pedido do Reprio sincronizado ainda.'}catch(e){$('#ajSync').textContent='Não consegui verificar agora.'}}
+
+/* ---------- minha semana ---------- */
+const meuVend=()=>norm((perfil&&perfil.nome)||'').split(' ')[0];
+const dias=d=>Math.floor((Date.now()-new Date(d+'T12:00:00'))/864e5);
+async function minhaSemana(box){if(!box) return; const so=L('soMeus')!==false; const eu=meuVend();
+  box.innerHTML='<p class="hint">Montando sua semana…</p>';
+  try{const ini=new Date(); const mIni=`${ini.getFullYear()}-${String(ini.getMonth()+1).padStart(2,'0')}-01`;
+    const [C,O,P]=await Promise.all([clientes(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=representada,valor,vendedor&data=gte.${mIni}`).catch(()=>[])]);
+    const meuC=c=>!so||!eu||Object.values(c.reps).some(x=>norm(x.vendedor||'')===eu);
+    const rec=[]; C.filter(meuC).forEach(c=>Object.values(c.reps).forEach(x=>{if(!x.ultimo) return; const d=dias(x.ultimo); if(d>=30&&d<=120) rec.push({c,x,d})}));
+    rec.sort((a,b)=>a.d-b.d); const b30=rec.filter(r=>r.d<60).length,b60=rec.filter(r=>r.d>=60&&r.d<90).length,b90=rec.filter(r=>r.d>=90).length;
+    const par=O.filter(o=>(!so||o.user_id===sess.uid)&&['orcamento','aguardando_aprovacao','aguardando_atg'].includes(stOf(o))&&dias(o.atualizado_em.slice(0,10))>=5).slice(0,6);
+    const Pm=P.filter(x=>!so||!eu||norm(x.vendedor||'')===eu); const porRep={}; Pm.forEach(x=>porRep[x.representada]=(porRep[x.representada]||0)+(+x.valor||0)); const tot=Object.values(porRep).reduce((a,b)=>a+b,0);
+    const stl=k=>(STATUS.find(s=>s[0]===k)||[,k])[1];
+    box.innerHTML=`<div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Minha semana</div><div class="row"><button class="chip${so?' on':''}" data-sm="1">Só meus</button><button class="chip${so?'':' on'}" data-sm="0">Equipe toda</button></div></div>
+    <div class="sem"><div class="card grid"><b>Vendas no mês</b><div class="tot" style="margin:0"><span class="hint" style="font-family:var(--body);font-size:13px">${Pm.length} pedidos</span><b>${brl(tot)}</b></div>${Object.entries(porRep).sort((a,b)=>b[1]-a[1]).map(([r,v])=>`<div class="row" style="justify-content:space-between"><span>${esc(r)}</span><span>${brl(v)}</span></div>`).join('')||'<p class="hint">Nenhum pedido ainda neste mês.</p>'}</div>
+     <div class="card grid"><b>Clientes para recontatar</b><div class="row"><span class="chip">30–59 dias: <b>${b30}</b></span><span class="chip">60–89: <b>${b60}</b></span><span class="chip">90–120: <b class="bad">${b90}</b></span></div>${rec.slice(0,6).map(r=>`<button class="chip" style="text-align:left" data-bq="${esc(r.c.cnpj)}"><b>${esc(r.c.n)}</b> · ${esc(r.x.representada)} · <span class="${r.d>=90?'bad':r.d>=60?'warn':''}">${r.d} dias</span></button>`).join('')}</div>
+     <div class="card grid"><b>Orçamentos parados</b>${par.map(o=>`<button class="chip" style="text-align:left" data-bo="${esc(o.cliente||'')}"><b>${esc(o.cliente||'Sem cliente')}</b> · ${esc(repName(o.app))} · ${brl(o.total)} · ${esc(stl(stOf(o)))} · ${dias(o.atualizado_em.slice(0,10))} dias</button>`).join('')||'<p class="hint">Nada parado há mais de 5 dias. 👏</p>'}</div></div>`;
+    box.onclick=e=>{const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box)} const q=e.target.closest('[data-bq]'); if(q){e.stopPropagation(); return go('busca',{q:q.dataset.bq})} const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
+  catch(e){box.innerHTML=''}}
+
+/* ---------- busca global ---------- */
+async function busca(){const m=$('#main'); const q0=ctx.q||'';
+  m.innerHTML=`<div class="sec">Buscar</div><input id="gq" type="search" placeholder="Cliente, CNPJ, OC, nº do pedido, código, referência ou CA" value="${esc(q0)}" style="width:100%"><div id="gres" class="grid" style="margin-top:12px"></div>`;
+  let t; const run=async v=>{const r=$('#gres'); const w=norm(v).trim(); if(w.length<2){r.innerHTML='<p class="hint">Digite pelo menos 2 letras ou números.</p>';return} r.innerHTML='<p class="hint">Buscando…</p>'; const d=w.replace(/\D/g,''); const ca=(w.match(/^(?:CA\s*)?(\d{3,6})$/)||[])[1];
+    const like=encodeURIComponent('*'+v.trim().replace(/[*,()]/g,' ')+'*');
+    const [C,Pd,Or,Pr]=await Promise.all([clientes(),api(`pedidos?select=id,num,oc,cliente,representada,data,valor&or=(oc.ilike.${like},num.ilike.${like},cliente.ilike.${like}${d.length>=6?',cnpj.like.*'+d+'*':''})&order=data.desc&limit=15`).catch(()=>[]),
+      api(`orcamentos?select=id,app,cliente,total,status,situacao,atualizado_em,dados&or=(cliente.ilike.${like}${d.length>=6?',cnpj.like.*'+d+'*':''})&order=atualizado_em.desc&limit=10`).catch(()=>[]),
+      api(`produtos?select=id,rep,cod,ref,descricao,ca&ativo=eq.true&or=(cod.ilike.${like},ref.ilike.${like},descricao.ilike.${like}${ca?',ca.eq.'+ca:''})&limit=20`).catch(()=>[])]);
+    const cl=C.filter(c=>norm(c.n+' '+c.cid).includes(w)||(d.length>=4&&c.cnpj.includes(d))).slice(0,10);
+    const sec=(tit,html)=>html?`<div class="card grid"><b>${tit}</b>${html}</div>`:'';
+    r.innerHTML=(ca&&['marluvas','medix'].some(x=>EXTERNAL[x])?`<div class="card grid"><b>CA ${esc(ca)}</b><div class="row">${['marluvas','medix'].map(x=>`<button class="btn sm ghost" data-caq="${x}">Converter na ${x==='medix'?'Medix':'Marluvas'}</button>`).join('')}</div></div>`:'')
+     +sec('Clientes',cl.map(c=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><div><b>${esc(c.n)}</b> <span class="hint">${esc(c.cid||'')} · ${esc(c.cnpj)}</span><div class="hint">${Object.values(c.reps).map(x=>`${esc(x.representada)}: ${x.ultimo?dias(x.ultimo)+' dias':'—'}`).join(' · ')}</div></div><button class="btn sm ghost" data-pc="${esc(c.cnpj)}">Pedidos</button></div>`).join(''))
+     +sec('Pedidos',Pd.map(p=>`<button class="chip" style="text-align:left" data-pid="${esc(p.id)}"><b>${esc(p.num||'')}</b>${p.oc?' · OC '+esc(p.oc):''} · ${esc(p.cliente||'')} · ${esc(p.representada||'')} · ${esc(String(p.data||'').split('-').reverse().join('/'))} · ${brl(p.valor)}</button>`).join(''))
+     +sec('Orçamentos',Or.map(o=>`<button class="chip" style="text-align:left" data-bo="${esc(o.cliente||'')}"><b>${esc(o.cliente||'Sem cliente')}</b> · ${esc(repName(o.app))} · ${brl(o.total)}${o.dados&&o.dados.oc?' · OC '+esc(o.dados.oc):''}</button>`).join(''))
+     +sec('Produtos',Pr.map(p=>`<button class="chip" style="text-align:left" data-pr="${esc(p.rep)}" data-prq="${esc(p.cod)}"><b>${esc(p.cod)}</b> ${esc(p.descricao||'')}${p.ca?' · CA '+esc(p.ca):''} · <span class="hint">${esc(repName(p.rep))}</span></button>`).join(''))
+     ||'<p class="hint">Nada encontrado.</p>'};
+  $('#gq').oninput=e=>{clearTimeout(t); t=setTimeout(()=>run(e.target.value),300)}; if(q0) run(q0); setTimeout(()=>$('#gq').focus(),50);
+  m.onclick=e=>{const g=x=>e.target.closest(x); let b;
+    if(b=g('[data-pid]')) return detalhe(b.dataset.pid);
+    if(b=g('[data-pc]')){LS('pedF',{...(L('pedF')||{}),q:b.dataset.pc,tipo:'ped',mo:-1}); return go('ped')}
+    if(b=g('[data-bo]')){LS('pedF',{...(L('pedF')||{}),q:b.dataset.bo,tipo:'orc',mo:-1}); return go('ped')}
+    if(b=g('[data-pr]')){LS('grp_'+b.dataset.pr,''); go('rep',{rep:b.dataset.pr}); setTimeout(()=>{const i=$('#q'); if(i){i.value=b.dataset.prq; i.dispatchEvent(new Event('input'))}},1500); return}
+    if(b=g('[data-caq]')){const rep=b.dataset.caq, cq='CA '+(norm($('#gq').value).match(/(\d{3,6})/)||[])[1]; go('rep',{rep}); setTimeout(()=>abrirCA(rep,curQ(rep),cq),1800)}}}
 
 /* ---------- início ---------- */
 badge(); if(sess) afterLogin(); else showLock();

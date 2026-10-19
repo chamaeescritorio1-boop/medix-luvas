@@ -30,7 +30,10 @@ async function reps(){if(!REPS){REPS=await api('representadas?select=*&order=ord
 async function catalog(rep,force){if(CAT[rep]&&!force) return CAT[rep]; try{CAT[rep]=await apiAll(`produtos?select=*&rep=eq.${rep}&ativo=eq.true&order=cod`); LS('cat_'+rep,CAT[rep])}catch(e){CAT[rep]=L('cat_'+rep)||[]; if(!CAT[rep].length) throw e} return CAT[rep]}
 async function tabelas(rep,force){if(TABS[rep]&&!force) return TABS[rep]; try{TABS[rep]=await api(`tabelas?select=*&rep=eq.${rep}&ativa=eq.true&order=nome`); LS('tab_'+rep,TABS[rep])}catch(e){TABS[rep]=L('tab_'+rep)||[]} return TABS[rep]}
 async function prices(tid,force){if(PRICES[tid]&&!force) return PRICES[tid]; let rows; try{rows=await apiAll(`precos?select=produto_id,nivel,preco&tabela_id=eq.${tid}`); LS('pr_'+tid,rows)}catch(e){rows=L('pr_'+tid)||[]} const m={}; rows.forEach(r=>{(m[r.produto_id]=m[r.produto_id]||{})[r.nivel]=+r.preco}); PRICES[tid]=m; return m}
-let CLIS=null; async function clientes(){if(CLIS) return CLIS; try{const r=await apiAll('cliente_rep?select=cnpj,cliente,cidade,representada,ultimo,ultimo_prazo,vendedor'); const m={}; r.forEach(x=>{const c=m[x.cnpj]=m[x.cnpj]||{cnpj:x.cnpj,n:x.cliente,cid:x.cidade,reps:{}}; c.reps[x.representada]=x}); CLIS=Object.values(m); LS('clis',CLIS)}catch(e){CLIS=L('clis')||[]} return CLIS}
+let CLIS=null; async function clientes(){if(CLIS) return CLIS; const m={}; let ok=false;
+  try{const r=await apiAll('cliente_rep?select=cnpj,cliente,cidade,representada,ultimo,ultimo_prazo,vendedor'); r.forEach(x=>{if(!x.cnpj) return; const c=m[x.cnpj]=m[x.cnpj]||{cnpj:x.cnpj,n:x.cliente,cid:x.cidade,reps:{}}; c.reps[x.representada]=x}); ok=true}catch(e){}
+  try{const d=await lerApp('marluvas'); (d.CLI||[]).forEach(x=>{const k=String(x.cnpj||'').replace(/\D/g,''); if(!k) return; const c=m[k]=m[k]||{cnpj:k,n:x.n,cid:x.cid,reps:{}}; Object.assign(c,{fa:x.fa||c.fa||'',em:x.em||'',tel:x.tel||'',v:x.v||'',t:x.t||'',pz:x.pz||''}); if(!c.cid) c.cid=x.cid}); ok=true}catch(e){}
+  if(ok){CLIS=Object.values(m).sort((a,b)=>String(a.n).localeCompare(String(b.n))); LS('clis',CLIS)} else CLIS=L('clis')||[]; return CLIS}
 const repName=id=>((REPS||[]).find(r=>r.id===id)||{}).nome||id;
 const HIST_REP={marcon:'Marcon',marluvas:'Marluvas',medix:'Medix',sigma:'Sigma Tools',camper:'Camper',zm:'ZM Bombas',terra:'Terra',fortlev:'Fortlev',pegorari:'Pegorari',valcan:'Valcan',cid:'CID',chemicals:'Chemicals 4U'};
 const TRANSP={marcon:[{n:'Cliente retira (FOB)',p:0},{n:'Alfa Transportes FOB (~5%)',p:5},{n:'Transportadora Floresta FOB (~5%)',p:5},{n:'Transportadora a ser indicada (FOB)',p:0}]};
@@ -44,7 +47,7 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca}[r]||home)()}
+function go(r,c){route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===r)); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca}[r]||home)()}
 $('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
@@ -73,10 +76,10 @@ async function tabelaDoCliente(rep,cli,T){if(!cli) return null; const k=rep+'|'+
   const t=(kw&&pick(kw[1]))||pick('GERAL')||(rep==='medix'&&pick('SUDESTE 3')); return t?t.id:null}
 async function lembrarTabela(rep,cli,tid){if(!cli||!tid) return; const m=L('cliTab')||{}; m[rep+'|'+cli.cnpj]=tid; LS('cliTab',m);
   try{await api('cliente_tabela?on_conflict=cnpj,rep',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({cnpj:cli.cnpj,rep,tabela_id:tid})})}catch(e){}}
-async function escolherCliente(rep,o,cnpj){const C2=await clientes(); const cl=C2.find(x=>x.cnpj===cnpj); if(!cl) return; o.cli={cnpj:cl.cnpj,n:cl.n,cid:cl.cid,ult:cl.reps[HIST_REP[rep]]||null}; if(o.cli.ult&&!o.prazo) o.prazo=o.cli.ult.ultimo_prazo||'';
-  const T=await tabelas(rep); const tid=await tabelaDoCliente(rep,o.cli,T); if(tid&&tid!=o.tabela){o.tabela=tid; toast('Tabela do cliente: '+(T.find(t=>t.id==tid)||{}).nome)} saveQ(o)}
-function cliBusca(inp,res,rep){let tt; inp.oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C2=await clientes(); const d=v.replace(/\D/g,''); const r=v.length<2?[]:C2.filter(c=>norm(c.n+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,8);
-  res.innerHTML=r.map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:4px 0" data-cli="${c.cnpj}"><b>${esc(c.n)}</b> · ${esc(c.cid||'')}${c.reps[HIST_REP[rep]]?' · já compra '+esc(repName(rep)):''}</button>`).join('')},250)}}
+async function escolherCliente(rep,o,cnpj){const C2=await clientes(); const cl=C2.find(x=>x.cnpj===cnpj); if(!cl) return; o.cli={cnpj:cl.cnpj,n:cl.n,fa:cl.fa||'',cid:cl.cid,em:cl.em||'',tel:cl.tel||'',ult:cl.reps[HIST_REP[rep]]||null}; if(!o.prazo) o.prazo=(o.cli.ult&&o.cli.ult.ultimo_prazo)||(rep==='marluvas'&&cl.pz)||'';
+  const T=await tabelas(rep); let tid=await tabelaDoCliente(rep,o.cli,T); if(rep==='marluvas'&&cl.t){const tt=T.find(t=>norm(t.nome).replace(/^TABELA\s+/,'')===norm(cl.t)||(cl.t==='0'&&norm(t.nome)==='TABELA GERAL SP')); if(tt) tid=tt.id} if(tid&&tid!=o.tabela){o.tabela=tid; toast('Tabela do cliente: '+(T.find(t=>t.id==tid)||{}).nome)} saveQ(o)}
+function cliBusca(inp,res,rep){let tt; inp.oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C2=await clientes(); const d=v.replace(/\D/g,''); const r=v.length<2?[]:C2.filter(c=>norm(c.n+' '+(c.fa||'')+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,10);
+  res.innerHTML=r.map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:4px 0" data-cli="${c.cnpj}"><b>${esc(c.n)}</b>${c.fa?' ('+esc(c.fa)+')':''} · ${esc(c.cid||'')}${c.reps[HIST_REP[rep]]?' · já compra '+esc(repName(rep)):''}</button>`).join('')||(v.length>=2?'<p class="hint">Nenhum cliente encontrado. Use “+ Cliente novo”.</p>':'')},250)}}
 
 /* ---------- módulo da representada: catálogo ---------- */
 async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p class="hint">Carregando catálogo…</p>';
@@ -172,36 +175,130 @@ async function encPromo(rep,o,rows,val){await loadJsPDF(); const {jsPDF}=window.
   doc.save(`Promocao_${repName(rep)}_${m.p.cod}.pdf`); toast('PDF salvo')}
 
 /* ---------- orçamento ---------- */
-async function orc(){const m=$('#main'); const q=Q(); const reps_=Object.keys(q).filter(r=>q[r].itens.length||r===ctx.rep); if(!reps_.length){m.innerHTML='<div class="sec">Orçamento</div><p class="hint">Nenhum item. Escolha uma representada na tela inicial.</p>';return}
-  await reps(); const rep=ctx.rep&&reps_.includes(ctx.rep)?ctx.rep:reps_[0]; const o=curQ(rep);
-  const [C,T]=await Promise.all([catalog(rep),tabelas(rep)]); const P=o.tabela?await prices(o.tabela):{}; const tab=T.find(t=>t.id==o.tabela);
-  const tr=(TRANSP[rep]||[]); const rows=o.itens.map(i=>{const p=C.find(x=>x.id===i.pid)||{}; const pr=P[i.pid]||{}; const pu=pr.liq||0; return {i,p,pu,icms:pr.icms,tot:pu*i.qt,ipiv:pu*i.qt*(+p.ipi||0)/100}});
-  const sub=rows.reduce((s,r)=>s+r.tot,0), ipi=rows.reduce((s,r)=>s+r.ipiv,0), fr=tr[o.transp]?(sub+ipi)*tr[o.transp].p/100:0;
-  m.innerHTML=`<div class="row">${reps_.map(r=>`<button class="chip${r===rep?' on':''}" data-r="${r}">${esc(repName(r))} (${q[r].itens.length})</button>`).join('')}</div>
-   <div class="sec" style="margin-top:12px">Orçamento ${esc(repName(rep))}</div>
-   <div class="card grid"><label class="f">Cliente<input id="cq" type="search" placeholder="Buscar por nome, CNPJ ou cidade" value="${o.cli?esc(o.cli.n):''}"></label><div id="cres"></div>
-    ${o.cli&&o.cli.ult?`<p class="hint">Último pedido ${esc(repName(rep))}: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))} · prazo ${esc(o.cli.ult.ultimo_prazo||'—')} <button class="chip" id="usePz">Usar prazo</button></p>`:''}
-    <div class="r2"><label class="f">Tabela<select id="otab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')}</select></label>
-    <label class="f">Prazo de pagamento<input id="opz" value="${esc(o.prazo)}" placeholder="ex.: 28/42/56"></label></div>
-    ${tr.length?`<label class="f">Transportadora / frete<select id="otr">${tr.map((t,k)=>`<option value="${k}"${k==o.transp?' selected':''}>${esc(t.n)}</option>`).join('')}</select></label>`:''}
-    <div class="r2"><label class="f">Status<select id="ostat">${STATUS.map(([k,l])=>`<option value="${k}"${k===(o.status||'orcamento')?' selected':''}>${l}</option>`).join('')}</select></label><label class="f">Ordem de compra (OC)<input id="ooc2" value="${esc(o.oc||'')}" placeholder="opcional"></label></div>
-    <label class="f">Observações<textarea id="oobs" rows="2">${esc(o.obs)}</textarea></label></div>
-   <div class="card" style="margin-top:12px;overflow-x:auto"><table class="t"><tr><th>Produto</th><th>EAN</th><th>NCM</th><th class="n">IPI</th><th class="n">ICMS</th><th class="n">Qtd.</th><th class="n">Unit. s/ IPI</th><th class="n">Total s/ IPI</th><th></th></tr>
-    ${rows.map(r=>`<tr><td><b>${esc(r.p.cod)}</b><br><small class="hint">${esc(r.p.descricao)}</small></td><td>${esc(r.p.attrs&&r.p.attrs.ean||'')}</td><td>${esc(r.p.ncm||'')}</td><td class="n">${pct(r.p.ipi)}</td><td class="n">${r.icms!=null?pct(r.icms):''}</td>
-     <td class="n"><input data-oq="${r.i.pid}" type="number" value="${r.i.qt}" style="width:72px;padding:6px;text-align:right"></td><td class="n">${brl(r.pu)}</td><td class="n">${brl(r.tot)}</td><td><button class="chip" data-del="${r.i.pid}" aria-label="Remover">✕</button></td></tr>`).join('')}</table>
-    <div class="grid" style="gap:4px;margin-top:10px;font-size:14px"><div class="row" style="justify-content:space-between"><span>Subtotal (sem IPI)</span><b>${brl(sub)}</b></div><div class="row" style="justify-content:space-between"><span>IPI</span><b>${brl(ipi)}</b></div>${fr?`<div class="row" style="justify-content:space-between"><span>Frete estimado (${pct(tr[o.transp].p)})</span><b>${brl(fr)}</b></div>`:''}</div>
-    <div class="tot"><span>Total</span><b>${brl(sub+ipi+fr)}</b></div></div>
-   <div class="row" style="margin-top:12px"><button class="btn" id="opdf">Gerar PDF</button><button class="btn ghost" id="osave">Salvar</button><button class="btn ghost" data-go3="${rep}">+ Produtos</button><button class="btn ghost" id="oclr">Novo orçamento</button></div>`;
-  const re=()=>orc.call(null);
-  m.onclick=async e=>{const t=e.target; const r=t.closest('[data-r]'); if(r){ctx.rep=r.dataset.r; return orc()} const d=t.closest('[data-del]'); if(d){o.itens=o.itens.filter(i=>i.pid!=d.dataset.del); saveQ(o); return orc()}
-    const g=t.closest('[data-go3]'); if(g) return go('rep',{rep}); const c=t.closest('[data-cli]'); if(c){await escolherCliente(rep,o,c.dataset.cli); return orc()}
-    if(t.id==='usePz'){o.prazo=o.cli.ult.ultimo_prazo||''; saveQ(o); return orc()}
-    if(t.id==='oclr'){if(confirm('Começar um novo orçamento desta representada? O atual fica salvo se você tiver tocado em Salvar.')){const q=Q(); delete q[rep]; setQ(q); go('home')}}
-    if(t.id==='osave'){await salvar(o,sub+ipi+fr,'rascunho',rows); toast('Orçamento salvo')}
-    if(t.id==='opdf'){t.disabled=true; try{await pdf(o,rows,{sub,ipi,fr,tab,tr:tr[o.transp]}); await salvar(o,sub+ipi+fr,'enviado',rows)}catch(err){toast('Erro no PDF: '+err.message)} t.disabled=false}};
-  m.onchange=e=>{const t=e.target; if(t.dataset.oq){const it=o.itens.find(i=>i.pid==t.dataset.oq); it.qt=Math.max(0,+t.value||0); if(!it.qt) o.itens=o.itens.filter(i=>i!==it); saveQ(o); orc()}
-    if(t.id==='otab'){o.tabela=+t.value; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); orc()} if(t.id==='opz'){o.prazo=t.value; saveQ(o)} if(t.id==='ostat'){o.status=t.value; saveQ(o); salvar(o,sub+ipi+fr,'rascunho',rows).then(()=>toast('Status: '+stLbl(o.status)))} if(t.id==='ooc2'){o.oc=t.value; saveQ(o)} if(t.id==='oobs'){o.obs=t.value; saveQ(o)} if(t.id==='otr'){o.transp=+t.value; saveQ(o); orc()}};
-  cliBusca($('#cq'),$('#cres'),rep);}
+/* ---------- orçamento padrão (modelo Medix) para todas as representadas ---------- */
+const fmtCnpj=c=>String(c||'').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+const ufOf=cid=>((String(cid||'').match(/\/\s*([A-Z]{2})\s*$/i)||[])[1]||'').toUpperCase();
+const icmsUF=uf=>{uf=(uf||'').toUpperCase(); if(!uf) return null; if(uf==='MG') return 18; return ['SP','RJ','PR','SC','RS'].includes(uf)?12:7};
+const REGRAS={medix:{frete:'Frete CIF por conta da Medix.',min:2500},marluvas:{frete:'Frete CIF conforme política Marluvas.',min:0},marcon:{frete:'Frete FOB (por conta do cliente), conforme transportadora indicada.',min:0}};
+const regra=rep=>{const r=((REPS||[]).find(x=>x.id===rep)||{}); const rg=r.regras||{}; return {frete:rg.frete||(REGRAS[rep]||{}).frete||'Frete conforme negociado.',min:+(rg.pedido_min||r.pedido_min||(REGRAS[rep]||{}).min||0)}};
+const vendNome=o=>o.vend||((perfil&&perfil.nome)||'');
+async function linhasDe(o){const C=await catalog(o.rep).catch(()=>[]); const P=o.tabela?await prices(o.tabela):{};
+  return o.itens.map(i=>{const p=C.find(x=>x.id===i.pid)||{}; const pr=P[i.pid]||{}; const pu=pr.liq||0; return {i,p,pu,icms:pr.icms,tot:pu*i.qt,ipiv:pu*i.qt*(+p.ipi||0)/100}})}
+function textoCliente(o,rows,tt){const c=o.cli; return `Olá${c?', '+(c.fa||c.n):''}! Segue o orçamento ${repName(o.rep)}:\n`+rows.map(r=>`• ${r.p.cod} ${String(r.p.descricao||'').slice(0,60)} — ${r.i.qt} x ${brl(r.pu)}`).join('\n')+`\nTotal: ${brl(tt.sub+tt.ipi+tt.fr)}${tt.ipi?' (IPI incluso '+brl(tt.ipi)+')':''}\nPrazo: ${o.prazo||'a combinar'}\n${vendNome(o)?vendNome(o)+' – ':''}Chamae Representações`}
+
+async function orc(){const m=$('#main'); m.onclick=null; m.onchange=null; m.oninput=null; await reps(); const q=Q(); const ab=Object.keys(q).filter(r=>q[r]&&(q[r].itens.length||q[r].cli||r===ctx.rep));
+  let tab=ctx.ot||(ab.length?'cont':'novo'); if(tab==='cont'&&!ab.length) tab='novo';
+  m.innerHTML=`<div class="sec">Orçamento</div><div class="row otabs"><button class="chip${tab==='cont'?' on':''}" data-ot="cont">▶ Continuar${ab.length?` (${ab.length})`:''}</button><button class="chip${tab==='novo'?' on':''}" data-ot="novo">＋ Novo</button><button class="chip${tab==='salvos'?' on':''}" data-ot="salvos">🗂 Salvos</button></div><div id="opane" style="margin-top:12px"></div>`;
+  m.querySelector('.otabs').onclick=e=>{const b=e.target.closest('[data-ot]'); if(b){ctx.ot=b.dataset.ot; orc()}};
+  const fx=e=>{const p=$('#opane'); if(p) p.innerHTML=`<p class="bad">Erro: ${esc(e.message)}</p>`; console.error(e)}; if(tab==='novo') return orcNovo().catch(fx); if(tab==='salvos') return orcSalvos().catch(fx); return orcCont(ab).catch(fx)}
+
+async function orcNovo(){const p=$('#opane'); const R=(await reps()).filter(r=>r.ativa); const q=Q();
+  p.innerHTML=`<div class="card grid"><b>1. Escolha a representada</b><p class="hint" style="margin:0">Cada representada tem o seu orçamento (Marluvas e Medix nunca se misturam).</p><div class="reps">${R.map(r=>`<button class="rep" style="--c:${esc(r.cor||'#2a3157')};min-height:90px" data-nr="${esc(r.id)}"><b>${esc(r.nome)}</b><small>${q[r.id]&&q[r.id].itens.length?q[r.id].itens.length+' itens em andamento':r.n?r.n+' produtos':'catálogo a cadastrar'}</small></button>`).join('')}</div></div>`;
+  p.onclick=e=>{const b=e.target.closest('[data-nr]'); if(!b) return; const rep=b.dataset.nr; const qq=Q(); if(qq[rep]&&qq[rep].itens.length&&!confirm(`Já existe um orçamento ${repName(rep)} em andamento. Começar outro do zero? (o atual continua nos Salvos se você salvou)`)){ctx.ot='cont'; ctx.rep=rep; return orc()}
+    delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=(perfil&&perfil.nome)||''; saveQ(o); ctx.ot='cont'; ctx.rep=rep; orc()}}
+
+async function orcSalvos(){const p=$('#opane'); p.innerHTML='<p class="hint">Carregando…</p>'; let O=[]; try{O=await api('orcamentos?select=id,app,cliente,cnpj,total,itens,status,situacao,atualizado_em,user_id,dados&order=atualizado_em.desc&limit=200')}catch(e){}
+  const draw=w=>{w=norm(w); const L2=O.filter(o=>!w||norm([o.cliente,o.cnpj,repName(o.app),stLbl(stOf(o)),o.dados&&o.dados.oc].join(' ')).includes(w));
+    $('#slist').innerHTML=L2.map(o=>`<div class="card row" style="justify-content:space-between;margin-bottom:8px"><div><b>${esc(o.cliente||'Sem cliente')}</b> <span class="tag" style="background:${stCor(stOf(o))};color:#111">${esc(stLbl(stOf(o)))}</span><div class="hint">${esc(repName(o.app))} · ${o.itens||0} itens · ${brl(o.total)} · ${new Date(o.atualizado_em).toLocaleDateString('pt-BR')}${o.dados&&o.dados.oc?' · OC '+esc(o.dados.oc):''}</div></div><button class="btn sm" data-abrir="${esc(o.id)}">Abrir</button></div>`).join('')||'<p class="hint">Nenhum orçamento salvo.</p>'};
+  p.innerHTML=`<input id="sq" type="search" placeholder="Buscar por cliente, CNPJ, representada, situação ou OC" style="width:100%"><div id="slist" style="margin-top:10px"></div>`; draw('');
+  $('#sq').oninput=e=>draw(e.target.value);
+  p.onclick=e=>{const b=e.target.closest('[data-abrir]'); if(!b) return; const o=O.find(x=>x.id===b.dataset.abrir); const d=o.dados||{}; if(!d.rep||!Array.isArray(d.itens)) return toast('Este orçamento veio de um app antigo e só pode ser visto em Pedidos.');
+    const qq=Q(); if(qq[d.rep]&&qq[d.rep].itens.length&&qq[d.rep].sid!==o.id&&!confirm(`Substituir o orçamento ${repName(d.rep)} em andamento por este?`)) return; const x={...d,sid:o.id,status:o.status||d.status}; delete x.linhas; qq[d.rep]=x; setQ(qq); ctx.ot='cont'; ctx.rep=d.rep; orc()}}
+
+async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(ctx.rep)?ctx.rep:ab[0]; const o=curQ(rep);
+  const [C,T]=await Promise.all([catalog(rep).catch(()=>[]),tabelas(rep)]); if(!o.tabela&&T.length){o.tabela=T[0].id; saveQ(o)} const tab=T.find(t=>t.id==o.tabela);
+  const rows=await linhasDe(o); const tr=TRANSP[rep]||[]; const sub=rows.reduce((s,r)=>s+r.tot,0), ipi=rows.reduce((s,r)=>s+r.ipiv,0), fr=tr[o.transp]?(sub+ipi)*tr[o.transp].p/100:0; const tt={sub,ipi,fr};
+  const rg=regra(rep), uf=o.cli?ufOf(o.cli.cid):'', ic=icmsUF(uf); const V=await vendedores(); const un=rows.reduce((s,r)=>s+r.i.qt,0);
+  p.innerHTML=`${ab.length>1?`<div class="row" style="margin-bottom:10px">${ab.map(r=>`<button class="chip${r===rep?' on':''}" data-r="${r}">${esc(repName(r))} (${Q()[r].itens.length})</button>`).join('')}</div>`:''}
+   <div class="sec" style="font-size:20px">Orçamento ${esc(repName(rep))}</div>
+   <div class="card grid"><b>1. Cliente, tabela, prazo e vendedor</b>
+    <label class="f">Cliente${o.cli?'':' <span class="warn">(obrigatório para enviar)</span>'}</label>
+    ${o.cli?`<div class="card row" style="justify-content:space-between;background:var(--surface2)"><div><b>${esc(o.cli.n)}</b>${o.cli.fa?` <span class="hint">(${esc(o.cli.fa)})</span>`:''}<div class="hint">${o.cli.cnpj?'CNPJ '+esc(fmtCnpj(o.cli.cnpj))+' · ':''}${esc(o.cli.cid||'')}${o.cli.ult?` · último pedido ${esc(repName(rep))}: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))}`:''}</div></div><button class="chip" id="trocaCli">Trocar</button></div>`
+      :`<input id="cq" type="search" autocomplete="off" placeholder="Buscar por nome, fantasia, CNPJ ou cidade"><div id="cres"></div><button class="chip" id="cliNovo" style="justify-self:start">+ Cliente novo (sem cadastro)</button>`}
+    <div class="r2"><label class="f">Tabela de preço<select id="otab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option>Nenhuma tabela</option>'}</select></label>
+     <label class="f">Prazo de pagamento<input id="opz" list="pzl" value="${esc(o.prazo||'')}" placeholder="ex.: 28/42/56"><datalist id="pzl">${['A VISTA','28','28/35','28/42','28/35/42','28/42/56','30/45/60','30/60/90'].map(x=>`<option value="${x}">`).join('')}</datalist></label></div>
+    <div class="r2"><label class="f">Vendedor<select id="ovend"><option value="">—</option>${[...new Set([(perfil&&perfil.nome)||'',...V].filter(Boolean))].map(v=>`<option${v===vendNome(o)?' selected':''}>${esc(v)}</option>`).join('')}</select></label>
+     ${tr.length?`<label class="f">Transportadora / frete<select id="otr">${tr.map((t,k)=>`<option value="${k}"${k==o.transp?' selected':''}>${esc(t.n)}</option>`).join('')}</select></label>`:`<label class="f">Transportadora<input id="otrn" value="${esc(o.transpN||'')}" placeholder="Nome da transportadora"></label>`}</div>
+    <div class="hint">${esc(rg.frete)}${ic!=null?` · ICMS ${ic}% (${uf})`:''}</div>
+    <div class="r2"><label class="f">Situação<select id="ostat">${STATUS.map(([k,l])=>`<option value="${k}"${k===(o.status||'orcamento')?' selected':''}>${l}</option>`).join('')}</select></label><label class="f">Ordem de compra (OC)<input id="ooc2" value="${esc(o.oc||'')}" placeholder="opcional"></label></div>
+    <label class="f">Observações (frete, entrega…)<textarea id="oobs" rows="2">${esc(o.obs||'')}</textarea></label></div>
+   <div class="card grid" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>2. Itens</b><div class="row">${EXTERNAL[rep]?'<button class="chip" id="oca">⇄ Converter CA</button>':''}<button class="chip on" data-go3="${rep}">+ Adicionar do catálogo</button></div></div>
+    ${rows.length?rows.map(r=>`<div class="pc" style="grid-template-columns:64px 1fr;border-bottom:1px solid var(--line);padding-bottom:10px"><img src="${esc(r.p.img||'')}" alt="" loading="lazy" style="width:64px;height:64px" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:4px;min-width:0">
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(r.p.cod)}</b> <span class="d">${esc(r.p.descricao||'')}</span></div><button class="chip" data-del="${r.i.pid}" aria-label="Remover">✕</button></div>
+      <div class="tags">${r.p.ca?`<span class="tag">CA ${esc(r.p.ca)}</span>`:''}${r.p.attrs&&r.p.attrs.ean?`<span class="tag">EAN ${esc(r.p.attrs.ean)}</span>`:''}${r.p.ncm?`<span class="tag">NCM ${esc(r.p.ncm)}</span>`:''}<span class="tag">IPI ${pct(r.p.ipi)}</span>${r.icms!=null?`<span class="tag">ICMS ${pct(r.icms)}</span>`:''}${r.p.emb?`<span class="tag">${esc(r.p.emb)}</span>`:''}</div>
+      <div class="row" style="justify-content:space-between"><div class="qty"><button data-om="${r.i.pid}" aria-label="Menos">−</button><input data-oq="${r.i.pid}" type="number" inputmode="numeric" value="${r.i.qt}"><button data-op="${r.i.pid}" aria-label="Mais">+</button></div>
+       <div style="text-align:right"><div class="hint">${r.i.qt} x ${brl(r.pu)} s/ IPI${+r.p.ipi?` · c/ IPI ${brl(r.pu*(1+r.p.ipi/100))}`:''}</div><b>${brl(r.tot)}</b></div></div></div></div>`).join('')
+     :`<p class="hint">Nenhum item ainda. Toque em <b>+ Adicionar do catálogo</b>${EXTERNAL[rep]?' ou <b>⇄ Converter CA</b>':''}.</p>`}
+    <div class="grid" style="gap:4px;font-size:14px"><div class="row" style="justify-content:space-between"><span>Subtotal (sem IPI) · ${un} un.</span><b>${brl(sub)}</b></div><div class="row" style="justify-content:space-between"><span>IPI</span><b>${brl(ipi)}</b></div>${fr?`<div class="row" style="justify-content:space-between"><span>Frete estimado (${pct(tr[o.transp].p)})</span><b>${brl(fr)}</b></div>`:''}</div>
+    <div class="tot"><span>Total</span><b>${brl(sub+ipi+fr)}</b></div>${rg.min&&sub<rg.min?`<p class="warn" style="margin:0">Faltam ${brl(rg.min-sub)} para o pedido mínimo de ${brl(rg.min)}.</p>`:''}</div>
+   <div class="card grid" style="margin-top:12px"><b>3. Salvar e enviar</b><div class="hint">Texto para o cliente</div><pre id="wat" style="white-space:pre-wrap;background:var(--surface2);padding:10px;border-radius:10px;font-family:inherit;font-size:13px;margin:0">${esc(textoCliente(o,rows,tt))}</pre>
+    <div class="row"><button class="btn" id="osave">Salvar orçamento</button><button class="btn" id="owa">WhatsApp + PDF</button><button class="btn ghost" id="opdf">Baixar PDF</button><button class="btn ghost" id="omail">Enviar por e-mail</button><button class="btn ghost" id="ocopy">Copiar texto</button><button class="btn ghost" id="oclr">Novo orçamento</button></div></div>`;
+  const save=sit=>salvar(o,sub+ipi+fr,sit,rows);
+  const gerar=async(mode,b)=>{if(!rows.length) return toast('Adicione itens antes'); if(!o.cli&&!confirm('Gerar sem cliente?')) return; b.disabled=true; let ww=null; if(mode==='wa') ww=window.open('','_blank'); try{await pdf(o,rows,{...tt,tab,tr:tr[o.transp],mode,ww}); await save('enviado')}catch(err){toast('Erro no PDF: '+err.message); if(ww) ww.close()} b.disabled=false};
+  if(!o.cli){cliBusca($('#cq'),$('#cres'),rep)}
+  p.onclick=async e=>{const t=e.target; const r=t.closest('[data-r]'); if(r){ctx.rep=r.dataset.r; return orc()}
+    const d=t.closest('[data-del]'); if(d){o.itens=o.itens.filter(i=>i.pid!=d.dataset.del); saveQ(o); return orc()}
+    const pm=t.closest('[data-om],[data-op]'); if(pm){const pid=+(pm.dataset.om||pm.dataset.op); const it=o.itens.find(i=>i.pid===pid); const pr=C.find(x=>x.id===pid)||{}; it.qt=Math.max(0,it.qt+(pm.dataset.op?1:-1)*(pr.mult||1)); if(!it.qt) o.itens=o.itens.filter(i=>i!==it); saveQ(o); return orc()}
+    if(t.closest('[data-go3]')) return go('rep',{rep}); if(t.id==='oca') return abrirCA(rep,o);
+    const c=t.closest('[data-cli]'); if(c){await escolherCliente(rep,o,c.dataset.cli); return orc()}
+    if(t.id==='trocaCli'){o.cli=null; saveQ(o); return orc()}
+    if(t.id==='cliNovo'){const n=prompt('Nome / razão social do cliente:'); if(!n) return; const cn=(prompt('CNPJ (opcional):')||'').replace(/\D/g,''); const cid=prompt('Cidade/UF (ex.: Ribeirão Preto/SP):')||''; o.cli={cnpj:cn,n:n.toUpperCase(),cid,novo:true}; saveQ(o); return orc()}
+    if(t.id==='oclr'){if(confirm('Começar um novo orçamento desta representada? O atual fica nos Salvos se você salvou.')){const qq=Q(); delete qq[rep]; setQ(qq); ctx.ot='novo'; orc()} return}
+    if(t.id==='osave'){await save('rascunho'); return toast('Orçamento salvo')}
+    if(t.id==='ocopy'){try{await navigator.clipboard.writeText($('#wat').textContent); toast('Texto copiado')}catch(e){toast('Não consegui copiar')} return}
+    if(t.id==='opdf') return gerar('dl',t); if(t.id==='owa') return gerar('wa',t); if(t.id==='omail') return gerar('email',t)};
+  p.onchange=e=>{const t=e.target; if(t.dataset.oq){const it=o.itens.find(i=>i.pid==t.dataset.oq); it.qt=Math.max(0,+t.value||0); if(!it.qt) o.itens=o.itens.filter(i=>i!==it); saveQ(o); return orc()}
+    if(t.id==='otab'){o.tabela=+t.value; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); return orc()} if(t.id==='opz'){o.prazo=t.value; saveQ(o); return orc()} if(t.id==='ovend'){o.vend=t.value; saveQ(o); return orc()}
+    if(t.id==='ostat'){o.status=t.value; saveQ(o); save('rascunho').then(()=>toast('Situação: '+stLbl(o.status)))} if(t.id==='ooc2'){o.oc=t.value; saveQ(o)} if(t.id==='oobs'){o.obs=t.value; saveQ(o)} if(t.id==='otr'){o.transp=+t.value; saveQ(o); orc()} if(t.id==='otrn'){o.transpN=t.value; saveQ(o)}}}
+
+/* PDF padrão (mesmo layout do app Medix) para todas as representadas */
+async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=12; const NAVY=[28,35,64],GOLD=[224,161,0],GREY=[110,104,98],LINE=[221,214,207]; const c=o.cli; const num=new Date().toISOString().replace(/\D/g,'').slice(2,12); const RN=repName(o.rep);
+  const logo=await imgData('logo.jpg',900); const rg=regra(o.rep); const uf=c?ufOf(c.cid):''; const ic=icmsUF(uf);
+  const head=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24);
+    doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('ORÇAMENTO',W-M,13,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Nº ${num}  ·  ${new Date().toLocaleDateString('pt-BR')}`,W-M,19,{align:'right'});doc.text('Produtos '+RN,W-M,24,{align:'right'})};
+  head(); let y=38; doc.setTextColor(30);
+  const hC=(c?30:16)+(ic!=null?11:7); doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,hC,2,2);
+  doc.setFontSize(8);doc.setTextColor(...GREY);doc.text('CLIENTE',M+4,y+6);doc.text('CONDIÇÃO DE PAGAMENTO',130,y+6);
+  doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(doc.splitTextToSize(c?c.n:'Cliente não informado',110),M+4,y+12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);
+  if(c){let yy=y+(doc.splitTextToSize(c.n,110).length>1?22:17); [c.fa,[c.cnpj?'CNPJ '+fmtCnpj(c.cnpj):'',c.cid].filter(Boolean).join('  ·  '),[c.tel,c.em].filter(Boolean).join('  ·  ')].filter(Boolean).forEach(s=>{doc.text(s,M+4,yy);yy+=4.2})}
+  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(o.prazo?o.prazo+(/^[\d/ ]+$/.test(o.prazo)?' dias':''):'A combinar',130,y+12);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);doc.text(t.tab?'Tabela: '+t.tab.nome:'',130,y+17); if(vendNome(o)) doc.text('Vendedor: '+vendNome(o),130,y+22);
+  const cond2=[(t.tr?'Frete: '+t.tr.n:o.transpN?'Transportadora: '+o.transpN:''),ic!=null?`ICMS: ${ic}%`:''].filter(Boolean);
+  doc.setTextColor(30);doc.setFontSize(9);doc.setFont('helvetica','bold');cond2.forEach((s,k)=>doc.text(s,130,y+(c?28:20)+k*4.6));doc.setFont('helvetica','normal'); y+=hC+7;
+  let un=0;
+  for(const r of rows){const it=r.p, qt=r.i.qt, pu=r.pu; un+=qt; const hBox=35; if(y+hBox>280){doc.addPage();head();y=38}
+    doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,hBox,2,2);
+    const im=it.img?await imgData(it.img,400):null; if(im){const s=Math.min(24/im.w,24/im.h);doc.addImage(im.d,'JPEG',M+3+(24-im.w*s)/2,y+3+(24-im.h*s)/2,im.w*s,im.h*s)}
+    const x0=M+(im?31:4); const nome=String(it.descricao||'').split(/ — | · /)[0]; doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(doc.splitTextToSize(`${it.cod} · ${it.ref&&it.ref!==it.cod?it.ref:nome}`,100)[0],x0,y+8);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);const tl=doc.splitTextToSize(String(it.descricao||''),104).slice(0,2);doc.setTextColor(40);doc.text(tl,x0,y+13);
+    const spec=[it.ca?'CA '+it.ca:'',it.attrs&&it.attrs.ean?'EAN '+it.attrs.ean:'',it.ncm?'NCM '+it.ncm:'','IPI '+pct(it.ipi),r.icms!=null?'ICMS '+pct(r.icms):'',it.emb||'',it.attrs&&it.attrs.tam?'Tam. '+it.attrs.tam:''].filter(Boolean).join('   ·   ');
+    doc.setFontSize(7.8);doc.setTextColor(...GREY);doc.text(doc.splitTextToSize(spec,104).slice(0,2),x0,y+14.5+tl.length*3.8);
+    doc.setFillColor(253,244,214);doc.roundedRect(W-M-44,y+3,40,11,2,2,'F');
+    doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(pu?brl(pu):'a consultar',W-M-6,y+10.6,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GREY);doc.text(+it.ipi?`unit. s/ IPI · c/ IPI ${brl(pu*(1+it.ipi/100))}`:'preço unitário',W-M-6,y+17.2,{align:'right'});
+    doc.setTextColor(30);doc.setFontSize(8.5);doc.text(`${qt} ${String(it.un||'un.').toLowerCase().slice(0,6)} x ${pu?brl(pu):'-'} =`,W-M-6,y+21.8,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(pu?brl(pu*qt):'-',W-M-6,y+26.5,{align:'right'});doc.setFont('helvetica','normal'); y+=hBox+4}
+  if(y+44>285){doc.addPage();head();y=38}
+  if(t.ipi||t.fr){doc.setFontSize(9);doc.setTextColor(30);[['Subtotal (sem IPI)',t.sub],['IPI',t.ipi],...(t.fr?[[`Frete estimado (${pct(t.tr.p)})`,t.fr]]:[])].forEach(([l,v])=>{doc.text(l,W-M-60,y+4);doc.text(brl(v),W-M-5,y+4,{align:'right'});y+=5});y+=2}
+  doc.setFillColor(...NAVY);doc.roundedRect(M,y,W-2*M,14,2,2,'F');doc.setTextColor(255);doc.setFontSize(10);doc.text(`TOTAL  ·  ${un} un.`,M+5,y+9);
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(brl(t.sub+t.ipi+t.fr),W-M-5,y+9.5,{align:'right'});doc.setFont('helvetica','normal');y+=20;
+  doc.setTextColor(...GREY);doc.setFontSize(8.5);
+  const obs=[o.obs,rg.frete+(rg.min?` Pedido mínimo para faturamento: ${brl(rg.min)}`+(t.sub<rg.min?` (este orçamento soma ${brl(t.sub)}; faltam ${brl(rg.min-t.sub)}).`:'.'):''),`Preços sem IPI; IPI destacado conforme alíquota de cada item. Preços conforme tabela vigente${t.tab?' ('+t.tab.nome+')':''}, sujeitos a confirmação no pedido.`,ic!=null?`ICMS de ${ic}% referente à operação para ${uf}. Valores de impostos conforme nota fiscal.`:'',o.oc?'Ordem de compra: '+o.oc:''].filter(Boolean);
+  obs.forEach(s=>{const l=doc.splitTextToSize(s,W-2*M); if(y+l.length*4>284){doc.addPage();head();y=38} doc.text(l,M,y);y+=l.length*4+1});
+  const fts=rows.filter(r=>r.p.ficha); if(fts.length){y+=3; if(y+8+fts.length*5>284){doc.addPage();head();y=38} doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('Fichas técnicas',M,y);doc.setFont('helvetica','normal');y+=5.5;doc.setFontSize(8.5);
+    fts.forEach(r=>{if(y>282){doc.addPage();head();y=38} doc.setTextColor(30);doc.text(`${r.p.cod}:`,M,y);doc.setTextColor(30,80,180);doc.textWithLink('Abrir ficha técnica (PDF)',M+40,y,{url:r.p.ficha});y+=5})}
+  const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){doc.setPage(i);doc.setDrawColor(...GOLD);doc.setLineWidth(.6);doc.line(M,287,W-M,287);doc.setFontSize(8);doc.setTextColor(...GREY);doc.text('Chamae Representações Comerciais  ·  CNPJ 18.308.187/0001-50  ·  (16) 99793-7802  ·  victor.crepaldi@chamae.com.br',W/2,292,{align:'center'})}
+  const fname=`Orcamento-${RN.replace(/[^A-Za-z0-9]+/g,'')}-${(c?c.fa||c.n:'cliente').replace(/[^A-Za-z0-9]+/g,'-').slice(0,30)}-${num}.pdf`;
+  const blob=doc.output('blob'); const file=new File([blob],fname,{type:'application/pdf'}); const subj=`Orçamento ${RN} Nº ${num}${c?' – '+(c.fa||c.n):''}`; const body=$('#wat')?$('#wat').textContent:'';
+  const dl=()=>{const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)};
+  const mode=t.mode||'dl'; const canFile=mode!=='dl'&&navigator.canShare&&navigator.canShare({files:[file]});
+  if(canFile){if(t.ww) t.ww.close(); try{await navigator.share(mode==='email'?{files:[file],title:subj,text:body}:{files:[file],title:subj,text:body}); toast('PDF compartilhado')}catch(e){if(e.name!=='AbortError') dl()}}
+  else{dl(); if(mode==='wa'&&t.ww){const ph=c&&c.tel?String(c.tel).replace(/\D/g,''):''; t.ww.location.href=(ph.length>=10?`https://wa.me/55${ph}`:'https://wa.me/')+'?text='+encodeURIComponent(body); toast('PDF baixado: anexe na conversa do WhatsApp')}
+    else if(mode==='email'){const to=c&&c.em&&c.em!=='-'?c.em:''; setTimeout(()=>{location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body+'\n\n(PDF baixado: anexe o arquivo '+fname+')')}`},600)} else toast('PDF salvo')}}
+
 async function salvar(o,total,sit,rows){const linhas=(rows||[]).map(r=>({cod:r.p.cod,desc:r.p.descricao,qt:r.i.qt,pu:r.pu,ipi:r.p.ipi,ean:r.p.attrs&&r.p.attrs.ean,ncm:r.p.ncm})); const body={id:o.sid||(o.sid=sess.uid.slice(0,8)+'-'+o.rep+'-'+o.id),app:o.rep,cliente:o.cli&&o.cli.n,cnpj:o.cli&&o.cli.cnpj,total:Math.round(total*100)/100,itens:o.itens.length,situacao:sit,dados:{...o,linhas},atualizado_em:new Date().toISOString()}; if(o.status) body.status=o.status; saveQ(o); try{await api('orcamentos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}catch(e){toast('Salvo no aparelho; sincroniza depois')}}
 
 /* ---------- consulta de pedidos e orçamentos ---------- */
@@ -346,22 +443,7 @@ async function rel(){const m=$('#main'); const s=L('relS')||{r:'mes',anos:2,rep:
 /* ---------- PDF ---------- */
 function loadJsPDF(){return window.jspdf?Promise.resolve():new Promise((ok,bad)=>{const s=document.createElement('script');s.src='jspdf.umd.min.js';s.onload=ok;s.onerror=()=>bad(new Error('sem gerador de PDF'));document.head.appendChild(s)})}
 async function imgData(url,maxW){try{const r=await fetch(url); if(!r.ok) return null; const b=await r.blob(); const bm=await createImageBitmap(b); const sc=Math.min(1,maxW/bm.width); const c=document.createElement('canvas'); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(bm,0,0,c.width,c.height); return {d:c.toDataURL('image/jpeg',.85),w:c.width,h:c.height}}catch(e){return null}}
-async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'}); const W=297,H=210,M=10; const NAVY=[28,35,64],GOLD=[242,182,50],GREY=[90,96,118];
-  const logo=await imgData('logo.jpg',900); const num=new Date().toISOString().replace(/\D/g,'').slice(2,12);
-  const head=()=>{doc.setFillColor(...NAVY); doc.rect(0,0,W,24,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,50,18); doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('ORÇAMENTO · '+repName(o.rep).toUpperCase(),W-M,11,{align:'right'}); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text(`Nº ${num} · ${new Date().toLocaleDateString('pt-BR')} · ${(perfil&&perfil.nome)||''}`,W-M,17,{align:'right'}); doc.setFillColor(...GOLD); doc.rect(0,24,W,1,'F')};
-  head(); let y=32; doc.setTextColor(30); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.text('Cliente: ',M,y); doc.setFont('helvetica','normal'); doc.text(o.cli?`${o.cli.n} · CNPJ ${o.cli.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')} · ${o.cli.cid||''}`:'—',M+14,y);
-  y+=5; doc.setFont('helvetica','bold'); doc.text('Prazo: ',M,y); doc.setFont('helvetica','normal'); doc.text(o.prazo||'a combinar',M+14,y); doc.setFont('helvetica','bold'); doc.text('Tabela: ',M+80,y); doc.setFont('helvetica','normal'); doc.text(t.tab?t.tab.nome:'',M+94,y); if(t.tr){doc.setFont('helvetica','bold'); doc.text('Frete: ',M+170,y); doc.setFont('helvetica','normal'); doc.text(t.tr.n,M+182,y)}
-  y+=7; const cols=[['Código',M],['Descrição',M+30],['EAN',M+128],['NCM',M+157],['IPI %',M+186,'r'],['ICMS %',M+202,'r'],['Qtd.',M+218,'r'],['Unit. s/ IPI',M+244,'r'],['Total s/ IPI',W-M,'r']];
-  const th=()=>{doc.setFillColor(238,240,246); doc.rect(M,y-4,W-2*M,6,'F'); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...NAVY); cols.forEach(([l,x,a])=>doc.text(l,x+(a?0:1),y,a?{align:'right'}:{})); y+=6};
-  th(); doc.setFont('helvetica','normal'); doc.setFontSize(8.3); doc.setTextColor(30);
-  rows.forEach(r=>{const d=doc.splitTextToSize(String(r.p.descricao||''),95).slice(0,2); if(y+d.length*3.6>H-30){doc.addPage(); head(); y=32; th(); doc.setFont('helvetica','normal'); doc.setFontSize(8.3); doc.setTextColor(30)}
-    doc.text(String(r.p.cod||''),M+1,y); doc.text(d,M+30,y); doc.text(String(r.p.attrs&&r.p.attrs.ean||''),M+128,y); doc.text(String(r.p.ncm||''),M+157,y); doc.text(pct(r.p.ipi),M+186,y,{align:'right'}); doc.text(r.icms!=null?pct(r.icms):'',M+202,y,{align:'right'});
-    doc.text(String(r.i.qt),M+218,y,{align:'right'}); doc.text(brl(r.pu),M+244,y,{align:'right'}); doc.text(brl(r.tot),W-M,y,{align:'right'}); y+=d.length*3.6+1.6; doc.setDrawColor(230); doc.line(M,y-2.6,W-M,y-2.6)});
-  y+=3; const box=(l,v,b)=>{doc.setFont('helvetica',b?'bold':'normal'); doc.setFontSize(b?12:9.5); doc.setTextColor(...(b?NAVY:[30,30,30])); doc.text(l,W-M-70,y); doc.text(v,W-M,y,{align:'right'}); y+=b?7:5};
-  box('Subtotal (sem IPI)',brl(t.sub)); box('IPI',brl(t.ipi)); if(t.fr) box(`Frete estimado (${pct(t.tr.p)})`,brl(t.fr)); box('TOTAL',brl(t.sub+t.ipi+t.fr),true);
-  if(o.obs){doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...GREY); doc.text(doc.splitTextToSize('Observações: '+o.obs,W-2*M-90),M,y-10)}
-  doc.setFontSize(7.5); doc.setTextColor(...GREY); doc.text('Preços sem IPI; IPI destacado conforme alíquota de cada item. ICMS conforme tabela/UF. Sujeito à confirmação de estoque e prazo de entrega da fábrica.',M,H-6);
-  doc.save(`Orcamento_${repName(o.rep)}_${o.cli?o.cli.n.split(' ')[0]:'cliente'}.pdf`); toast('PDF salvo')}
+
 
 /* ---------- produtos e tabelas (gestor) ---------- */
 const COLS={cod:['codigo','código','cod','sku','referencia'],desc:['descricao','descrição','descrição do produto','produto','nome'],un:['unidade','un','und'],mult:['qtd multiplo','multiplo','múltiplo','qtd múltiplo'],base:['tabela base','preco bruto','preço bruto','bruto'],liq:['preço de custo','preco de custo','preço','preco','valor','preço líquido','preco liquido'],ncm:['ncm'],ean:['código de barras','codigo de barras','ean','gtin'],ipi:['ipi (%)','ipi','% ipi'],st:['st (%)','st'],icms:['icms (%)','icms'],obs:['observacoes','observações','obs'],prazo:['prazo entrega','prazo de entrega','lead time'],img:['imagem','foto','image','url imagem']};
@@ -410,14 +492,16 @@ async function prevJobs(rep,jobs,C,T,pv){
 /* ---------- trazer catálogo dos apps Medix/Marluvas (lê o pacote protegido com a senha da equipe; nada sai do aparelho além da gravação na base) ---------- */
 const APPSRC={marluvas:'/conversor-ca/teste/index.html',medix:'/medix-luvas/teste/index.html'};
 const MDX_LN={SAFE:'Safety',PROF:'Profissional',HOSP:'Hospitalar',VF:'Vida Fácil'};
-async function lerApp(rep){const tp=localStorage.getItem('chamae_tp'); if(!tp) throw new Error('Saia e entre de novo no sistema para liberar os apps.');
+const APPC={}; function lerApp(rep){return APPC[rep]||(APPC[rep]=lerApp0(rep).catch(e=>{delete APPC[rep]; throw e}))}
+async function lerApp0(rep){const tp=localStorage.getItem('chamae_tp'); if(!tp) throw new Error('Saia e entre de novo no sistema para liberar os apps.');
   const h=await (await fetch(APPSRC[rep]+'?v='+Date.now(),{cache:'no-store'})).text(); const m=h.match(/const ENC=\{s:"([^"]+)",i:"([^"]+)",d:"([^"]+)",n:(\d+)\}/); if(!m) throw new Error('Não encontrei o pacote do app.');
   const ub=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0)); const bk=await crypto.subtle.importKey('raw',new TextEncoder().encode(tp),'PBKDF2',false,['deriveBits']);
   const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:ub(m[1]),iterations:+m[4],hash:'SHA-256'},bk,256); const k=await crypto.subtle.importKey('raw',bits,'AES-GCM',false,['decrypt']);
   const js=new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(m[2])},k,ub(m[3])));
   const a=js.indexOf('const CAT = ')+12, b=js.indexOf(';\nconst VIG'); const CATX=JSON.parse(js.slice(a,b)); const vig=(js.match(/const VIG = "([^"]*)"/)||[])[1]||'';
   let CH=null; const c1=js.indexOf('const CHANNELS = ['); if(c1>=0){const c2=js.indexOf('];',c1); try{CH=Function('return '+js.slice(c1+17,c2+1))()}catch(e){}}
-  return {CATX,vig,CH}}
+  let CLI=[]; const k1=js.indexOf('const CLI='); if(k1>=0){const k2=js.indexOf('; const GRD=',k1); try{CLI=JSON.parse(js.slice(k1+10,k2))}catch(e){}}
+  return {CATX,vig,CH,CLI}}
 const r2=v=>Math.round(v*100)/100;
 function jobsDoApp(rep,{CATX,CH}){const limpa=d=>String(d||'').split('|').map(x=>x.trim()).filter(Boolean).join(' · ');
   if(rep==='marluvas'){const chs=(CH||[{c:'0',d:0}]); const base=CATX.filter(it=>it.p&&it.cod);

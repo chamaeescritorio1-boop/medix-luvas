@@ -649,11 +649,10 @@ function mapRep(p){const g=(o,k)=>k.split('.').reduce((a,b)=>a&&a[b],o); const i
     status:p.status,tabela:g(p,'tabela_preco.nome'),itens:its.length,qtd:its.reduce((s,i)=>s+(+i.quantidade||0),0),oc:p.ordem_compra||null}}
 let LIVE=null;
 async function reprioAoVivo(desde,force){const k=RK(); if(!k) return null; if(LIVE&&LIVE.desde<=desde&&!force&&Date.now()-LIVE.t<5*60e3) return LIVE;
-  const out=[]; let asc=null;
+  const out=[];
   for(let pg=1;pg<=40;pg++){const r=await fetch(`https://yahrccahjmybgolvhbkd.supabase.co/functions/v1/api-pedidos?limit=100&page=${pg}`,{headers:{Authorization:'Bearer '+k}}); if(!r.ok) throw new Error('Reprio respondeu '+r.status);
     const j=await r.json(); const d=Array.isArray(j)?j:(j.data||[]); if(!d.length) break; const ds=d.map(x=>String(x.data_pedido||x.created_at||'').slice(0,10)).sort();
-    if(asc===null) asc=ds[0]<String(d[0].data_pedido||'').slice(0,10)||String(d[0].data_pedido||'')<String(d[d.length-1].data_pedido||'');
-    d.forEach(p=>{const m=mapRep(p); if(m.data>=desde) out.push(m)}); if(d.length<100) break; if(!asc&&ds[ds.length-1]<desde) break}
+    d.forEach(p=>{const m=mapRep(p); if(m.data>=desde) out.push(m)}); if(d.length<100) break; if(ds[ds.length-1]<desde) break} /* o Reprio devolve os mais recentes primeiro */
   LIVE={t:Date.now(),desde,rows:out};
   if(ehGestor()&&out.length){try{for(let i=0;i<out.length;i+=300) await api('pedidos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(out.slice(i,i+300))})}catch(e){}}
   return LIVE}

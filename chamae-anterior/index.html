@@ -83,17 +83,17 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 <nav id="nav" hidden>
  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H5v-9"/></svg>Início</button>
  <button data-go="cli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/></svg>Clientes</button>
+ <button data-go="tar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/></svg><span>Tarefas <span class="badge" id="tn" hidden>0</span></span></button>
  <button data-go="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/></svg><span>Orçamento <span class="badge" id="qn" hidden>0</span></span></button>
  <button data-go="ped"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Pedidos</button>
  <button data-go="prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Produtos</button>
- <button data-go="rel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</button>
- <button data-go="aj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Ajustes</button><span id="navAdm" hidden></span>
+ <button data-go="mais"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Mais</button><span id="navAdm" hidden></span>
 </nav>
 <div id="lock"><form id="lf"><img src="icon-192.png" alt="" width="84" height="84" style="margin:0 auto;border-radius:50%">
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="xlsx.full.min.js"></script>
-<script src="app.js?v=202610191552"></script>
+<script src="app.js?v=202610191625"></script>
+<script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

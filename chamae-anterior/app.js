@@ -114,7 +114,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
     <div class="r2"><label class="f">Tabela de preço${o.cli?' (do cliente)':''}<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
     <label class="f">Buscar produto<input id="q" type="search" placeholder="Código, referência, CA, descrição ou EAN"></label></div></div>
    <div class="row" style="margin-bottom:8px"><button class="chip${!gsel?' on':''}" data-g="">Todos</button>${grupos.map(g=>`<button class="chip${g===gsel?' on':''}" data-g="${esc(g)}">${esc(g)} (${C.filter(p=>grupoOf(rep,p)===g).length})</button>`).join('')}</div>
-   <div class="card row" id="encBar" style="position:sticky;top:64px;z-index:3;margin-bottom:10px;justify-content:space-between" hidden><span><b id="encN">0</b> no encarte</span><div class="row"><button class="btn ghost sm" id="encAll">Selecionar todos da lista</button><button class="btn ghost sm" id="encClr">Limpar</button><button class="btn sm" id="encCat">PDF catálogo</button><button class="btn sm" id="encPromo">PDF promoção</button></div></div>
+   <div class="card row" id="encBar" style="position:sticky;top:64px;z-index:3;margin-bottom:10px;justify-content:space-between" hidden><span><b id="encN">0</b> no encarte</span><div class="row"><button class="btn ghost sm" id="encHist">⭐ Itens que o cliente já compra</button><button class="btn ghost sm" id="encAll">Selecionar todos da lista</button><button class="btn ghost sm" id="encClr">Limpar</button><button class="btn sm" id="encCat">PDF catálogo</button><button class="btn sm" id="encPromo">PDF promoção</button></div></div>
    <p class="hint" id="cnt"></p><div class="pl" id="pl"></div>`;
   cliBusca($('#cq'),$('#cres'),rep);
   $('#tab').onchange=async e=>{if(o.itens.length&&!confirm('Trocar a tabela recalcula os preços do orçamento desta representada. Continuar?')){e.target.value=o.tabela;return} o.tabela=+e.target.value; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); repView()};
@@ -129,6 +129,9 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
     if(tg.id==='encT'){enc.on=!enc.on; LS('enc_'+rep,enc); tg.classList.toggle('on',enc.on); return render()}
     const es=tg.closest('[data-es]'); if(es){const id=+es.dataset.es; enc.sel=enc.sel.includes(id)?enc.sel.filter(x=>x!==id):[...enc.sel,id]; LS('enc_'+rep,enc); return render()}
     if(tg.id==='encAll'){const ids=curList().map(p=>p.id); enc.sel=[...new Set([...enc.sel,...ids])]; LS('enc_'+rep,enc); toast(ids.length+' adicionados — toque para tirar os que não quiser'); return render()}
+    if(tg.id==='encHist'){if(!o.cli||!o.cli.cnpj) return toast('Escolha o cliente primeiro (campo Cliente acima)'); tg.disabled=true; try{const ped=await apiAll(`pedidos?select=id&cnpj=eq.${o.cli.cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||repName(rep))}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))`); const ids=ped.map(x=>x.id); let cods=new Set();
+        for(let i=0;i<ids.length;i+=80){const it=await api(`pedido_itens?select=cod&pedido_id=in.(${ids.slice(i,i+80).map(x=>'"'+x+'"').join(',')})`); it.forEach(x=>cods.add(norm(x.cod).trim()))}
+        const achou=C.filter(p=>(cods.has(norm(p.cod).trim())||cods.has(norm(p.ref||'').trim()))&&P[p.id]).map(p=>p.id); enc.sel=[...new Set([...enc.sel,...achou])]; LS('enc_'+rep,enc); toast(achou.length?`${achou.length} itens que ${o.cli.fa||o.cli.n} já comprou, com preço da tabela atual`:'Nenhum item do histórico encontrado neste catálogo')}catch(err){toast('Erro: '+err.message)} tg.disabled=false; return render()}
     if(tg.id==='encClr'){enc.sel=[]; LS('enc_'+rep,enc); return render()}
     if(tg.id==='encCat'||tg.id==='encPromo'){const its=enc.sel.map(id=>C.find(p=>p.id===id)).filter(Boolean); if(!its.length) return toast('Selecione produtos para o encarte'); return tg.id==='encCat'?encCatalogo(rep,o,its,P,tg):encPromoForm(rep,o,its,P)}
     const mi=tg.closest('[data-m]'),pl=tg.closest('[data-p]'); if(mi||pl){const pid=+(mi||pl).dataset[mi?'m':'p']; const p=C.find(x=>x.id===pid); const cur=(o.itens.find(i=>i.pid===pid)||{}).qt||0; setQt(pid,cur+(pl?1:-1)*(p.mult||1))}};
@@ -146,7 +149,7 @@ function abrirCA(rep,o,q){const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); con
   window.addEventListener('message',onm); ov.querySelector('#caX').onclick=()=>{window.removeEventListener('message',onm); ov.remove(); repView()}}
 
 /* ---------- encartes (PDF) ---------- */
-const PNAVY=[28,35,64],PGOLD=[242,182,50],PGREY=[74,80,104],PLINE=[223,226,236],PSOFT=[244,245,249];
+const PNAVY=[28,35,64],PGOLD=[242,182,50],PGREY=[74,80,104],PLINE=[223,226,236],PSOFT=[255,255,255];
 const fitImg=(doc,im,x,y,w,h)=>{if(!im) return; const s=Math.min(w/im.w,h/im.h); doc.addImage(im.d,'JPEG',x+(w-im.w*s)/2,y+(h-im.h*s)/2,im.w*s,im.h*s)};
 async function encCatalogo(rep,o,its,P,btn){btn.disabled=true; btn.textContent='Gerando…'; try{await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,H=297,M=12; const logo=await imgData('logo.jpg',900);
   const ims=[]; for(let i=0;i<its.length;i+=6) ims.push(...await Promise.all(its.slice(i,i+6).map(p=>p.img?imgData(p.img,500):null)));
@@ -352,7 +355,7 @@ const REPID=Object.fromEntries(Object.entries(HIST_REP).map(([k,v])=>[v,k]));
 async function reprioOrcs(de,ate){try{const r=await apiAll(`pedidos?select=id,num,oc,representada,cnpj,cliente,data,valor,vendedor,status,itens&origem=eq.reprio&data=gte.${de}&data=lte.${ate}&order=data.desc`);
   return r.map(x=>({id:'rp:'+x.id,origem:'reprio',app:REPID[x.representada]||x.representada,cliente:x.cliente,cnpj:x.cnpj,total:x.valor,itens:x.itens,status:RSTAT[x.status]||'orcamento',atualizado_em:x.data+'T12:00:00',vend:x.vendedor,dados:{oc:x.oc}}))}catch(e){return []}}
 async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:'orc',y:now.getFullYear(),mo:now.getMonth(),st:''},L('pedF')||{}); const V=await vendedores();
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div>
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div><button class="chip" id="psync">↻ Sincronizar Reprio</button>
     <div class="row"><select id="py">${[0,1,2,3,4].map(i=>now.getFullYear()-i).map(y=>`<option${y==f.y?' selected':''}>${y}</option>`).join('')}</select><select id="pmo"><option value="-1"${f.mo==-1?' selected':''}>Ano todo</option>${MESES.map((n,i)=>`<option value="${i}"${i==f.mo?' selected':''}>${n}</option>`).join('')}</select></div></div>
    <div class="row" style="margin:10px 0"><button class="chip${f.tipo==='orc'?' on':''}" data-tp="orc">Orçamentos</button><button class="chip${f.tipo==='ped'?' on':''}" data-tp="ped">Pedidos faturados (histórico + Reprio)</button></div>
    <div id="balls"></div>
@@ -368,6 +371,7 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
   $('#py').onchange=e=>{read(); f.y=+e.target.value; f.de=f.ate=''; LS('pedF',f); ped()}; $('#pmo').onchange=e=>{read(); f.mo=+e.target.value; f.de=f.ate=''; LS('pedF',f); ped()};
   m.onclick=async e=>{const t=e.target; const tp=t.closest('[data-tp]'); if(tp){read(); f.tipo=tp.dataset.tp; f.st=''; LS('pedF',f); return ped()}
     const pr=t.closest('[data-per]'); if(pr){const v=pr.dataset.per; const d=new Date(); if(v==='mes'){f.y=d.getFullYear(); f.mo=d.getMonth(); f.de=f.ate=''} else if(v==='ant'){const a=new Date(d.getFullYear(),d.getMonth()-1,1); f.y=a.getFullYear(); f.mo=a.getMonth(); f.de=f.ate=''} else {f.de=+v?ymd(new Date(Date.now()-v*864e5)):'2020-01-01'; f.ate=ymd(d)} f.q=$('#pq').value.trim(); f.rep=$('#prep').value; f.vend=$('#pvend').value; LS('pedF',f); return ped()}
+    if(t.id==='psync'){await sincronizarReprio(t); return buscar()}
     if(t.id==='pgo'){read(); return buscar()} const b=t.closest('[data-ball]'); if(b){f.st=f.st===b.dataset.ball?'':b.dataset.ball; LS('pedF',f); return buscar()}
     const d=t.closest('[data-pd]'); if(d) return detalhe(d.dataset.pd); const o=t.closest('[data-od]'); if(o) return o.dataset.od.startsWith('rp:')?detalhe(o.dataset.od.slice(3)):detOrc(o.dataset.od)};
   $('#pq').onkeydown=e=>{if(e.key==='Enter'){read(); buscar()}};
@@ -654,7 +658,8 @@ function repTab(t){const u=norm(t).replace(/\s+/g,' ').trim(); const R=[[/SIGMA/
 function mapRep(p){const g=(o,k)=>k.split('.').reduce((a,b)=>a&&a[b],o); const its=p.itens||[]; const val=+(p.valor_produtos??p.valor_total??0);
   return {id:'rep-'+p.id,origem:'reprio',num:String(p.numero_pedido||''),representada:repTab(g(p,'tabela_preco.nome')),cnpj:String(g(p,'cliente.cnpj')||'').replace(/\D/g,''),cliente:g(p,'cliente.razao_social'),cidade:g(p,'cliente.cidade'),
     data:String(p.data_pedido||p.created_at||'').slice(0,10),valor:Math.round(val*100)/100,valor_imp:+(p.valor_total||val),prazo:g(p,'condicao_pagamento.nome'),vendedor:(String(g(p,'representante.nome')||'').split(' ')[0].toUpperCase())||null,
-    status:p.status,tabela:g(p,'tabela_preco.nome'),itens:its.length,qtd:its.reduce((s,i)=>s+(+i.quantidade||0),0),oc:p.ordem_compra||null}}
+    status:p.status,tabela:g(p,'tabela_preco.nome'),itens:its.length,qtd:its.reduce((s,i)=>s+(+i.quantidade||0),0),oc:p.ordem_compra||null,
+    _its:its.map((i,k)=>({id:`rep-${p.id}-${i.id||k}`,pedido_id:'rep-'+p.id,cod:String(i.codigo_produto||g(i,'produto.codigo')||''),descricao:i.descricao_produto||g(i,'produto.descricao')||null,qtd:+i.quantidade||0,un:i.unidade||null,preco:+i.preco_unitario||0,total:+i.valor_total||0}))}}
 let LIVE=null;
 async function reprioAoVivo(desde,force){const k=RK(); if(!k) return null; if(LIVE&&LIVE.desde<=desde&&!force&&Date.now()-LIVE.t<5*60e3) return LIVE;
   const out=[];
@@ -662,7 +667,8 @@ async function reprioAoVivo(desde,force){const k=RK(); if(!k) return null; if(LI
     const j=await r.json(); const d=Array.isArray(j)?j:(j.data||[]); if(!d.length) break; const ds=d.map(x=>String(x.data_pedido||x.created_at||'').slice(0,10)).sort();
     d.forEach(p=>{const m=mapRep(p); if(m.data>=desde) out.push(m)}); if(d.length<100) break; if(ds[ds.length-1]<desde) break} /* o Reprio devolve os mais recentes primeiro */
   LIVE={t:Date.now(),desde,rows:out};
-  if(ehGestor()&&out.length){try{for(let i=0;i<out.length;i+=300) await api('pedidos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(out.slice(i,i+300))})}catch(e){}}
+  if(ehGestor()&&out.length){try{for(let i=0;i<out.length;i+=300) await api('pedidos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(out.slice(i,i+300).map(({_its,...x})=>x))});
+    const its=out.flatMap(x=>x._its||[]); for(let i=0;i<its.length;i+=500) await api('pedido_itens?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(its.slice(i,i+500))}); LIVE.gravou=true}catch(e){LIVE.erro=e.message}}
   return LIVE}
 
 /* ================= Painel do mês (dashboard) ================= */
@@ -697,14 +703,14 @@ async function painel(box){if(!box) return; const st=Object.assign({y:new Date()
      <text x="${pad}" y="14" class="sv">Acumulado no mês</text><text x="${W-pad}" y="14" text-anchor="end" class="sv">— mês anterior · ━ este mês</text><text x="${pad}" y="${H-4}" class="sv">1</text><text x="${W-pad}" y="${H-4}" text-anchor="end" class="sv">${ndias}</text></svg>
     <div class="dgrid"><div><b>Por representada</b>${bars(byRep,'rep',st.rep)}</div><div><b>Por vendedor</b>${bars(byVend,'vend',st.vend)}</div><div><b>Maiores clientes</b>${byCli.map(([n,v])=>`<div class="row" style="justify-content:space-between;font-size:13px;border-bottom:1px solid var(--line);padding:4px 0"><span>${esc(n)}</span><b>${brl(v)}</b></div>`).join('')||'<p class="hint">—</p>'}</div></div></div>`;
   box.onclick=async e=>{const b=e.target.closest('[data-f]'); if(b){const k=b.dataset.f, v=b.dataset.v; st[k]=st[k]===(k==='vend'?norm(v):v)?'':(k==='vend'?norm(v):v); save(); return painel(box)}
-    if(e.target.id==='dclr'){st.rep=st.vend=''; save(); return painel(box)} if(e.target.id==='dlive'){LIVE=null; return painel(box)}
+    if(e.target.id==='dclr'){st.rep=st.vend=''; save(); return painel(box)} if(e.target.id==='dlive'){await sincronizarReprio(e.target); return painel(box)}
     if(e.target.closest('[data-gorc]')){LS('pedF',{...(L('pedF')||{}),tipo:'orc',y:st.y,mo:st.mo,de:'',ate:'',q:'',st:''}); go('ped')}};
   box.onchange=e=>{if(e.target.id==='dmo'){st.mo=+e.target.value; save(); painel(box)} if(e.target.id==='dy'){st.y=+e.target.value; save(); painel(box)}}}
 
 /* ================= Clientes ================= */
 const SQL5='Para ativar o cadastro completo de clientes, rode no Supabase o arquivo <b>5_clientes_contatos_arquivos.sql</b> (uma vez).';
 async function clientesView(){const m=$('#main'); if(ctx.cnpj) return fichaCliente(ctx.cnpj); const f=Object.assign({q:'',vend:'',ina:''},L('cliF')||{});
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Clientes</div><div class="row"><button class="btn sm ghost" id="cimp">Importar clientes</button><button class="btn sm" id="cnovo">+ Novo cliente</button></div></div>
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Clientes</div><div class="row"><button class="chip" id="csync">↻ Reprio</button><button class="btn sm ghost" id="cimp">Importar clientes</button><button class="btn sm" id="cnovo">+ Novo cliente</button></div></div>
    <div class="card grid" style="margin-top:10px"><input id="clq" type="search" placeholder="Nome, fantasia, CNPJ, cidade ou contato" value="${esc(f.q)}"><div class="row"><select id="clv"><option value="">Todos os vendedores</option></select>
     <button class="chip${f.ina===''?' on':''}" data-ina="">Todos</button><button class="chip${f.ina==='30'?' on':''}" data-ina="30">Sem compra 30+ dias</button><button class="chip${f.ina==='60'?' on':''}" data-ina="60">60+</button><button class="chip${f.ina==='90'?' on':''}" data-ina="90">90+</button><button class="chip${f.ina==='n'?' on':''}" data-ina="n">Nunca compraram</button></div></div>
    <div id="clres" style="margin-top:10px"><p class="hint">Carregando base de clientes…</p></div>`;
@@ -715,7 +721,7 @@ async function clientesView(){const m=$('#main'); if(ctx.cnpj) return fichaClien
   const draw=()=>{const w=norm(f.q).trim(), dg=w.replace(/\D/g,''); const L2=C.filter(c=>(!w||norm(c.n+' '+(c.fa||'')+' '+(c.cid||'')+' '+(c.em||'')).includes(w)||(dg.length>=4&&c.cnpj.includes(dg)))&&(!f.vend||norm(c.v||'')===f.vend)&&(()=>{const u=ult(c); if(f.ina==='n') return !u; if(!f.ina) return true; return u&&dias(u)>=+f.ina})());
     $('#clres').innerHTML=`<p class="hint">${L2.length} cliente(s)${CLITAB===false?' · '+SQL5:''}</p>`+L2.slice(0,150).map(c=>{const u=ult(c); return `<button class="card" data-cl="${esc(c.cnpj)}" style="display:block;width:100%;text-align:left;margin-bottom:8px;color:inherit;font:inherit;cursor:pointer"><div class="row" style="justify-content:space-between"><b>${esc(c.n)}</b>${u?`<span class="tag ${dias(u)>=90?'bad':dias(u)>=60?'warn':''}">${dias(u)} dias</span>`:'<span class="tag">sem compra</span>'}</div><div class="hint">${c.fa?esc(c.fa)+' · ':''}${esc(c.cid||'')} · ${esc(fmtCnpj(c.cnpj))}${c.v?' · '+esc(c.v):''}</div><div class="row" style="gap:4px;margin-top:4px">${Object.keys(c.reps).map(r=>repIcon(REPID[r]||r,20)).join('')}</div></button>`}).join('')+(L2.length>150?'<p class="hint">Mostrando 150. Refine a busca.</p>':'')};
   draw(); let t; $('#clq').oninput=e=>{clearTimeout(t); t=setTimeout(()=>{f.q=e.target.value; LS('cliF',f); draw()},200)}; $('#clv').onchange=e=>{f.vend=e.target.value; LS('cliF',f); draw()};
-  m.onclick=e=>{const a=e.target.closest('[data-ina]'); if(a){f.ina=a.dataset.ina; LS('cliF',f); m.querySelectorAll('[data-ina]').forEach(x=>x.classList.toggle('on',x===a)); return draw()} const b=e.target.closest('[data-cl]'); if(b) return painelCliente(b.dataset.cl,[...m.querySelectorAll('[data-cl]')].map(x=>x.dataset.cl)); if(e.target.id==='cnovo') return fichaCliente('',true); if(e.target.id==='cimp') return importarClientes()}}
+  m.onclick=e=>{const a=e.target.closest('[data-ina]'); if(a){f.ina=a.dataset.ina; LS('cliF',f); m.querySelectorAll('[data-ina]').forEach(x=>x.classList.toggle('on',x===a)); return draw()} const b=e.target.closest('[data-cl]'); if(b) return painelCliente(b.dataset.cl,[...m.querySelectorAll('[data-cl]')].map(x=>x.dataset.cl)); if(e.target.id==='cnovo') return fichaCliente('',true); if(e.target.id==='cimp') return importarClientes(); if(e.target.id==='csync') return sincronizarReprio(e.target).then(()=>clientesView())}}
 
 async function fichaCliente(cnpj,novo){const m=$('#main'); m.innerHTML='<p class="hint">Carregando cliente…</p>'; const C=await clientes(); const base=C.find(c=>c.cnpj===cnpj)||{cnpj,n:'',reps:{}};
   let cad=null, pes=[], arq=[], ped=[], orcs=[], ativ=[];
@@ -940,21 +946,41 @@ async function orcParaCliente(c){const R=(await reps()).filter(r=>r.ativa); cons
     const o=curQ(rep); o.vend=meuNome(); saveQ(o); await escolherCliente(rep,o,c.cnpj); if(!o.cli){o.cli={cnpj:c.cnpj,n:c.n,fa:c.fa||'',cid:c.cid||'',tel:c.tel||'',em:c.em||''}; saveQ(o)} ov.remove(); go('rep',{rep})}}
 
 /* lista para bater carteira (dentro de Clientes) */
-async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend()},L('cartF')||{}); const C=await clientes(); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}
-  const pend=new Set(tar.map(t=>t.cnpj)); const ult=c=>Object.values(c.reps||{}).map(x=>x.ultimo).filter(Boolean).sort().pop();
-  let L2=C.filter(c=>!f.vend||norm(c.v||'').startsWith(f.vend)); if(!L2.length) L2=C;
-  const sc=c=>pend.has(c.cnpj)?-1:(()=>{const u=ult(c); return u?-dias(u):-99999})();
-  if(f.ord==='ret') L2=L2.filter(c=>pend.has(c.cnpj)||(ult(c)&&dias(ult(c))>=25)).sort((a,b)=>sc(a)-sc(b)); else if(f.ord==='nunca') L2=L2.filter(c=>!ult(c)); else L2=[...L2].sort((a,b)=>String(a.n).localeCompare(String(b.n)));
-  const lista=L2.slice(0,200).map(c=>c.cnpj);
-  box.innerHTML=`<div class="card grid"><div class="row"><b>Bater carteira</b><span style="flex:1"></span><button class="chip${f.ord==='ret'?' on':''}" data-co="ret">Prioridade (retornos + sem compra)</button><button class="chip${f.ord==='nunca'?' on':''}" data-co="nunca">Nunca compraram</button><button class="chip${f.ord==='az'?' on':''}" data-co="az">A–Z</button></div>
-   <p class="hint" style="margin:0">Toque no cliente: ligue, registre e já vá para o próximo. ${f.vend?`Carteira de <b>${esc(f.vend)}</b> · <button class="chip" data-cv="">ver toda a equipe</button>`:`<button class="chip" data-cv="${esc(meuVend())}">só a minha carteira</button>`}</p>
-   ${L2.slice(0,200).map(c=>{const u=ult(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}">${u?dias(u)+'d':'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém na lista.</p>'}</div>`;
-  box.onclick=e=>{const o=e.target.closest('[data-co]'); if(o){f.ord=o.dataset.co; LS('cartF',f); return carteira(box)} const v=e.target.closest('[data-cv]'); if(v){f.vend=v.dataset.cv; LS('cartF',f); return carteira(box)} const p=e.target.closest('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
+async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep:'',cid:'',fx:'',q:''},L('cartF')||{}); const C=await clientes(); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}
+  const pend=new Set(tar.map(t=>t.cnpj)); const ultR=c=>{const rs=Object.entries(c.reps||{}).filter(([r])=>!f.rep||r===f.rep).map(([,x])=>x.ultimo).filter(Boolean).sort(); return rs.pop()||null};
+  const Vs=[...new Set(C.map(c=>norm(c.v||'').split(/\s+/)[0]).filter(Boolean))].sort(); const cids=[...new Set(C.map(c=>String(c.cid||'').split('/')[0].trim().toUpperCase()).filter(Boolean))].sort();
+  const w=norm(f.q).trim(), dg=w.replace(/\D/g,'');
+  let L2=C.filter(c=>(!f.vend||norm(c.v||'').startsWith(f.vend))&&(!f.rep||(c.reps||{})[f.rep])&&(!f.cid||String(c.cid||'').toUpperCase().startsWith(f.cid))&&(!w||norm(c.n+' '+(c.fa||'')+' '+(c.cid||'')).includes(w)||(dg.length>=4&&c.cnpj.includes(dg))));
+  if(f.fx){L2=L2.filter(c=>{const u=ultR(c); if(f.fx==='n') return !u; if(!u) return false; const d=dias(u); return f.fx==='30'?d>=30&&d<60:f.fx==='60'?d>=60&&d<90:f.fx==='90'?d>=90&&d<180:d>=180})}
+  const sc=c=>pend.has(c.cnpj)?-1e9:(()=>{const u=ultR(c); return u?-dias(u):1e6})();
+  if(f.ord==='ret') L2=L2.sort((a,b)=>sc(a)-sc(b)); else if(f.ord==='val') L2=L2.sort((a,b)=>Object.values(b.reps||{}).reduce((s,x)=>s+(+x.ult12m||0),0)-Object.values(a.reps||{}).reduce((s,x)=>s+(+x.ult12m||0),0)); else L2=L2.sort((a,b)=>String(a.fa||a.n).localeCompare(String(b.fa||b.n)));
+  const lista=L2.slice(0,300).map(c=>c.cnpj);
+  box.innerHTML=`<div class="card grid"><b>Bater carteira</b>
+   <input id="cfq" type="search" placeholder="Buscar cliente, cidade ou CNPJ" value="${esc(f.q)}">
+   <div class="r2"><select id="cfv"><option value="">Toda a equipe</option>${Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('')}</select>
+    <select id="cfr"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===f.rep?' selected':''}>${esc(r)}</option>`).join('')}</select>
+    <select id="cfc"><option value="">Todas as cidades</option>${cids.map(c=>`<option${c===f.cid?' selected':''}>${esc(c)}</option>`).join('')}</select>
+    <select id="cfo"><option value="ret"${f.ord==='ret'?' selected':''}>Ordem: retornos e mais tempo sem comprar</option><option value="val"${f.ord==='val'?' selected':''}>Ordem: quem mais comprou (12 meses)</option><option value="az"${f.ord==='az'?' selected':''}>Ordem: A–Z</option></select></div>
+   <div class="row">${[['','Todos'],['30','30–59 dias'],['60','60–89'],['90','90–179'],['180','180+'],['n','Nunca comprou'+(f.rep?' '+f.rep:'')]].map(([k,l])=>`<button class="chip${f.fx===k?' on':''}" data-fx="${k}">${l}</button>`).join('')}</div>
+   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>
+   ${L2.slice(0,300).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> ${Object.keys(c.reps||{}).slice(0,5).map(r=>repIcon(REPID[r]||r,16)).join('')}</span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}">${u?dias(u)+'d':'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${L2.length>300?'<p class="hint">Mostrando 300. Refine os filtros.</p>':''}</div>`;
+  const sv=()=>{LS('cartF',f); carteira(box)};
+  box.onchange=e=>{const id=e.target.id; if(id==='cfv') f.vend=e.target.value; else if(id==='cfr') f.rep=e.target.value; else if(id==='cfc') f.cid=e.target.value; else if(id==='cfo') f.ord=e.target.value; else return; sv()};
+  let tt; const qi=box.querySelector('#cfq'); qi.oninput=e=>{clearTimeout(tt); tt=setTimeout(()=>{f.q=e.target.value; LS('cartF',f); carteira(box).then(()=>{const n=box.querySelector('#cfq'); n.focus(); n.setSelectionRange(n.value.length,n.value.length)})},350)};
+  box.onclick=e=>{const x=e.target.closest('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=e.target.closest('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
 
 /* ================= Mais ================= */
 function mais(){const m=$('#main'); const it=[['rel','📊','Relatórios e painel do mês'],['reps','🏭','Representadas'],['busca','🔍','Buscar'],['aj','⚙️','Ajustes'],...(ehGestor()?[['admin','📥','Importar produtos e tabelas']]:[])];
   m.innerHTML=`<div class="sec">Mais</div><div class="reps">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
   m.onclick=e=>{const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
+
+/* ================= botão Sincronizar Reprio ================= */
+async function sincronizarReprio(btn){if(!RK()){toast('Coloque a chave do Reprio em Mais › Ajustes'); return go('aj')} const lb=btn?btn.textContent:''; if(btn){btn.disabled=true; btn.textContent='Sincronizando…'}
+  try{const d=new Date(); d.setDate(d.getDate()-120); LIVE=null; const r=await reprioAoVivo(ymd(d),true);
+    if(r.gravou){try{await api('rpc/atualizar_resumos',{method:'POST',body:'{}'})}catch(e){}}
+    STALE.add('clis2'); delete CLIM.c; CLIS=null; PEDS=null;
+    toast(r.gravou?`✓ ${r.rows.length} pedidos/orçamentos dos últimos 120 dias atualizados do Reprio`:r.erro?'Li o Reprio, mas não gravei: '+r.erro:`Li ${r.rows.length} pedidos do Reprio (para gravar na base é preciso ser gestor)`)}
+  catch(e){toast('Reprio: '+e.message)} if(btn){btn.disabled=false; btn.textContent=lb}}
 
 /* ---------- início ---------- */
 badge(); if(sess) afterLogin(); else showLock();

@@ -74,7 +74,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 .bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;width:100%;border:0;background:none;color:var(--ink);font:inherit;font-size:13px;padding:5px 0;cursor:pointer;text-align:left}
 .bar .bl{display:flex;gap:6px;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.bar .bt{height:10px;background:var(--surface2);border-radius:6px;overflow:hidden}.bar .bt i{display:block;height:100%;border-radius:6px}
 .bar.on{outline:2px solid var(--accent);border-radius:8px}
-@media(max-width:520px){nav button{font-size:10.5px;padding:9px 2px 11px}}
+@media(max-width:520px){nav button{font-size:9.5px;padding:9px 1px 11px;letter-spacing:-.2px} nav button svg{width:20px;height:20px}}
 </style>
 </head>
 <body>
@@ -85,6 +85,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <button data-go="cli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/></svg>Clientes</button>
  <button data-go="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/></svg><span>Orçamento <span class="badge" id="qn" hidden>0</span></span></button>
  <button data-go="ped"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Pedidos</button>
+ <button data-go="prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Produtos</button>
  <button data-go="rel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</button>
  <button data-go="aj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Ajustes</button><span id="navAdm" hidden></span>
 </nav>
@@ -93,6 +94,6 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
 <script src="xlsx.full.min.js"></script>
-<script src="app.js?v=202610191525"></script>
+<script src="app.js?v=202610191550"></script>
 </body>
 </html>

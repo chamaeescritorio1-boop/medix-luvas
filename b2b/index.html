@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chamae · Pedidos Online</title>
+<meta name="theme-color" content="#1c2340">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f4f8;--surface:#fff;--surface2:#eef0f6;--ink:#1c2340;--muted:#5d6480;--line:#dcdfea;--accent:#1c2340;--gold:#e0a100;--ok:#1f9d55;--bad:#c62828;--warn:#b7791f;--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:"Barlow",system-ui,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1120;--surface:#171b2e;--surface2:#1d2340;--ink:#eef0f7;--muted:#9aa1b8;--line:#272d47;--accent:#f2b632;color-scheme:dark}}
+*{box-sizing:border-box} html,body{margin:0} [hidden]{display:none!important}
+body{font-family:var(--body);background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:80px}
+header{position:sticky;top:0;z-index:5;background:#1c2340;color:#fff;padding:10px 16px}
+.hrow{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px}.hrow img{height:34px;border-radius:6px}
+h1{font-family:var(--display);font-size:20px;text-transform:uppercase;margin:0;flex:1;letter-spacing:.03em}
+main{max-width:1100px;margin:0 auto;padding:14px 16px}
+.btn{border:0;border-radius:12px;padding:11px 15px;background:var(--accent);color:var(--surface);font-weight:700;cursor:pointer;font-size:14px;font-family:inherit}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#1c1600}}
+.btn.ghost{background:var(--surface2);color:var(--ink)} .btn.sm{padding:7px 11px;font-size:13px} .btn:disabled{opacity:.5}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:7px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+input,select,textarea{font-family:inherit;font-size:15px;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-width:0;width:100%}
+.hint{color:var(--muted);font-size:13px} .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+.sec{font-family:var(--display);font-size:24px;text-transform:uppercase;margin:4px 0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.grid{display:grid;gap:10px} .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.reps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px} @media(min-width:760px){.reps{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.rep{border:1px solid var(--line);border-left:6px solid var(--c);border-radius:16px;padding:16px;min-height:96px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;font-family:inherit;display:grid;gap:6px}
+.rep b{font-family:var(--display);font-size:22px;text-transform:uppercase}
+.pl{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.pc{display:grid;grid-template-columns:84px 1fr;gap:10px}.pc img{width:84px;height:84px;object-fit:contain;background:#fff;border-radius:10px}
+.pr{font-size:19px;font-weight:700} .tag{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--surface2);display:inline-block;margin:2px 2px 0 0}
+.st-s{background:#dcfce7;color:#166534}.st-n{background:#fef3c7;color:#92400e}
+.qty{display:flex;align-items:center;gap:6px}.qty button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);font-size:18px;cursor:pointer}.qty input{width:72px;text-align:center;padding:7px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0);z-index:6}
+nav button{flex:1;border:0;background:none;color:var(--muted);padding:10px 4px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}nav button.on{color:var(--ink)}
+.badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:99px;background:var(--gold);color:#111;font-size:11px;font-weight:800}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1c2340;color:#fff;padding:10px 14px;border-radius:12px;z-index:50;font-size:14px;max-width:90vw}
+#lock{position:fixed;inset:0;z-index:40;background:#1c2340;display:flex;align-items:center;justify-content:center;padding:24px;color:#fff}
+#lock form{width:100%;max-width:360px;display:grid;gap:12px;text-align:center}#lock input{color:#111;background:#fff}
+.tot{display:flex;justify-content:space-between;font-family:var(--display);font-size:26px}
+</style>
+</head>
+<body>
+<header><div class="hrow"><img src="logo.jpg" alt="Chamae"><h1>Pedidos online</h1><button class="chip" id="who" hidden style="background:transparent;color:#fff;border-color:#3d4675"></button></div></header>
+<main id="main"></main>
+<nav id="nav" hidden><button data-go="home" class="on">Fábricas</button><button data-go="meus">Meus itens</button><button data-go="cart">Carrinho <span class="badge" id="cn" hidden>0</span></button><button data-go="peds">Meus pedidos</button></nav>
+<div id="lock"><form id="lf"><img src="logo.jpg" alt="" style="max-width:220px;margin:0 auto;border-radius:8px">
+ <div style="font-family:var(--display);font-size:24px;text-transform:uppercase">Pedidos online</div><div style="opacity:.8;font-size:14px" id="lmode">Entre com o e-mail liberado pelo seu representante</div>
+ <input id="le" type="email" autocomplete="username" placeholder="E-mail" required><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required minlength="6">
+ <button class="btn" type="submit" style="background:#f2b632;color:#1c1600" id="lb">Entrar</button>
+ <button type="button" class="chip" id="lnovo" style="background:transparent;color:#fff;border-color:#3d4675">Primeiro acesso? Criar minha senha</button>
+ <div id="lerr" style="font-size:13px;min-height:18px;color:#ffd2cc"></div></form></div>
+<script src="b2b.js"></script>
+</body>
+</html>

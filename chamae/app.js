@@ -472,6 +472,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
    <div class="row"><button class="btn sm ghost" id="ajCache">Recarregar catálogos e preços</button>${ehGestor()?'<button class="btn sm ghost" id="ajAdm">Produtos e tabelas</button>':''}</div></div>
   <div class="card grid"><b>Conta</b><div>${esc((perfil&&perfil.nome)||sess.email)} <span class="hint">· ${esc(sess.email)} · ${ehGestor()?'gestor':'vendedor'}</span></div>
    <div class="row"><button class="btn sm ghost" id="ajSair">Sair da conta</button></div></div>
+  ${ehGestor()?'<div class="card grid"><b>Versões</b><p class="hint" style="margin:0">Toda atualização passa por um teste automático antes de ir ao ar. Se algo ficar estranho depois de uma atualização, abra a versão anterior e me avise.</p><div class="row"><a class="btn sm ghost" href="/medix-luvas/chamae-anterior/">Abrir versão anterior</a></div></div>':''}
   <p class="hint">Conversão de CA, base do CAEPI, fichas técnicas e conversões da equipe continuam nos Ajustes dos apps Medix e Marluvas, porque só existem lá.</p></div>`;
   $('#ajTema').value=tema; $('#ajTema').onchange=e=>{const v=e.target.value; LS('tema',v); RAWS('mdx_theme',JSON.stringify(v)); RAWS('cca_theme',JSON.stringify(v)); aplicarVisual(); toast('Tema aplicado')};
   $('#ajLay').onclick=e=>{const b=e.target.closest('[data-lay]'); if(!b) return; RAWS('mdx_lay',b.dataset.lay); RAWS('cca_lay',b.dataset.lay); aplicarVisual(); ajustes()};

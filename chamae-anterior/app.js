@@ -819,7 +819,7 @@ async function fichaProd(rep,pid){const m=$('#main'); const [C,T]=await Promise.
   const val=([k,,ty])=>ty==='attr'||ty==='attrn'?(p.attrs||{})[k]??'':p[k]??'';
   m.innerHTML=`<div class="row" style="justify-content:space-between"><button class="chip" data-back>‹ Produtos</button><span class="hint">${repIcon(rep,20)} ${esc(repName(rep))}</span></div>
    <div class="sec" style="margin-top:10px">${pid?esc(p.cod):'Novo produto'}</div>
-   ${p.img?`<img src="${esc(p.img)}" data-zoom="${esc(p.img)}" alt="Foto" style="max-width:160px;max-height:160px;background:#fff;border-radius:12px;cursor:zoom-in">`:''}
+   ${p.img?`<img src="${esc(p.img)}" data-zoom="${esc(p.img)}" alt="" onerror="this.remove()" style="max-width:160px;max-height:160px;background:#fff;border-radius:12px;cursor:zoom-in">`:''}
    <div class="card grid"><div class="r2">${PROD_F.map(d=>`<label class="f">${d[1]}<input data-pf="${d[0]}" data-ty="${d[2]}"${d[2]==='number'||d[2]==='attrn'?' type="number" step="0.01"':''} value="${esc(val(d))}"${ro}${d[0]==='cod'&&pid?' readonly':''}></label>`).join('')}</div>
     <label class="f">Informações para o vendedor (argumentos, aplicação, concorrentes…)<textarea data-pf="info" data-ty="attr" rows="3"${ro}>${esc((p.attrs||{}).info||'')}</textarea></label>
     <label class="row" style="gap:6px"><input type="checkbox" id="pat"${p.ativo!==false?' checked':''} style="width:auto"${ges?'':' disabled'}> Produto ativo</label></div>

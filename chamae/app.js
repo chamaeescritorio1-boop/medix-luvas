@@ -732,6 +732,7 @@ async function painel(box){if(!box) return; const st=Object.assign({y:new Date()
   const ini=mesIni(st.y,st.mo), fim=mesFim(st.y,st.mo), pIni=mesIni(st.mo?st.y:st.y-1,st.mo?st.mo-1:11), pFim=mesFim(st.mo?st.y:st.y-1,st.mo?st.mo-1:11);
   box.innerHTML='<div class="card"><p class="hint">Montando o painel do mês…</p></div>';
   let rows=[], erroBase=''; try{rows=await apiAll(`pedidos?select=id,representada,cnpj,cliente,data:data_ref,valor,vendedor,status,origem&data_ref=gte.${pIni}&data_ref=lte.${fim}`)}catch(e){erroBase=e.message||String(e)}
+  if(!rows.length){try{const tot=await api('pedidos?select=id,data,origem&order=data.desc&limit=3'); const mes=await api(`pedidos?select=id,data,status,representada&data=gte.${ini}&data=lte.${fim}&limit=5`); erroBase=(erroBase?erroBase+' · ':'')+`Diagnóstico: perfil=${perfil?perfil.papel+(perfil.aprovado===false?' (não aprovado)':''):'?'} · coluna data_ref ${SEM_DREF?'NÃO existe (usando data)':'ok'} · pedidos visíveis: ${tot.length?tot.length+'+ (último '+tot[0].data+', '+tot[0].origem+')':'NENHUM'} · neste mês pela data: ${mes.length?mes.length+'+ ('+mes.map(x=>x.representada+'/'+x.status).join(', ')+')':'nenhum'}`}catch(e2){erroBase=(erroBase?erroBase+' · ':'')+'Diagnóstico falhou: '+(e2.message||e2)}}
   const now=new Date(); const isCur=st.y===now.getFullYear()&&st.mo===now.getMonth(); let liveInfo='';
   if(isCur&&RK()){try{const L2=await reprioAoVivo(pIni); if(L2){const byId={}; rows.forEach(r=>byId[r.id]=r); L2.rows.forEach(r=>byId[r.id]=r); rows=Object.values(byId); liveInfo='ao vivo do Reprio · '+new Date(L2.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}}catch(e){liveInfo='Reprio indisponível agora; mostrando a última sincronização'}}
   if(!box.isConnected) return;
@@ -751,7 +752,7 @@ async function painel(box){if(!box) return; const st=Object.assign({y:new Date()
   const metaV=st.rep?mRep(st.rep):st.vend?mVen(st.vend):(mG&&mG.valor); const metaP=!st.rep&&!st.vend&&mG?mG.positivacao:null; const proj=isCur&&dia>0?tot/dia*ndias:tot;
   box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b style="font-family:var(--display);font-size:22px;text-transform:uppercase">Painel do mês</b>
      <div class="row"><select id="dmo">${MESES.map((n,i)=>`<option value="${i}"${i===st.mo?' selected':''}>${n}</option>`).join('')}</select><select id="dy">${[0,1,2,3].map(i=>now.getFullYear()-i).map(y=>`<option${y===st.y?' selected':''}>${y}</option>`).join('')}</select>${isCur?`<button class="chip" id="dlive" title="Buscar agora no Reprio">↻ Reprio</button>`:''}</div></div>
-    ${erroBase?`<div class="card bad" style="margin-top:8px">Não consegui ler a base: ${esc(erroBase)}</div>`:''}<div class="hint" style="margin-top:-6px">${liveInfo||(isCur&&!RK()?'Coloque a chave do Reprio em Ajustes para ver ao vivo · ':'')+'Base sincronizada a cada 30 min'}${st.rep||st.vend?` · filtro: ${esc(st.rep||'')} ${esc(st.vend||'')} <button class="chip" id="dclr">limpar</button>`:''}</div>
+    ${erroBase?`<div class="card bad" style="margin-top:8px">Painel sem dados — ${esc(erroBase)}</div>`:''}<div class="hint" style="margin-top:-6px">${liveInfo||(isCur&&!RK()?'Coloque a chave do Reprio em Ajustes para ver ao vivo · ':'')+'Base sincronizada a cada 30 min'}${st.rep||st.vend?` · filtro: ${esc(st.rep||'')} ${esc(st.vend||'')} <button class="chip" id="dclr">limpar</button>`:''}</div>
     <div class="kpis"><div class="kpi"><small>Vendido (s/ impostos)</small><b>${brl(tot)}</b><small class="${var_==null?'':var_>=0?'ok':'bad'}">${var_==null?'—':(var_>=0?'▲ ':'▼ ')+Math.abs(var_).toFixed(0)+'% vs mesmo período do mês anterior'}</small>${metaV?`<div class="mbar"><i style="width:${Math.min(100,tot/metaV*100)}%"></i></div><small>${(tot/metaV*100).toFixed(0)}% da meta de ${brl(metaV)}${isCur?' · projeção '+brl(proj)+(proj>=metaV?' ✅':' ⚠️'):''}</small>`:'<small><a href="#" data-gometas>definir meta</a></small>'}</div>
      <div class="kpi"><small>Pedidos</small><b>${V.length}</b><small>ticket médio ${brl(V.length?tot/V.length:0)}</small></div>
      <div class="kpi"><small>Clientes positivados</small><b>${cli}</b><small>mês anterior: ${new Set(Vp.map(r=>r.cnpj)).size}</small>${metaP?`<div class="mbar"><i style="width:${Math.min(100,cli/metaP*100)}%"></i></div><small>${(cli/metaP*100).toFixed(0)}% da meta de ${metaP}</small>`:''}</div>
@@ -1333,22 +1334,6 @@ function lembrete(t){let box=$('#lembretes'); if(!box){box=document.createElemen
   box.appendChild(d); try{navigator.vibrate&&navigator.vibrate([150,80,150])}catch(e){}}
 function iniciarLembretes(){verificarLembretes(); clearInterval(window._lembT); window._lembT=setInterval(verificarLembretes,60000);
   try{if('Notification' in window&&Notification.permission==='default'&&!L('notifPerg')){LS('notifPerg',1); setTimeout(()=>{if(confirm('Quer receber avisos das tarefas no horário, mesmo com o app em segundo plano?')) Notification.requestPermission()},4000)}}catch(e){}}
-
-/* ---------- cleanup ao trocar de aba / sair da página ---------- */
-window.addEventListener('beforeunload',()=>{
-  try{
-    if(perfil) S('perfil',perfil);
-    PEDS=null; PEDS_EXPIRE=0; APPC={};
-    RK_PAUSED=true;
-  }catch(e){}
-});
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){
-    RK_PAUSED=true;
-  } else {
-    RK_PAUSED=false; PEDS_EXPIRE=0;
-  }
-});
 
 /* ---------- início ---------- */
 badge(); if(sess) afterLogin(); else showLock();

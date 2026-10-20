@@ -1142,7 +1142,7 @@ function miniaturas(rep,linhas,n){const L=(linhas||[]).filter(l=>fotoDe(rep,l.co
 async function quadro(box,O,onOpen){await mapaFotos(O.map(o=>(o.dados&&o.dados.rep)||o.app)); if(!box.isConnected) return;
   const col=k=>O.filter(o=>stOf(o)===k);
   box.innerHTML=`<div class="kanban">${STATUS.map(([k,l,c])=>{const L=col(k); return `<div class="kcol"><div class="khead" style="border-top:4px solid ${c}"><b>${l}</b><span class="hint">${L.length} · ${brl(L.reduce((s,o)=>s+(+o.total||0),0))}</span></div>
-     ${L.slice(0,60).map(o=>{const d=o.dados||{}; const rep=d.rep||o.app; const lin=d.linhas||[]; const nf=d.num_fabrica||o.num_fabrica; const idade=dias(String(o.atualizado_em).slice(0,10));
+     ${L.slice(0,60).map(o=>{const d=o.dados||{}; const rep=d.rep||o.app; const lin=d.linhas||[]; const nf=d.num_fabrica||o.num_fabrica; const idade=Math.max(0,dias(String(o.atualizado_em).slice(0,10)));
        return `<div class="kcard" data-od="${esc(o.id)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="font-size:13px">${repIcon(rep,18)} ${esc(o.cliente||'Sem cliente')}</b></div>
         <div class="row" style="justify-content:space-between"><b>${brl(o.total)}</b><span class="hint">${idade}d</span></div>
         <div class="hint" style="font-size:12px">${esc(repName(rep))} · ${o.itens||lin.length} itens${d.oc?' · OC '+esc(d.oc):''}${o.origem==='reprio'?' · Reprio':''}${d.origem==='b2b'?' · Portal':''}</div>

@@ -98,6 +98,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 @media(max-width:700px){#balls .reps{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px}#balls .rep{min-height:62px!important;padding:8px;border-radius:12px}#balls .rep small{font-size:10px}#balls .rep b{font-size:18px!important}}
 .mbar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:4px}.mbar i{display:block;height:100%;background:var(--ok);border-radius:99px}
 .cbar{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:170px;margin-top:10px}.cbar>div{display:grid;grid-template-rows:1fr auto auto;height:100%;text-align:center;gap:2px}.cbar span{align-self:end;background:var(--accent);border-radius:6px 6px 0 0;min-height:2px}.cbar small{font-size:10px;color:var(--muted)}
+#lembretes{position:fixed;right:16px;bottom:92px;z-index:70;display:grid;gap:8px;max-width:340px;width:calc(100vw - 32px)}.lemb{background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:lin .3s ease}@keyframes lin{from{transform:translateY(20px);opacity:0}}@media(min-width:1000px){#lembretes{bottom:20px}}
 </style>
 </head>
 <body>
@@ -116,7 +117,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202610192257"></script>
+<script src="app.js?v=202610200741"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

@@ -459,13 +459,21 @@ async function detOrc(id,o0){if(String(id).startsWith('rp:')) return detalhe(id.
 
 /* ---------- relatórios ---------- */
 const RELS=[['painel','Painel do mês'],['conv','Conversão e positivação'],['perdas','Motivos de perda'],['mes','Vendas mensais'],['rep','Por representada'],['vend','Por vendedor'],['abcc','Curva ABC de clientes'],['abcp','Curva ABC de produtos'],['prod','Produtos vendidos × clientes'],['queda','Clientes em queda'],['recompra','Recompra atrasada'],['cross','Oportunidades entre representadas'],['nunca','Quem não comprou um produto']];
-let PEDS=null; async function pedidosPeriodo(de){const k='peds_'+de; if(PEDS&&PEDS.k===k) return PEDS.d; const d=await apiAll(`pedidos?select=cnpj,cliente,cidade,representada,data:data_ref,valor,vendedor&data_ref=gte.${de}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))&order=data`); PEDS={k,d}; return d}
+let PEDS=null, PEDS_EXPIRE=0; const CACHE_TTL=5*60*1000;
+async function pedidosPeriodo(de){
+  const k='peds_'+de;
+  if(PEDS&&PEDS.k===k&&Date.now()<PEDS_EXPIRE) return PEDS.d;
+  const d=await apiAll(`pedidos?select=cnpj,cliente,cidade,representada,data:data_ref,valor,vendedor&data_ref=gte.${de}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))&order=data`);
+  PEDS={k,d};
+  PEDS_EXPIRE=Date.now()+CACHE_TTL;
+  return d;
+}
 async function rel(){const m=$('#main'); const s=L('relS')||{r:'painel',anos:2,rep:''};
   m.innerHTML=`<div class="sec">Relatórios</div><div class="row" style="margin-bottom:8px">${RELS.map(([k,l])=>`<button class="chip${s.r===k?' on':''}" data-rl="${k}">${l}</button>`).join('')}</div>
    <div class="row"><select id="rrep"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===s.rep?' selected':''}>${r}</option>`).join('')}</select><select id="ranos">${[[1,'Últimos 12 meses'],[2,'Últimos 2 anos'],[3,'Últimos 3 anos'],[5,'Desde 2022']].map(([v,l])=>`<option value="${v}"${v==s.anos?' selected':''}>${l}</option>`).join('')}</select><button class="chip" id="rcsv">Exportar</button></div>
    <div id="rout" style="margin-top:12px"><p class="hint">Calculando…</p></div>`;
   m.onclick=e=>{const b=e.target.closest('[data-rl]'); if(b){s.r=b.dataset.rl; LS('relS',s); rel()}}; $('#rrep').onchange=e=>{s.rep=e.target.value; LS('relS',s); rel()}; $('#ranos').onchange=e=>{s.anos=+e.target.value; LS('relS',s); rel()}; if(s.r==='painel'){$('#rrep').parentNode.hidden=true; return painel($('#rout'))} if(s.r==='perdas') return relPerdas($('#rout'),s.anos,s.rep); if(s.r==='conv') return relConversao($('#rout'),s.rep);
-  const de=new Date(new Date().getFullYear()-(s.anos>=5?5:s.anos),new Date().getMonth(),1).toISOString().slice(0,10); const out=$('#rout'); let X=[];
+  const de=new Date(new Date().getFullYear()-(s.anos>=5?5:s.anos),0,1).toISOString().slice(0,10); const out=$('#rout'); let X=[];
   const bar=(v,mx)=>`<span style="display:inline-block;height:9px;border-radius:4px;background:var(--accent);width:${Math.max(2,Math.round(v/mx*140))}px;vertical-align:middle"></span>`;
   const tbl=(h,rows,fmt)=>{X=[h,...rows]; return `<div class="card" style="overflow-x:auto"><table class="t"><tr>${h.map((c,i)=>`<th${i&&fmt&&fmt[i]?' class="n"':''}>${esc(c)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${fmt&&fmt[i]?' class="n"':''}>${fmt&&fmt[i]==='brl'?brl(c):fmt&&fmt[i]==='pct'?pct(c):fmt&&fmt[i]==='raw'?c:esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>`};
   try{let D=await pedidosPeriodo(de); if(s.rep) D=D.filter(p=>p.representada===s.rep); const tot=D.reduce((a,p)=>a+(+p.valor||0),0); const hoje=new Date();
@@ -1325,6 +1333,22 @@ function lembrete(t){let box=$('#lembretes'); if(!box){box=document.createElemen
   box.appendChild(d); try{navigator.vibrate&&navigator.vibrate([150,80,150])}catch(e){}}
 function iniciarLembretes(){verificarLembretes(); clearInterval(window._lembT); window._lembT=setInterval(verificarLembretes,60000);
   try{if('Notification' in window&&Notification.permission==='default'&&!L('notifPerg')){LS('notifPerg',1); setTimeout(()=>{if(confirm('Quer receber avisos das tarefas no horário, mesmo com o app em segundo plano?')) Notification.requestPermission()},4000)}}catch(e){}}
+
+/* ---------- cleanup ao trocar de aba / sair da página ---------- */
+window.addEventListener('beforeunload',()=>{
+  try{
+    if(perfil) S('perfil',perfil);
+    PEDS=null; PEDS_EXPIRE=0; APPC={};
+    RK_PAUSED=true;
+  }catch(e){}
+});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    RK_PAUSED=true;
+  } else {
+    RK_PAUSED=false; PEDS_EXPIRE=0;
+  }
+});
 
 /* ---------- início ---------- */
 badge(); if(sess) afterLogin(); else showLock();

@@ -75,11 +75,16 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 .bar .bl{display:flex;gap:6px;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.bar .bt{height:10px;background:var(--surface2);border-radius:6px;overflow:hidden}.bar .bt i{display:block;height:100%;border-radius:6px}
 .bar.on{outline:2px solid var(--accent);border-radius:8px}
 @media(max-width:520px){nav button{font-size:9.5px;padding:9px 1px 11px;letter-spacing:-.2px} nav button svg{width:20px;height:20px}}
-.kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(250px,1fr);gap:10px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory}
-.kcol{background:var(--surface2);border-radius:14px;padding:8px;display:grid;gap:8px;align-content:start;scroll-snap-align:start;min-height:120px}
-.khead{display:grid;gap:2px;padding:6px 4px 8px;border-radius:10px}
-.kcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:3px;cursor:pointer}
-.kcard:hover{border-color:var(--accent)}
+.kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory}
+@media(min-width:1300px){.kanban{grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr))}}
+.kcol{display:grid;gap:8px;align-content:start;scroll-snap-align:start}
+.khead{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:8px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);border-top-width:3px!important}
+.khead b{font-size:13px;text-transform:uppercase;letter-spacing:.03em}.khead .hint{font-size:11px;text-align:right}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:2px;cursor:pointer;transition:border-color .15s,transform .15s}
+.kcard:hover{border-color:var(--accent);transform:translateY(-1px)}
+.ftopo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}@media(min-width:700px){.ftopo{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ftopo>div{background:var(--surface2);border-radius:10px;padding:8px 10px;display:grid;gap:2px;min-width:0}.ftopo small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}.ftopo b{font-size:14px;overflow-wrap:anywhere}
+.ftopo .ft-big{grid-column:1/-1}.ftopo .ft-big b{font-size:17px}
 </style>
 </head>
 <body>
@@ -98,7 +103,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202610192209"></script>
+<script src="app.js?v=202610192221"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

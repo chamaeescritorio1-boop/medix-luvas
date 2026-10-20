@@ -93,7 +93,7 @@ async function tabelaDoCliente(rep,cli,T){if(!cli) return null; const k=rep+'|'+
   const t=(kw&&pick(kw[1]))||pick('GERAL')||(rep==='medix'&&pick('SUDESTE 3')); return t?t.id:null}
 async function lembrarTabela(rep,cli,tid){if(!cli||!tid) return; const m=L('cliTab')||{}; m[rep+'|'+cli.cnpj]=tid; LS('cliTab',m);
   try{await api('cliente_tabela?on_conflict=cnpj,rep',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({cnpj:cli.cnpj,rep,tabela_id:tid})})}catch(e){}}
-async function escolherCliente(rep,o,cnpj){try{const u=await api(`pedidos?select=prazo,tabela,data&cnpj=eq.${cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||rep)}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))&order=data.desc&limit=1`); o.sug=u[0]?{prazo:u[0].prazo,tabela:u[0].tabela,data:u[0].data}:null}catch(e){o.sug=null}const C2=await clientes(); const cl=C2.find(x=>x.cnpj===cnpj); if(!cl) return; o.cli={cnpj:cl.cnpj,n:cl.n,fa:cl.fa||'',cid:cl.cid,em:cl.em||'',tel:cl.tel||'',ult:cl.reps[HIST_REP[rep]]||null}; if(!o.prazo) o.prazo=(o.cli.ult&&o.cli.ult.ultimo_prazo)||(rep==='marluvas'&&cl.pz)||'';
+async function escolherCliente(rep,o,cnpj){try{const u=await api(`pedidos?select=prazo,tabela,data&cnpj=eq.${cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||rep)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)&order=data.desc&limit=1`); o.sug=u[0]?{prazo:u[0].prazo,tabela:u[0].tabela,data:u[0].data}:null}catch(e){o.sug=null}const C2=await clientes(); const cl=C2.find(x=>x.cnpj===cnpj); if(!cl) return; o.cli={cnpj:cl.cnpj,n:cl.n,fa:cl.fa||'',cid:cl.cid,em:cl.em||'',tel:cl.tel||'',ult:cl.reps[HIST_REP[rep]]||null}; if(!o.prazo) o.prazo=(o.cli.ult&&o.cli.ult.ultimo_prazo)||(rep==='marluvas'&&cl.pz)||'';
   const T=await tabelas(rep); let tid=await tabelaDoCliente(rep,o.cli,T); if(rep==='marluvas'&&cl.t){const tt=T.find(t=>norm(t.nome).replace(/^TABELA\s+/,'')===norm(cl.t)||(cl.t==='0'&&norm(t.nome)==='TABELA GERAL SP')); if(tt) tid=tt.id} if(tid&&tid!=o.tabela){o.tabela=tid; toast('Tabela do cliente: '+(T.find(t=>t.id==tid)||{}).nome)} saveQ(o)}
 function cliBusca(inp,res,rep){let tt; inp.oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C2=await clientes(); const d=v.replace(/\D/g,''); const r=v.length<2?[]:C2.filter(c=>norm(c.n+' '+(c.fa||'')+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,10);
   res.innerHTML=r.map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:4px 0" data-cli="${c.cnpj}"><b>${esc(c.n)}</b>${c.fa?' ('+esc(c.fa)+')':''} · ${esc(c.cid||'')}${c.reps[HIST_REP[rep]]?' · já compra '+esc(repName(rep)):''}</button>`).join('')||(v.length>=2?'<p class="hint">Nenhum cliente encontrado. Use “+ Cliente novo”.</p>':'')},250)}}
@@ -138,7 +138,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
     if(tg.id==='encT'){enc.on=!enc.on; LS('enc_'+rep,enc); tg.classList.toggle('on',enc.on); return render()}
     const es=tg.closest('[data-es]'); if(es){const id=+es.dataset.es; enc.sel=enc.sel.includes(id)?enc.sel.filter(x=>x!==id):[...enc.sel,id]; LS('enc_'+rep,enc); return render()}
     if(tg.id==='encAll'){const ids=curList().map(p=>p.id); enc.sel=[...new Set([...enc.sel,...ids])]; LS('enc_'+rep,enc); toast(ids.length+' adicionados — toque para tirar os que não quiser'); return render()}
-    if(tg.id==='encHist'){if(!o.cli||!o.cli.cnpj) return toast('Escolha o cliente primeiro (campo Cliente acima)'); tg.disabled=true; try{const ped=await apiAll(`pedidos?select=id&cnpj=eq.${o.cli.cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||repName(rep))}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))`); const ids=ped.map(x=>x.id); let cods=new Set();
+    if(tg.id==='encHist'){if(!o.cli||!o.cli.cnpj) return toast('Escolha o cliente primeiro (campo Cliente acima)'); tg.disabled=true; try{const ped=await apiAll(`pedidos?select=id&cnpj=eq.${o.cli.cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||repName(rep))}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`); const ids=ped.map(x=>x.id); let cods=new Set();
         for(let i=0;i<ids.length;i+=80){const it=await api(`pedido_itens?select=cod&pedido_id=in.(${ids.slice(i,i+80).map(x=>'"'+x+'"').join(',')})`); it.forEach(x=>cods.add(norm(x.cod).trim()))}
         const achou=C.filter(p=>(cods.has(norm(p.cod).trim())||cods.has(norm(p.ref||'').trim()))&&P[p.id]).map(p=>p.id); enc.sel=[...new Set([...enc.sel,...achou])]; LS('enc_'+rep,enc); toast(achou.length?`${achou.length} itens que ${o.cli.fa||o.cli.n} já comprou, com preço da tabela atual`:'Nenhum item do histórico encontrado neste catálogo')}catch(err){toast('Erro: '+err.message)} tg.disabled=false; return render()}
     if(tg.id==='encClr'){enc.sel=[]; LS('enc_'+rep,enc); return render()}
@@ -417,7 +417,7 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
             <span class="c-st">${stPill(stOf(o))}${d.motivo_perda?`<small class="bad">${esc(d.motivo_perda)}</small>`:''}</span></button>`}).join('')}</div>`; return}
       $('#balls').innerHTML='';
       let ids=null; if(f.q&&/[A-Z]/i.test(f.q)&&/\d/.test(f.q)&&!/\s/.test(f.q)){const it=await api(`pedido_itens?select=pedido_id&cod=ilike.${encodeURIComponent(f.q)}*&limit=500`).catch(()=>[]); if(it.length) ids=[...new Set(it.map(x=>x.pedido_id))].slice(0,150)}
-      const ef='or(status.is.null,status.in.(finalizado,aprovado,para_transmitir))'; let cond=[ef]; let p='pedidos?select=id,num,oc,representada,cnpj,cliente,cidade,data,valor,prazo,vendedor,status,itens,origem&order=data.desc';
+      const ef='or(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)'; let cond=[ef]; let p='pedidos?select=id,num,oc,representada,cnpj,cliente,cidade,data,valor,prazo,vendedor,status,itens,origem&order=data.desc';
       if(ids) p+=`&id=in.(${ids.map(x=>'"'+x+'"').join(',')})`; else if(f.q){const qx=encodeURIComponent(f.q.replace(/[(),*]/g,' ').trim()); const dg=f.q.replace(/\D/g,''); cond.push(`or(oc.ilike.*${qx}*,num.ilike.*${qx}*,cliente.ilike.*${qx}*${dg.length>=4?`,cnpj.like.*${dg}*`:''})`)}
       p+='&and=('+cond.join(',')+')'; if(f.rep) p+='&representada=eq.'+encodeURIComponent(f.rep); if(f.vend) p+='&vendedor=eq.'+encodeURIComponent(f.vend); if(!f.q&&!ids){p+='&data_ref=gte.'+de+'&data_ref=lte.'+ate}
       r.innerHTML='<p class="hint">Buscando no histórico…</p>'; const R=await apiAll(p); const tot=R.reduce((s,x)=>s+(+x.valor||0),0); const anos=[...new Set(R.map(x=>String(x.data).slice(0,4)))].sort();
@@ -463,7 +463,7 @@ let PEDS=null, PEDS_EXPIRE=0; const CACHE_TTL=5*60*1000;
 async function pedidosPeriodo(de){
   const k='peds_'+de;
   if(PEDS&&PEDS.k===k&&Date.now()<PEDS_EXPIRE) return PEDS.d;
-  const d=await apiAll(`pedidos?select=cnpj,cliente,cidade,representada,data:data_ref,valor,vendedor&data_ref=gte.${de}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))&order=data`);
+  const d=await apiAll(`pedidos?select=cnpj,cliente,cidade,representada,data:data_ref,valor,vendedor&data_ref=gte.${de}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)&order=data`);
   PEDS={k,d};
   PEDS_EXPIRE=Date.now()+CACHE_TTL;
   return d;
@@ -660,7 +660,7 @@ const dias=d=>Math.floor((Date.now()-new Date(d+'T12:00:00'))/864e5);
 async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===true; const eu=meuVend();
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const ini=new Date(); const mIni=`${ini.getFullYear()}-${String(ini.getMonth()+1).padStart(2,'0')}-01`;
-    const [C,O,P]=await Promise.all([clientes(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=representada,valor,vendedor,data:data_ref&data_ref=gte.${mIni}&or=(status.is.null,status.in.(finalizado,aprovado,para_transmitir))`).catch(()=>[])]);
+    const [C,O,P]=await Promise.all([clientes(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=representada,valor,vendedor,data:data_ref&data_ref=gte.${mIni}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).catch(()=>[])]);
     const meuC=c=>!so||!eu||Object.values(c.reps).some(x=>norm(x.vendedor||'').startsWith(eu));
     const rec=[]; C.filter(meuC).forEach(c=>Object.values(c.reps).forEach(x=>{if(!x.ultimo) return; const d=dias(x.ultimo); if(d>=30&&d<=120) rec.push({c,x,d})}));
     rec.sort((a,b)=>a.d-b.d); const b30=rec.filter(r=>r.d<60).length,b60=rec.filter(r=>r.d>=60&&r.d<90).length,b90=rec.filter(r=>r.d>=90).length;

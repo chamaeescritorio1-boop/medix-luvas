@@ -1266,40 +1266,104 @@ async function atualizarImagens(rep,pad,info){const C=await catalog(rep,true); l
 /* ================= Tarefas / agenda ================= */
 const SQL6='Para ativar tarefas e agenda, rode no Supabase o arquivo <b>6_velocidade_tarefas.sql</b> (uma vez).';
 const hoje=()=>ymd(new Date(Date.now()-new Date().getTimezoneOffset()*6e4)); const maisDias=n=>ymd(new Date(Date.now()-new Date().getTimezoneOffset()*6e4+n*864e5));
-const TT={ligacao:'📞 Ligação',whatsapp:'💬 WhatsApp',visita:'🚗 Visita',email:'✉️ E-mail',followup:'🔁 Follow-up',tarefa:'✔️ Tarefa'};
+const TT={ligacao:'📞 Ligação',whatsapp:'💬 WhatsApp',visita:'🚗 Visita',email:'✉️ E-mail',followup:'🔁 Retorno de orçamento',reuniao:'👥 Reunião',tarefa:'✔️ Tarefa'};
 async function novaTarefa(t){return api('tarefas',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({responsavel:sess.uid,responsavel_nome:meuNome(),feita:false,...t})})}
 async function contaTarefas(){try{const r=await api(`tarefas?select=id&feita=eq.false&vence=lte.${hoje()}&or=(responsavel.eq.${sess.uid},responsavel.is.null)`); const b=$('#tn'); if(b){b.hidden=!r.length; b.textContent=r.length}}catch(e){}}
-async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje',quem:'eu'},L('tarF')||{});
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Tarefas e agenda</div><button class="btn sm" id="tnova">+ Nova tarefa</button></div>
-   <div class="row" style="margin:10px 0">${[['atr','Atrasadas'],['hoje','Hoje'],['prox','Próximas'],['feitas','Feitas']].map(([k,l])=>`<button class="chip${f.ab===k?' on':''}" data-ab="${k}">${l}</button>`).join('')}<span style="flex:1"></span><button class="chip${f.quem==='eu'?' on':''}" data-quem="eu">Minhas</button><button class="chip${f.quem==='todos'?' on':''}" data-quem="todos">Equipe</button></div><div id="tl"><p class="hint">Carregando…</p></div>`;
-  m.onclick=async e=>{const t=e.target; const a=t.closest('[data-ab]'); if(a){f.ab=a.dataset.ab; LS('tarF',f); return tarefasView()} const q=t.closest('[data-quem]'); if(q){f.quem=q.dataset.quem; LS('tarF',f); return tarefasView()}
-    if(t.id==='tnova') return formTarefa({});
+/* agenda (estilo Pipedrive): horários com duração, visão dia/semana e aviso de conflito no mesmo horário */
+const p2=n=>String(n).padStart(2,'0'), isoD=x=>x.getFullYear()+'-'+p2(x.getMonth()+1)+'-'+p2(x.getDate());
+const addD=(d,n)=>{const x=new Date(d+'T12:00'); x.setDate(x.getDate()+n); return isoD(x)};
+const hm=s=>{const [h,m]=String(s||'').split(':').map(Number); return isNaN(h)?null:h*60+(m||0)}, mh=n=>p2(Math.floor(n/60))+':'+p2(n%60);
+const dLbl=(d,o)=>new Date(d+'T12:00').toLocaleDateString('pt-BR',o||{weekday:'short',day:'2-digit',month:'2-digit'});
+const durL=n=>n>=60?(n/60|0)+'h'+(n%60?p2(n%60):''):n+' min';
+const tFim=t=>hm(t.hora)+(+t.duracao||30);
+const TCOR={ligacao:'#3b82f6',whatsapp:'#22a861',visita:'#e67e22',email:'#8e6dd8',followup:'#f2b632',reuniao:'#e0567a',tarefa:'#7d8597'};
+let EQ=null; async function equipeLista(){if(EQ) return EQ; let P=[]; try{P=await api('perfis?select=id,nome,email,aprovado&order=nome')}catch(e){try{P=await api('perfis?select=id,nome,email&order=nome')}catch(_){}}
+  EQ=P.filter(p=>p.aprovado!==false).map(p=>({id:p.id,n:p.id===sess.uid?meuNome():(p.nome||String(p.email||'').split('@')[0]||'Sem nome')})); if(!EQ.some(p=>p.id===sess.uid)) EQ.unshift({id:sess.uid,n:meuNome()}); return EQ}
+/* atividades com horário que batem com [hora, hora+dur) no dia, da mesma pessoa (ou da equipe toda, sem responsável) */
+async function conflitos(dia,hora,dur,resp,semId){const T=await api(`tarefas?select=id,titulo,tipo,hora,duracao,cliente,responsavel_nome,feita&feita=eq.false&vence=eq.${dia}&or=(responsavel.eq.${resp||sess.uid},responsavel.is.null)&order=hora`).catch(()=>[]);
+  const dia_=T.filter(t=>t.id!=semId); const s=hm(hora); return {dia:dia_,bate:s==null?[]:dia_.filter(t=>t.hora&&hm(t.hora)<s+dur&&s<tFim(t))}}
+function livreDepois(T,s,dur){for(let x=s;x<=22*60;x+=15) if(!T.some(t=>t.hora&&hm(t.hora)<x+dur&&x<tFim(t))) return x; return null}
+const AG={dia:null};
+async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje',quem:'eu',modo:'dia'},L('tarF')||{}); if(!AG.dia) AG.dia=hoje(); const ag=f.modo!=='lista';
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Tarefas e agenda</div><button class="btn sm" id="tnova">+ Nova atividade</button></div>
+   <div class="row" style="margin:10px 0">${[['dia','📅 Dia'],['semana','🗓️ Semana'],['lista','☰ Lista']].map(([k,l])=>`<button class="chip${f.modo===k?' on':''}" data-modo="${k}">${l}</button>`).join('')}<span style="flex:1"></span><button class="chip${f.quem==='eu'?' on':''}" data-quem="eu">Minhas</button><button class="chip${f.quem==='todos'?' on':''}" data-quem="todos">Equipe</button></div>
+   ${ag?`<div class="row" style="margin:0 0 10px;align-items:center"><button class="chip" data-nav="-1">‹</button><button class="chip" data-nav="0">Hoje</button><button class="chip" data-nav="1">›</button><b id="agt" style="margin-left:6px"></b><span style="flex:1"></span><input id="agd" type="date" value="${AG.dia}" style="width:auto;padding:6px 8px"></div><div id="agatr"></div>`
+     :`<div class="row" style="margin:0 0 10px">${[['atr','Atrasadas'],['hoje','Hoje'],['prox','Próximas'],['feitas','Feitas']].map(([k,l])=>`<button class="chip${f.ab===k?' on':''}" data-ab="${k}">${l}</button>`).join('')}</div>`}<div id="tl"><p class="hint">Carregando…</p></div>`;
+  const passo=f.modo==='semana'?7:1; let rows;
+  m.onclick=async e=>{const t=e.target; const mo=t.closest('[data-modo]'); if(mo){f.modo=mo.dataset.modo; LS('tarF',f); return tarefasView()}
+    const a=t.closest('[data-ab]'); if(a){f.ab=a.dataset.ab; f.modo='lista'; LS('tarF',f); return tarefasView()} const q=t.closest('[data-quem]'); if(q){f.quem=q.dataset.quem; LS('tarF',f); return tarefasView()}
+    const nv=t.closest('[data-nav]'); if(nv){AG.dia=+nv.dataset.nav?addD(AG.dia,+nv.dataset.nav*passo):hoje(); return tarefasView()}
+    const gd=t.closest('[data-agdia]'); if(gd){AG.dia=gd.dataset.agdia; f.modo='dia'; LS('tarF',f); return tarefasView()}
+    if(t.id==='tnova') return formTarefa(ag?{vence:AG.dia<hoje()?hoje():AG.dia}:{});
     const ck=t.closest('[data-tok]'); if(ck){const res=prompt('Resultado (opcional):','')??''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
     const ad=t.closest('[data-tadia]'); if(ad){await api(`tarefas?id=eq.${ad.dataset.tadia}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+ad.dataset.d)})}); toast('Reagendada'); contaTarefas(); return tarefasView()}
     const cl=t.closest('[data-tcli]'); if(cl) return go('cli',{cnpj:cl.dataset.tcli});
     const oo=t.closest('[data-torc]'); if(oo){const tt=(rows||[]).find(x=>x.id==oo.closest('[data-tid]').dataset.tid); return detOrc(tt.orcamento_id)}
-    const cd=t.closest('[data-tid]'); if(cd&&!t.closest('button')){const tt=(rows||[]).find(x=>x.id==cd.dataset.tid); if(tt) return abrirTarefa(tt)}};
-  let rows; const h=hoje(); let p=`tarefas?select=*&order=vence,hora&limit=300`; if(f.quem==='eu') p+=`&or=(responsavel.eq.${sess.uid},responsavel.is.null)`;
+    const cd=t.closest('[data-tid]'); if(cd&&!t.closest('button')){const tt=(rows||[]).find(x=>x.id==cd.dataset.tid); if(tt) return abrirTarefa(tt)}
+    const sl=t.closest('[data-slot]'); if(sl){const r=sl.getBoundingClientRect(); const mi=Math.floor(((e.clientY-r.top)/AGK+AGH0*60)/30)*30; return formTarefa({vence:sl.dataset.slot,hora:mh(mi)})}};
+  m.onchange=e=>{if(e.target.id==='agd'&&e.target.value){AG.dia=e.target.value; tarefasView()}};
+  const h=hoje(); const quem=f.quem==='eu'?`&or=(responsavel.eq.${sess.uid},responsavel.is.null)`:'';
+  if(ag){const d0=f.modo==='semana'?addD(AG.dia,-((new Date(AG.dia+'T12:00').getDay()+6)%7)):AG.dia, d1=f.modo==='semana'?addD(d0,6):d0;
+    $('#agt').textContent=f.modo==='semana'?`${dLbl(d0,{day:'2-digit',month:'2-digit'})} a ${dLbl(d1,{day:'2-digit',month:'short'})}`:dLbl(d0,{weekday:'long',day:'2-digit',month:'long'})+(d0===h?' · hoje':'');
+    let atr=[]; try{[rows,atr]=await Promise.all([api(`tarefas?select=*&vence=gte.${d0}&vence=lte.${d1}${quem}&order=hora&limit=500`),api(`tarefas?select=id&feita=eq.false&vence=lt.${h}${quem}`)])}catch(e){$('#tl').innerHTML=`<p class="warn">${SQL6}</p>`;return}
+    if(!m.isConnected) return; $('#agatr').innerHTML=atr.length?`<div class="card" style="border-color:var(--bad);margin-bottom:10px;padding:10px 14px"><div class="row" style="justify-content:space-between;align-items:center"><span class="bad">⚠️ ${atr.length} atividade${atr.length>1?'s':''} atrasada${atr.length>1?'s':''}</span><button class="chip" data-ab="atr">Ver atrasadas ›</button></div></div>`:'';
+    const dias=[]; for(let d=d0;d<=d1;d=addD(d,1)) dias.push(d); $('#tl').innerHTML=gradeAgenda(dias,rows,f.quem==='todos'); const sc=$('#tl .agscroll'); if(sc){const ag0=rows.filter(t=>t.hora&&!t.feita).map(t=>hm(t.hora)); const alvo=dias.includes(h)?new Date().getHours()*60-60:ag0.length?Math.min(...ag0)-30:8*60; sc.scrollTop=Math.max(0,(alvo-AGH0*60)*AGK)} return}
+  let p=`tarefas?select=*&order=vence,hora&limit=300`+quem;
   p+=f.ab==='feitas'?'&feita=eq.true&order=feita_em.desc':f.ab==='atr'?`&feita=eq.false&vence=lt.${h}`:f.ab==='hoje'?`&feita=eq.false&vence=eq.${h}`:`&feita=eq.false&vence=gt.${h}`;
-  try{rows=await api(p.replace('&order=vence,hora&limit=300&feita=eq.true&order=feita_em.desc','&feita=eq.true&order=feita_em.desc&limit=100'))}catch(e){$('#tl').innerHTML=`<p class="warn">${SQL6}</p>`;return}
+  try{rows=await api(p.replace('&order=vence,hora&limit=300'+quem+'&feita=eq.true&order=feita_em.desc',quem+'&feita=eq.true&order=feita_em.desc&limit=100'))}catch(e){$('#tl').innerHTML=`<p class="warn">${SQL6}</p>`;return}
   if(!m.isConnected) return;
   $('#tl').innerHTML=rows.map(t=>`<div class="card" data-tid="${t.id}" style="cursor:pointer;margin-bottom:8px;${t.vence<h&&!t.feita?'border-color:var(--bad)':''}"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(TT[t.tipo]||t.tipo||'')} · ${esc(t.titulo)}</b>
-     <div class="hint">${esc(t.vence.split('-').reverse().join('/'))}${t.hora?' '+esc(t.hora):''}${t.rep?' · '+esc(repName(t.rep)):''}${f.quem==='todos'&&t.responsavel_nome?' · '+esc(t.responsavel_nome):''}${t.feita&&t.resultado?' · '+esc(t.resultado):''}</div>${t.obs?`<div style="font-size:13px">${esc(t.obs)}</div>`:''}
+     <div class="hint">${esc(t.vence.split('-').reverse().join('/'))}${t.hora?' '+esc(t.hora)+'–'+mh(tFim(t)):''}${t.rep?' · '+esc(repName(t.rep)):''}${f.quem==='todos'&&t.responsavel_nome?' · '+esc(t.responsavel_nome):''}${t.feita&&t.resultado?' · '+esc(t.resultado):''}</div>${t.obs?`<div style="font-size:13px">${esc(t.obs)}</div>`:''}
      <div class="row" style="margin-top:6px">${t.cnpj?`<button class="chip" data-tcli="${esc(t.cnpj)}">${esc(t.cliente||'Cliente')} ›</button>`:''}${t.orcamento_id?`<button class="chip" data-torc="1" data-q="${esc(t.cliente||'')}">Ver orçamento</button>`:''}</div></div>
      ${t.feita?'<span class="tag ok">feita</span>':`<div class="grid" style="gap:4px;justify-items:end"><button class="btn sm" data-tok="${t.id}">✓ Concluir</button><div class="row" style="gap:4px"><button class="chip" data-tadia="${t.id}" data-d="1">+1d</button><button class="chip" data-tadia="${t.id}" data-d="7">+7d</button></div></div>`}</div></div>`).join('')||'<p class="hint">Nada aqui. 🎉</p>'}
-async function formTarefa(pre){const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><b style="font-size:18px">Nova tarefa</b>
+/* grade de horários: uma coluna por dia, blocos posicionados pela hora e altura pela duração; sobrepostos lado a lado, conflito (mesma pessoa) em vermelho */
+let AGH0=7; const AGK=0.9;
+function gradeAgenda(dias,rows,equipe){const h=hoje(); const com=rows.filter(t=>t.hora&&hm(t.hora)!=null), sem=rows.filter(t=>!t.hora||hm(t.hora)==null);
+  let h0=7,h1=20; com.forEach(t=>{h0=Math.min(h0,Math.floor(hm(t.hora)/60)); h1=Math.max(h1,Math.ceil(tFim(t)/60))}); h1=Math.min(h1,24); AGH0=h0; const alt=(h1-h0)*60*AGK;
+  const bloco=t=>`<div class="agev${t.feita?' feita':''}${t._cf?' cf':''}" data-tid="${t.id}" style="--c:${TCOR[t.tipo]||'#7d8597'};top:${(hm(t.hora)-h0*60)*AGK}px;height:${Math.max((+t.duracao||30)*AGK-2,20)}px;left:calc(${t._l*100/t._n}% + 2px);width:calc(${100/t._n}% - 4px)" title="${esc(t.hora+'–'+mh(tFim(t))+' '+t.titulo+(t.cliente?' · '+t.cliente:''))}"><b>${esc(t.hora)} ${esc((TT[t.tipo]||'').split(' ')[0])} ${esc(t.titulo)}</b>${t.cliente&&!t.titulo.includes(t.cliente)?`<small>${esc(t.cliente)}</small>`:''}${equipe&&t.responsavel_nome?`<small>👤 ${esc(t.responsavel_nome)}</small>`:''}${t._cf?'<small>⚠️ conflito de horário</small>':''}</div>`;
+  const col=d=>{const ev=com.filter(t=>t.vence===d).map(t=>Object.assign(t,{_s:hm(t.hora),_e:tFim(t)})).sort((a,b)=>a._s-b._s||b._e-a._e);
+    let cl=[],cur=[],fim=-1; for(const x of ev){if(cur.length&&x._s>=fim){cl.push(cur); cur=[]} cur.push(x); fim=Math.max(fim,x._e)} if(cur.length) cl.push(cur);
+    for(const c of cl){const ln=[]; for(const x of c){let i=ln.findIndex(e=>e<=x._s); if(i<0){i=ln.length; ln.push(0)} ln[i]=x._e; x._l=i} c.forEach(x=>{x._n=ln.length})}
+    ev.forEach(x=>{x._cf=!x.feita&&ev.some(y=>y!==x&&!y.feita&&(y.responsavel||'')===(x.responsavel||'')&&y._s<x._e&&x._s<y._e)});
+    const ag=new Date(); const now=d===h&&ag.getHours()>=h0&&ag.getHours()<h1?`<div class="agnow" style="top:${(ag.getHours()*60+ag.getMinutes()-h0*60)*AGK}px"></div>`:'';
+    return `<div class="agcol${d===h?' hj':''}" data-slot="${d}" style="height:${alt}px">${ev.map(bloco).join('')}${now}</div>`};
+  const semana=dias.length>1, hrs=[]; for(let x=h0;x<h1;x++) hrs.push(`<div style="height:${60*AGK}px">${p2(x)}:00</div>`);
+  const semH=sem.length?`<div class="agsem"><div></div>${dias.map(d=>{const s=sem.filter(t=>t.vence===d); return `<div>${s.map(t=>`<div class="agev semh${t.feita?' feita':''}" data-tid="${t.id}" style="--c:${TCOR[t.tipo]||'#7d8597'}"><b>${esc((TT[t.tipo]||'').split(' ')[0])} ${esc(t.titulo)}</b></div>`).join('')}</div>`}).join('')}</div>`:'';
+  return `<div class="agwrap${semana?' sem7':''}">${semana?`<div class="aghd"><div></div>${dias.map(d=>`<button class="chip${d===h?' on':''}" data-agdia="${d}">${esc(dLbl(d))}</button>`).join('')}</div>`:''}
+    ${sem.length?`<div class="aglab hint">Sem horário definido</div>`:''}${semH}
+    <div class="agscroll"><div class="aggrid"><div class="aghr">${hrs.join('')}</div>${dias.map(col).join('')}</div></div></div>
+    <p class="hint" style="margin-top:8px">Toque num horário vazio para marcar uma atividade nele. ${Object.entries(TT).map(([k,l])=>`<span style="white-space:nowrap"><span class="agdot" style="background:${TCOR[k]}"></span>${esc(l.replace(/^\S+ /,''))}</span>`).join(' ')}</p>`}
+async function formTarefa(pre){const ed=!!pre.id; const ov=document.createElement('div'); ov.className='ov'; let dur=+pre.duracao||30;
+  ov.innerHTML=`<div class="sh grid"><b style="font-size:18px">${ed?'Editar atividade':'Nova atividade'}</b>
   <label class="f">O que fazer<input id="ftt" value="${esc(pre.titulo||'')}" placeholder="ex.: Ligar para o comprador"></label>
   <div class="row">${Object.entries(TT).map(([k,l])=>`<button class="chip${(pre.tipo||'ligacao')===k?' on':''}" data-ft="${k}">${l}</button>`).join('')}</div>
-  ${pre.cnpj?`<div class="hint">Cliente: <b>${esc(pre.cliente||pre.cnpj)}</b></div>`:`<label class="f">Cliente (opcional)<input id="fcq" type="search" placeholder="Buscar cliente"></label><div id="fcr"></div>`}
+  ${pre.cnpj?`<div class="hint">Cliente: <b>${esc(pre.cliente||pre.cnpj)}</b>${pre.orcamento_id?' · ligado ao orçamento':''}</div>`:`<label class="f">Cliente (opcional)<input id="fcq" type="search" placeholder="Buscar cliente"></label><div id="fcr"></div>`}
   <div class="row">${[[0,'Hoje'],[1,'Amanhã'],[3,'3 dias'],[7,'7 dias'],[15,'15 dias'],[30,'30 dias']].map(([d,l])=>`<button class="chip" data-fd="${d}">${l}</button>`).join('')}</div>
-  <div class="r2"><label class="f">Data<input id="ftd" type="date" value="${pre.vence||maisDias(1)}"></label><label class="f">Hora (opcional)<input id="fth" type="time"></label></div>
-  <label class="f">Observação<textarea id="fto" rows="2"></textarea></label><div class="row"><button class="btn" id="fts">Salvar tarefa</button><button class="btn ghost" data-x>Cancelar</button></div></div>`; document.body.appendChild(ov);
-  let tipo=pre.tipo||'ligacao', cli=pre.cnpj?{cnpj:pre.cnpj,n:pre.cliente}:null;
-  const ci=ov.querySelector('#fcq'); if(ci){let tt; ci.oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C=await clientes(); const d=v.replace(/\D/g,''); ov.querySelector('#fcr').innerHTML=v.length<2?'':C.filter(c=>norm(c.n+' '+(c.fa||'')+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,6).map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:3px 0" data-fc="${esc(c.cnpj)}" data-fn="${esc(c.n)}">${esc(c.n)} · ${esc(c.cid||'')}</button>`).join('')},200)}}
+  <div class="r2"><label class="f">Data<input id="ftd" type="date" value="${pre.vence||maisDias(1)}"></label><label class="f">Hora (opcional)<input id="fth" type="time" step="900" value="${esc(pre.hora||'')}"></label></div>
+  <div class="row" style="align-items:center"><span class="hint">Duração</span>${[15,30,45,60,90,120].map(n=>`<button class="chip${dur===n?' on':''}" data-fdu="${n}">${durL(n)}</button>`).join('')}</div>
+  <label class="f">Responsável<select id="ftr"><option value="${sess.uid}">${esc(meuNome())}</option></select></label>
+  <div id="fconf"></div>
+  <label class="f">Observação<textarea id="fto" rows="2">${esc(pre.obs||'')}</textarea></label><div class="row"><button class="btn" id="fts">${ed?'Salvar alterações':'Salvar atividade'}</button><button class="btn ghost" data-x>Cancelar</button></div></div>`; document.body.appendChild(ov);
+  let tipo=pre.tipo||'ligacao', cli=pre.cnpj?{cnpj:pre.cnpj,n:pre.cliente}:null, bate=[], seq=0; const g=s=>ov.querySelector(s);
+  equipeLista().then(E=>{const r=pre.responsavel||sess.uid; g('#ftr').innerHTML=E.map(p=>`<option value="${p.id}"${p.id===r?' selected':''}>${esc(p.n)}</option>`).join('')+(E.some(p=>p.id===r)?'':`<option value="${esc(r)}" selected>${esc(pre.responsavel_nome||'Outro')}</option>`); ver()});
+  /* mostra a agenda do dia escolhido e avisa se o horário já está ocupado */
+  async function ver(){const d=g('#ftd').value, hh=g('#fth').value, me=++seq; if(!d) return; const r=await conflitos(d,hh,dur,g('#ftr').value,pre.id); if(me!==seq||!ov.isConnected) return; bate=r.bate;
+    const nm=g('#ftr').selectedOptions[0]?g('#ftr').selectedOptions[0].textContent:''; const lv=bate.length?livreDepois(r.dia,hm(hh),dur):null;
+    g('#fconf').innerHTML=(bate.length?`<div class="card" style="border-color:var(--bad);padding:10px 12px"><b class="bad">⚠️ Já tem atividade nesse horário</b>${bate.map(t=>`<div style="font-size:13px">${esc(t.hora)}–${mh(tFim(t))} · ${esc(TT[t.tipo]||'')} ${esc(t.titulo)}</div>`).join('')}${lv!=null?`<div class="row" style="margin-top:6px"><button class="chip on" data-livre="${mh(lv)}">Usar próximo horário livre: ${mh(lv)}</button></div>`:''}</div>`:'')
+      +(r.dia.length?`<div class="hint" style="margin-top:6px">Agenda de ${esc(nm)} em ${esc(dLbl(d))}: ${r.dia.map(t=>`<span class="${bate.includes(t)?'bad':''}" style="white-space:nowrap">${t.hora?esc(t.hora)+'–'+mh(tFim(t)):'sem hora'} ${esc(t.titulo)}</span>`).join(' · ')}</div>`:`<div class="hint" style="margin-top:6px">${esc(nm)} não tem nada marcado em ${esc(dLbl(d))}.</div>`)}
+  ov.oninput=ov.onchange=e=>{if(['ftd','fth','ftr'].includes(e.target.id)) ver()};
+  const ci=g('#fcq'); if(ci){let tt; ci.oninput=e=>{clearTimeout(tt); tt=setTimeout(async()=>{const v=norm(e.target.value); const C=await clientes(); const d=v.replace(/\D/g,''); g('#fcr').innerHTML=v.length<2?'':C.filter(c=>norm(c.n+' '+(c.fa||'')+' '+c.cid).includes(v)||(d.length>=4&&c.cnpj.includes(d))).slice(0,6).map(c=>`<button class="chip" style="display:block;width:100%;text-align:left;margin:3px 0" data-fc="${esc(c.cnpj)}" data-fn="${esc(c.n)}">${esc(c.n)} · ${esc(c.cid||'')}</button>`).join('')},200)}}
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')||t===ov) return ov.remove(); const a=t.closest('[data-ft]'); if(a){tipo=a.dataset.ft; ov.querySelectorAll('[data-ft]').forEach(x=>x.classList.toggle('on',x===a)); return}
-    const d=t.closest('[data-fd]'); if(d){ov.querySelector('#ftd').value=maisDias(+d.dataset.fd); return} const c=t.closest('[data-fc]'); if(c){cli={cnpj:c.dataset.fc,n:c.dataset.fn}; ci.value=cli.n; ov.querySelector('#fcr').innerHTML=''; return}
-    if(t.id==='fts'){const tit=ov.querySelector('#ftt').value.trim()||(TT[tipo]||'Tarefa').replace(/^\S+ /,'')+(cli?' – '+cli.n:''); try{await novaTarefa({titulo:tit,tipo,cnpj:cli&&cli.cnpj||null,cliente:cli&&cli.n||null,rep:pre.rep||null,orcamento_id:pre.orcamento_id||null,vence:ov.querySelector('#ftd').value||hoje(),hora:ov.querySelector('#fth').value||null,obs:ov.querySelector('#fto').value.trim()||null}); ov.remove(); toast('Tarefa criada'); contaTarefas(); if(route==='tar') tarefasView()}catch(err){toast(/relation|does not exist|tarefas/.test(err.message)?'Rode o SQL 6 no Supabase para ativar tarefas':'Erro: '+err.message)}}}}
-
+    const du=t.closest('[data-fdu]'); if(du){dur=+du.dataset.fdu; ov.querySelectorAll('[data-fdu]').forEach(x=>x.classList.toggle('on',x===du)); return ver()}
+    const lv=t.closest('[data-livre]'); if(lv){g('#fth').value=lv.dataset.livre; return ver()}
+    const d=t.closest('[data-fd]'); if(d){g('#ftd').value=maisDias(+d.dataset.fd); return ver()} const c=t.closest('[data-fc]'); if(c){cli={cnpj:c.dataset.fc,n:c.dataset.fn}; ci.value=cli.n; g('#fcr').innerHTML=''; return}
+    if(t.id==='fts'){await ver(); if(bate.length&&!confirm(`Esse horário já tem ${bate.length} atividade${bate.length>1?'s':''} (${bate.map(x=>x.hora+' '+x.titulo).join('; ')}). Salvar mesmo assim?`)) return;
+      const tit=g('#ftt').value.trim()||(TT[tipo]||'Tarefa').replace(/^\S+ /,'')+(cli?' – '+cli.n:''); const sel=g('#ftr'), resp=sel.value;
+      const dados={titulo:tit,tipo,cnpj:cli&&cli.cnpj||null,cliente:cli&&cli.n||null,vence:g('#ftd').value||hoje(),hora:g('#fth').value||null,duracao:dur,obs:g('#fto').value.trim()||null,responsavel:resp,responsavel_nome:resp===sess.uid?meuNome():sel.selectedOptions[0].textContent};
+      try{if(ed) await api(`tarefas?id=eq.${pre.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(dados)}); else await novaTarefa({...dados,rep:pre.rep||null,orcamento_id:pre.orcamento_id||null});
+        ov.remove(); toast(ed?'Atividade atualizada':'Atividade agendada'); contaTarefas(); if(route==='tar') tarefasView()}
+      catch(err){toast(/duracao/.test(err.message)?'Falta a coluna duracao na tabela tarefas (Supabase)':/relation|does not exist|tarefas/.test(err.message)?'Rode o SQL 6 no Supabase para ativar tarefas':'Erro: '+err.message)}}};
+  ver()}
 /* follow-up automático quando o orçamento é enviado */
 async function followUpOrc(o,total){if(!o||!o.sid) return; const dias_=+(L('fupDias')??3); if(!dias_) return; try{const ex=await api(`tarefas?select=id&orcamento_id=eq.${encodeURIComponent(o.sid)}&feita=eq.false`); if(ex.length) return;
   await novaTarefa({titulo:`Follow-up orçamento ${repName(o.rep)} – ${o.cli?o.cli.fa||o.cli.n:'cliente'} (${brl(total)})`,tipo:'followup',cnpj:o.cli&&o.cli.cnpj||null,cliente:o.cli&&o.cli.n||null,rep:o.rep,orcamento_id:o.sid,vence:maisDias(dias_)}); contaTarefas()}catch(e){}}
@@ -1666,17 +1730,17 @@ async function relConversao(box,repF){box.innerHTML='<p class="hint">Calculando�
 /* ================= tarefa: abrir, ver, ir para orçamento/cliente ================= */
 async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?select=*&id=eq.${t}`))[0]}catch(e){} if(!t) return}
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between;align-items:flex-start"><b style="font-size:18px">${esc(TT[t.tipo]||'✔️ Tarefa')} · ${esc(t.titulo)}</b><button class="chip" data-x>✕</button></div>
-   ${fichaTopo([['Quando',t.vence.split('-').reverse().join('/')+(t.hora?' às '+t.hora:''),0],['Responsável',t.responsavel_nome||'Equipe'],['Cliente',t.cliente||'—'],['Representada',t.rep?repName(t.rep):'—']])}
+   ${fichaTopo([['Quando',t.vence.split('-').reverse().join('/')+(t.hora?' · '+t.hora+'–'+mh(tFim(t)):''),0],['Responsável',t.responsavel_nome||'Equipe'],['Cliente',t.cliente||'—'],['Representada',t.rep?repName(t.rep):'—']])}
    ${t.obs?`<div class="card" style="white-space:pre-wrap">${esc(t.obs)}</div>`:'<p class="hint" style="margin:0">Sem observações.</p>'}
    ${t.feita?`<p class="ok">✓ Concluída ${t.feita_em?new Date(t.feita_em).toLocaleString('pt-BR'):''}${t.resultado?' · '+esc(t.resultado):''}</p>`:''}
-   <div class="row">${t.orcamento_id?'<button class="btn ghost" data-to>📄 Abrir orçamento</button>':''}${t.cnpj?'<button class="btn ghost" data-tf>👤 Ficha do cliente</button><button class="btn ghost" data-tr>📞 Registrar contato</button>':''}</div>
+   <div class="row">${t.feita?'':'<button class="btn ghost" data-ted>✏️ Editar / mudar horário</button>'}${t.orcamento_id?'<button class="btn ghost" data-to>📄 Abrir orçamento</button>':''}${t.cnpj?'<button class="btn ghost" data-tf>👤 Ficha do cliente</button><button class="btn ghost" data-tr>📞 Registrar contato</button>':''}</div>
    ${t.feita?'':`<label class="f">Resultado (opcional)<input id="tres" placeholder="ex.: cliente aprovou, vai enviar OC"></label><div class="row"><button class="btn" data-tok>✓ Concluir</button><button class="chip" data-ad="1">Amanhã</button><button class="chip" data-ad="3">+3 dias</button><button class="chip" data-ad="7">+7 dias</button><input id="tnd" type="date" style="width:auto"><input id="tnh" type="time" value="${esc(t.hora||'')}" style="width:auto"><button class="chip" data-rag>Reagendar</button></div>`}</div>`; document.body.appendChild(ov);
   const fim=()=>{ov.remove(); contaTarefas(); if(route==='tar') tarefasView()};
   ov.onclick=async e=>{const x=e.target; if(x.closest('[data-x]')||x===ov) return ov.remove();
-    try{if(x.closest('[data-to]')){ov.remove(); return detOrc(t.orcamento_id)} if(x.closest('[data-tf]')){ov.remove(); return go('cli',{cnpj:t.cnpj})} if(x.closest('[data-tr]')){ov.remove(); return painelCliente(t.cnpj)}
+    try{if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')){ov.remove(); return detOrc(t.orcamento_id)} if(x.closest('[data-tf]')){ov.remove(); return go('cli',{cnpj:t.cnpj})} if(x.closest('[data-tr]')){ov.remove(); return painelCliente(t.cnpj)}
       if(x.closest('[data-tok]')){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:ov.querySelector('#tres').value.trim()||null})}); toast('Tarefa concluída'); return fim()}
       const a=x.closest('[data-ad]'); if(a){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+a.dataset.ad)})}); toast('Reagendada'); return fim()}
-      if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}
+      if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); if(h){const c=await conflitos(d||t.vence,h,+t.duracao||30,t.responsavel,t.id); if(c.bate.length&&!confirm(`Esse horário já tem: ${c.bate.map(x=>x.hora+' '+x.titulo).join('; ')}. Reagendar mesmo assim?`)) return} await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}
 
 /* ================= lembretes de tarefas (pop-up no canto da tela) ================= */
 const AVISADAS=new Set(L('avisadas')||[]);

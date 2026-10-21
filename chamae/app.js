@@ -738,20 +738,32 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
     box.onclick=e=>{const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box)} const q=e.target.closest('[data-bq]'); if(q){e.stopPropagation(); return go('busca',{q:q.dataset.bq})} const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
   catch(e){box.innerHTML=''}}
 
-/* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo */
+/* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo, agrupados por orçamento */
 let SGAL=null;
-async function alertaSigma(el,so){if(!el) return; try{
-  {const O=await api('orcamentos?select=id,cliente,status,situacao,user_id,dados&app=eq.sigma&order=atualizado_em.desc&limit=80');
-    const lin=[]; O.filter(o=>(!so||o.user_id===sess.uid)&&!['transmitido','cancelado'].includes(stOf(o))).forEach(o=>((o.dados||{}).linhas||[]).forEach(l=>{if(l.cod&&+l.qt>0) lin.push({o,cod:String(l.cod).trim(),qt:+l.qt,sd:l.sd})}));
-    if(!lin.length){SGAL={t:Date.now(),so,al:[],n:0}; el.hidden=true; return}
-    el.hidden=false; el.innerHTML='<b>📦 Estoque Sigma dos orçamentos em aberto</b><p class="hint" style="margin:0">Conferindo na Sigma…</p>';
-    const cods=[...new Set(lin.map(l=>l.cod))].slice(0,80); const R=await sigmaStkMany(cods,false,10*6e4);
-    const al=lin.filter(l=>R[l.cod]&&R[l.cod].it&&(R[l.cod].it.disp||0)<2*l.qt).map(l=>({...l,d:R[l.cod].it.disp||0})).sort((a,b)=>a.d/a.qt-b.d/b.qt);
-    SGAL={t:Math.min(...cods.map(c=>(R[c]||{}).t||Date.now())),so,al,n:lin.length,err:cods.every(c=>!R[c]||R[c].err)}}
-  if(!el.isConnected) return; if(!SGAL.n){el.hidden=true; return} el.hidden=false; const A=SGAL.al;
-  el.innerHTML=`<b>📦 Estoque Sigma dos orçamentos em aberto</b>${SGAL.err?'<p class="hint" style="margin:0">Não consegui consultar a Sigma agora.</p>':A.length?A.slice(0,8).map(a=>`<button class="chip" style="text-align:left" data-sgo="${esc(a.o.id)}"><b>${esc(a.cod)}</b> · ${esc(a.o.cliente||'Sem cliente')} · cotado ${nBR(a.qt)} · <span class="${a.d<a.qt?'bad':'warn'}">${a.d<=0?'sem estoque':a.d<a.qt?'só '+nBR(a.d)+' disponível':nBR(a.d)+' disponível (perto de acabar)'}</span></button>`).join('')+(A.length>8?`<p class="hint" style="margin:0">+${A.length-8} itens</p>`:''):'<p class="hint" style="margin:0">Todos os itens cotados têm estoque na Sigma agora. ✔</p>'}<p class="hint" style="margin:0">Conferido às ${new Date(SGAL.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}. Vermelho: falta para a quantidade cotada · amarelo: menos que o dobro do cotado.</p>`;
-  el.onclick=e=>{const b=e.target.closest('[data-sgo]'); if(b){e.stopPropagation(); detOrc(b.dataset.sgo)}}}
-  catch(e){el.hidden=true}}
+async function alertaSigma(el,so,force){if(!el) return; const tit='<b>📦 Estoque Sigma dos orçamentos em aberto</b>';
+  try{const O=await api('orcamentos?select=id,cliente,status,situacao,user_id,dados&app=eq.sigma&order=atualizado_em.desc&limit=80');
+    const lin=[]; O.filter(o=>(!so||o.user_id===sess.uid)&&!['transmitido','cancelado'].includes(stOf(o))).forEach(o=>((o.dados||{}).linhas||[]).forEach(l=>{if(l.cod&&+l.qt>0) lin.push({o,cod:String(l.cod).trim(),desc:l.desc||'',qt:+l.qt})}));
+    if(!lin.length){el.hidden=true; return}
+    el.hidden=false; if(force||!SGAL) el.innerHTML=tit+'<p class="hint" style="margin:0">Conferindo na Sigma…</p>';
+    const cods=[...new Set(lin.map(l=>l.cod))].slice(0,80); const R=await sigmaStkMany(cods,!!force,10*6e4);
+    const nv=l=>{const v=R[l.cod]; if(!v||!v.it) return 0; const d=v.it.disp||0; l.d=d; return d<=0?3:d<l.qt?2:d<2*l.qt?1:0};
+    const G={}; lin.forEach(l=>{l.n=nv(l); if(!l.n) return; (G[l.o.id]=G[l.o.id]||{o:l.o,its:[]}).its.push(l)});
+    SGAL={t:Math.min(...cods.map(c=>(R[c]||{}).t||Date.now())),grupos:Object.values(G).map(g=>(g.its.sort((a,b)=>b.n-a.n),g.max=g.its[0].n,g)).sort((a,b)=>b.max-a.max||b.its.length-a.its.length),err:cods.every(c=>!R[c]||R[c].err),total:new Set(lin.map(l=>l.o.id)).size}}
+  catch(e){if(!SGAL){el.hidden=true; return}}
+  if(!el.isConnected) return; let q='', todos=false; const NV=['','acabando','abaixo do cotado','sem estoque'], CC=['','var(--warn)','#f08a24','var(--bad)'];
+  const conta=n=>SGAL.grupos.reduce((s,g)=>s+g.its.filter(l=>l.n===n).length,0);
+  const draw=()=>{const w=norm(q).trim(); const L=SGAL.grupos.filter(g=>!w||norm([g.o.cliente,(g.o.dados||{}).num,...g.its.map(l=>l.cod+' '+l.desc)].join(' ')).includes(w)); const V=w||todos?L:L.slice(0,5);
+    el.querySelector('[data-sgl]').innerHTML=V.map(g=>{const d=g.o.dados||{}; const res=[3,2,1].map(n=>{const k=g.its.filter(l=>l.n===n).length; return k?`<span style="color:${CC[n]}">${k} ${NV[n]}</span>`:''}).filter(Boolean).join(' · ');
+      return `<details style="border:1px solid var(--line);border-radius:12px;padding:8px 10px"><summary style="cursor:pointer"><b>${esc(g.o.cliente||'Sem cliente')}</b>${d.num?' <span class="hint">nº '+esc(d.num)+'</span>':''}<div style="font-size:13px">${res}</div></summary>
+       <div class="grid" style="gap:4px;margin-top:6px">${g.its.map(l=>`<div style="font-size:13px"><b>${esc(l.cod)}</b> ${esc(l.desc.slice(0,48))}<br><span class="hint">cotado ${nBR(l.qt)} ·</span> <span style="color:${CC[l.n]}">${l.d<=0?'sem estoque':nBR(l.d)+' disponível'}</span></div>`).join('')}
+       <button class="chip" data-sgo="${esc(g.o.id)}" style="justify-self:start">Abrir orçamento</button></div></details>`}).join('')||`<p class="hint" style="margin:0">${w?'Nada encontrado.':'Todos os itens cotados têm estoque na Sigma agora. ✔'}</p>`;
+    const mais=el.querySelector('[data-sgm]'); mais.hidden=!!w||L.length<=5; mais.textContent=todos?'Mostrar menos':`Ver todos (${L.length} orçamentos)`};
+  el.innerHTML=`<div class="row" style="justify-content:space-between">${tit}<button class="chip" data-sgr>↻ Atualizar agora</button></div>
+   ${SGAL.err?'<p class="hint" style="margin:0">Não consegui consultar a Sigma agora.</p>':`<div class="row" style="gap:6px"><span class="chip">🔴 ${conta(3)} sem estoque</span><span class="chip">🟠 ${conta(2)} abaixo do cotado</span><span class="chip">🟡 ${conta(1)} acabando</span></div>
+   ${SGAL.grupos.length>3?'<input type="search" data-sgq placeholder="Buscar cliente, nº ou código" style="width:100%">':''}<div class="grid" data-sgl style="gap:6px"></div><button class="chip" data-sgm hidden style="justify-self:start"></button>`}
+   <p class="hint" style="margin:0">${SGAL.grupos.length} de ${SGAL.total} orçamentos com alerta · conferido às ${new Date(SGAL.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}. Acabando = disponível menor que o dobro do cotado.</p>`;
+  if(!SGAL.err) draw(); const qi=el.querySelector('[data-sgq]'); if(qi) qi.oninput=e=>{q=e.target.value; draw()};
+  el.onclick=e=>{e.stopPropagation(); const b=e.target.closest('[data-sgo]'); if(b) return detOrc(b.dataset.sgo); if(e.target.closest('[data-sgr]')){e.target.closest('[data-sgr]').disabled=true; return alertaSigma(el,so,true)} if(e.target.closest('[data-sgm]')){todos=!todos; draw()}}}
 
 /* ---------- busca global ---------- */
 async function busca(){const m=$('#main'); const q0=ctx.q||'';

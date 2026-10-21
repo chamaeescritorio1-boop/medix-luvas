@@ -124,6 +124,21 @@ Deno.serve(async (rq) => {
     const auth = rq.headers.get('Authorization') ?? '';
     if (!(await ehEquipe(auth))) return resp({ erro: 'Sem acesso.' }, 403);
     const b = await rq.json().catch(() => ({}));
+    if (Array.isArray(b.cods)) {
+      // vários códigos de uma vez (orçamento / alerta da página inicial): um por um, na mesma sessão
+      const cods = [...new Set(b.cods.map((c: unknown) => String(c ?? '').trim()).filter(Boolean))].slice(0, 40) as string[];
+      const itens: Record<string, unknown> = {};
+      for (const cod of cods) {
+        const c = cache.get('cod|' + cod);
+        if (c && Date.now() - c.t < 60000) { itens[cod] = c.v; continue; }
+        const r = await listar(cod, 1, 10, '0', '');
+        const it = r.itens.find((x) => x.cod === cod) ?? null;
+        cache.set('cod|' + cod, { t: Date.now(), v: it });
+        itens[cod] = it;
+      }
+      if (cache.size > 300) cache.delete(cache.keys().next().value!);
+      return resp({ ts: new Date().toISOString(), itens });
+    }
     const f = String(b.f ?? '').trim().slice(0, 80);
     if (!f) return resp({ erro: 'Informe o código ou a descrição.' }, 400);
     const p = Math.max(1, Math.min(500, Number(b.p) || 1));

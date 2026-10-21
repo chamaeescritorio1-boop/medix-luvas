@@ -276,12 +276,12 @@ const vendNome=o=>o.vend||(meuNome()||'');
 /* lista bruta: descontos comercial e de pagamento escolhidos pelo vendedor, item a item */
 const ehBruta=p=>/BRUTA/.test(norm((p.attrs||{}).obs||''));
 const leadTime=p=>{const m=String((p.attrs||{}).obs||'').match(/lead\s*time\s*:?\s*(\d+)/i); const d=m?m[1]:(p.attrs||{}).prazo; return d!=null&&d!==''?String(d):''};
-function descBruta(rep,o,p){if(!ehBruta(p)) return null; const r=((REPS||[]).find(x=>x.id===rep)||{}); const g=r.regras||{}; const padrao=rep==='marcon'; let com=g.db_com!=null?+g.db_com:(padrao?5:0), pag=g.db_pag!=null?+g.db_pag:(padrao?3:0);
+function descBruta(rep,o,p){if(!ehBruta(p)) return null; if(rep==='marcon'&&ehGurgel(((TABS[rep]||[]).find(t=>t.id==o.tabela)||{}).nome)) return null; /* Gurgelmix: o preço da tabela já tem os descontos 2/5/3/4 */ const r=((REPS||[]).find(x=>x.id===rep)||{}); const g=r.regras||{}; const padrao=rep==='marcon'; let com=g.db_com!=null?+g.db_com:(padrao?5:0), pag=g.db_pag!=null?+g.db_pag:(padrao?3:0);
   const cn=String((o.cli&&o.cli.cnpj)||o.cnpj||'').replace(/\D/g,''); const gr=norm(grupoOf(rep,p));
   String(g.db_exc||'').split(/\n/).forEach(l=>{const [c,gp,pg,cm]=l.split(';').map(x=>(x||'').trim()); if(!c) return; const cc=c.replace(/\D/g,''); if(!cc||!cn.startsWith(cc.slice(0,8))) return; if(gp&&!gr.includes(norm(gp))&&!norm(gp).includes(gr)) return; if(pg!=='') pag=+String(pg).replace(',','.')||pag; if(cm!=null&&cm!=='') com=+String(cm).replace(',','.')||com});
   return com||pag?{com,pag}:null}
 async function linhasDe(o){const C=await catalog(o.rep).catch(()=>[]); const P=o.tabela?await prices(o.tabela):{};
-  return o.itens.map(i=>{const p=C.find(x=>x.id===i.pid)||{}; const pr=P[i.pid]||{}; const plista=pr.liq||0; const db=descBruta(o.rep,o,p); const f=(db&&i.dc?1-db.com/100:1)*(db&&i.dp?1-db.pag/100:1); const ptab=Math.round(plista*f*100)/100; const pu=i.pu!=null?+i.pu:ptab; return {i,p,pu,ptab,plista,db,lt:leadTime(p),neg:i.pu!=null,icms:pr.icms,tot:pu*i.qt,ipiv:pu*i.qt*(+p.ipi||0)/100}})}
+  return o.itens.map(i=>{const p=C.find(x=>x.id===i.pid)||{}; const pr=P[i.pid]||{}; const plista=pr.liq||0; const db=descBruta(o.rep,o,p); const f=(db&&i.dc?1-db.com/100:1)*(db&&i.dp?1-db.pag/100:1); const ptab=rHU(plista*f); const pu=i.pu!=null?+i.pu:ptab; return {i,p,pu,ptab,plista,db,lt:leadTime(p),neg:i.pu!=null,icms:pr.icms,tot:pu*i.qt,ipiv:pu*i.qt*(+p.ipi||0)/100}})}
 function textoCliente(o,rows,tt){const c=o.cli; return `Olá${c?', '+(c.fa||c.n):''}! Segue o orçamento ${repName(o.rep)}:\n`+rows.map(r=>`• ${r.p.cod} ${String(r.p.descricao||'').slice(0,60)} — ${r.i.qt} x ${brl(r.pu)}${gradeTxt(r.i.gq)?'\n   Grade: '+gradeTxt(r.i.gq):''}`).join('\n')+`\nTotal: ${brl(tt.sub+tt.ipi+tt.fr)}${tt.ipi?' (IPI incluso '+brl(tt.ipi)+')':''}\nPrazo: ${o.prazo||'a combinar'}\n${vendNome(o)?vendNome(o)+' – ':''}Chamae Representações`}
 
 async function orc(){const m=$('#main'); m.onclick=null; m.onchange=null; m.oninput=null; await reps(); const q=Q(); const ab=Object.keys(q).filter(r=>q[r]&&(q[r].itens.length||q[r].cli||r===ctx.rep));
@@ -649,9 +649,9 @@ const keyOf=h=>{const n=String(h||'').trim().toLowerCase(); for(const k in COLS)
 const nameFromFile=f=>{const m=f.match(/reprio_(.+?)_(\w{2})_\d{4}/i); return m?(m[1].replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())+' '+m[2].toUpperCase()):f.replace(/\.\w+$/,'')};
 async function admin(){const m=$('#main'); if(!ehGestor()){m.innerHTML='<p class="hint">Só gestores.</p>';return} const R=await reps();
   const rep=ctx.rep||L('admRep')||'marcon';
-  m.innerHTML=`<div class="sec">Produtos e tabelas</div><div class="row"><select id="arep">${R.map(r=>`<option value="${r.id}"${r.id===rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="chip on" data-t="imp">Importar planilhas</button><button class="chip" data-t="ed">Editar produto</button><button class="chip" data-t="tb">Tabelas</button>${APPSRC[rep]?'<button class="chip" data-t="app">Trazer do app '+esc((R.find(r=>r.id===rep)||{}).nome||rep)+'</button>':''}</div><div id="adm" style="margin-top:12px"></div>`;
+  m.innerHTML=`<div class="sec">Produtos e tabelas</div><div class="row"><select id="arep">${R.map(r=>`<option value="${r.id}"${r.id===rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="chip on" data-t="imp">Importar planilhas</button><button class="chip" data-t="ed">Editar produto</button><button class="chip" data-t="tb">Tabelas</button>${rep==='marcon'?'<button class="chip" data-t="gur">Regra Gurgelmix</button>':''}${APPSRC[rep]?'<button class="chip" data-t="app">Trazer do app '+esc((R.find(r=>r.id===rep)||{}).nome||rep)+'</button>':''}</div><div id="adm" style="margin-top:12px"></div>`;
   $('#arep').onchange=e=>{LS('admRep',e.target.value); ctx.rep=e.target.value; admin()};
-  m.querySelector('.row').onclick=e=>{const b=e.target.closest('[data-t]'); if(!b) return; m.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); ({imp:admImp,ed:admEd,tb:admTab,app:admApp})[b.dataset.t](rep)};
+  m.querySelector('.row').onclick=e=>{const b=e.target.closest('[data-t]'); if(!b) return; m.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); ({imp:admImp,ed:admEd,tb:admTab,app:admApp,gur:admGur})[b.dataset.t](rep)};
   admImp(rep)}
 function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p class="hint">Suba uma ou várias planilhas (uma por tabela de preço). O nome da tabela vem do arquivo e pode ser ajustado. Nada é gravado antes da sua aprovação.</p>
   <input id="files" type="file" accept=".xlsx,.xls,.csv" multiple style="width:100%"><div id="prev"></div></div>`;
@@ -663,6 +663,7 @@ function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p c
     if(rep==='marluvas'&&jobs.length===1){const j0=jobs[0]; if(!j0.tab){j0.nome='0 · Tabela geral SP'; j0.tab=T.find(t=>norm(t.nome)===norm(j0.nome))} const CN=[['REV60-318',3],['REV60-518',5],['REV79-717',7],['REV80-1016',10],['ECON-1115',11],['ECO12-1314',13],['HCEN-1012',10],['HCE600-1111',11],['HCE600-1211',12],['ATC500-109',10],['ATC2M-128',12],['DBI599-76',7],['DBI600-95',9],['DBI2M-114',11],['DBI5M-133',13]];
       CN.forEach(([n,d])=>jobs.push({...j0,nome:n,tab:T.find(t=>norm(t.nome)===norm(n)),items:j0.items.map(it=>({...it,liq:Math.round(it.liq*(1-d/100)*100)/100}))}));
       pv.insertAdjacentHTML('beforebegin','<p class="hint">Marluvas: a tabela geral gera automaticamente as 15 tabelas de canal (Revenda, E-commerce, Homecenter, Atacado e Distribuidor) com os descontos de cada canal.</p>')}
+    if(rep==='marcon') jobs.forEach(j=>{const R=ehGurgel(j.nome)&&gurRegraDe(j.tab); if(!R) return; const M=gurCalc(R,j.items); let n=0; j.items.forEach(it=>{const x=M[gcod(it.cod)]; if(x&&Math.abs(x.v-(it.liq??0))>=.005){it.liq=x.v; n++}}); pv.insertAdjacentHTML('beforebegin',`<p class="hint">${esc(j.nome)}: regra de preço Gurgelmix aplicada (${n} preços corrigidos em relação à planilha). Confira em “Regra Gurgelmix”.</p>`)});
     await prevJobs(rep,jobs,C,T,pv)}}
 async function prevJobs(rep,jobs,C,T,pv){
     // prévia
@@ -689,6 +690,78 @@ async function prevJobs(rep,jobs,C,T,pv){
         (delete CAT[rep],STALE.add('cat_'+rep)); (delete TABS[rep],STALE.add('tab_'+rep)); (REPS=null,STALE.add('reps')); st.textContent=''; toast('Importação concluída'); admImp(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">✓ ${jobs.length} tabela(s) e ${arr.length} produtos gravados.</p>`)}
       catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}}
 
+
+/* ---------- regra de preço Marcon → Gurgelmix (mesma regra da planilha de conferência) ----------
+   1) código nas tabelas de campanha Gurgel (18% CIF): preço da tabela (Campanha A, ou B se A vazio), sem desconto nenhum;
+   2) código da Gurgel (FG/LM, via similares) fora dessas tabelas: mesmo preço final do código Marcon equivalente;
+   3/4) Tabela Bruta ou campanha geral Marcon: Tabela Base × cascata Desc 1..6 da aba GURGELMIX (negativo = acréscimo);
+   5) sem desconto cadastrado nem similar: Tabela Base (fator 1) e fica na lista de pendências. */
+const rHU=v=>Math.round(Math.round(v*1e6)/1e4)/100; /* 2 casas, meio para cima (166,345 → 166,35) */
+const gcod=c=>String(c??'').trim().replace(/\s+/g,' ').toUpperCase();
+const gnum=v=>{if(typeof v==='number') return v; const s=String(v??'').replace(/[^\d,.-]/g,''); if(!s) return null; const n=+(s.includes(',')?s.replace(/\./g,'').replace(',','.'):s); return isNaN(n)?null:n};
+const ehGurgel=nome=>/GURGEL/.test(norm(nome));
+function gurRegraDe(tab){try{const o=JSON.parse((tab&&tab.obs)||'{}'); return o&&o.gurgel||null}catch(e){return null}}
+/* lê as planilhas: tabelas de campanha (cabeçalho "Ref." + "Campanha A"), descontos (aba GURGELMIX), similares (Tabela | Cod Terceiro | Cod Marcon) */
+function gurLer(wb,arq){const out={camp:{},desc:{},sim:{},dup:[],vistos:[]}; const H=r=>r.map(c=>norm(c).trim());
+  for(const sn of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+    if(norm(sn).trim()==='GURGELMIX'){const hi=rows.findIndex(r=>H(r).some(c=>/^COD/.test(c))&&H(r).some(c=>/^DESC/.test(c))); if(hi<0) continue; const h=H(rows[hi]); const ic=h.findIndex(c=>/^COD/.test(c)); const id=[1,2,3,4,5,6].map(k=>h.findIndex(c=>c.replace(/\s/g,'')==='DESC'+k));
+      let n=0; rows.slice(hi+1).forEach(r=>{const c=gcod(r[ic]); if(!c||out.desc[c]) return; const D=id.map(i=>{if(i<0) return 0; let v=gnum(r[i])||0; if(Math.abs(v)>=1) v/=100; return v}); out.desc[c]={d:D.map(v=>Math.round(v*1e6)/1e6),f:D.reduce((f,v)=>f*(1-v),1)}; n++}); out.vistos.push(`${arq}: descontos GURGELMIX (${n} códigos)`); continue}
+    const hs=rows.findIndex(r=>H(r).includes('COD TERCEIRO')&&H(r).includes('COD MARCON'));
+    if(hs>=0){const h=H(rows[hs]); const it=h.indexOf('TABELA'), i3=h.indexOf('COD TERCEIRO'), im=h.indexOf('COD MARCON'); let n=0;
+      rows.slice(hs+1).forEach(r=>{if(it>=0&&!/GURGEL/.test(norm(r[it]))) return; const a=gcod(r[i3]), b=gcod(r[im]); if(!a||!b) return; if(out.sim[a]){if(out.sim[a]!==b) out.dup.push(`${a} aparece 2x no similares (${out.sim[a]} e ${b}); usei ${out.sim[a]}`); return} out.sim[a]=b; n++});
+      out.vistos.push(`${arq}: similares Gurgelmix (${n} códigos)`); continue}
+    let n=0, h=null, ia=-1, ib=-1, ir=-1;
+    rows.forEach(r=>{const hh=H(r); if(hh.some(c=>/^REF\.?$/.test(c))&&hh.includes('CAMPANHA A')){h=hh; ir=hh.findIndex(c=>/^REF\.?$/.test(c)); ia=hh.indexOf('CAMPANHA A'); ib=hh.indexOf('CAMPANHA B'); return} if(!h) return;
+      const c=gcod(r[ir]); if(!c) return; const a=gnum(r[ia]), b=ib>=0?gnum(r[ib]):null; const v=a>0?a:(b>0?b:null); if(v==null) return; if(!out.camp[c]){out.camp[c]={v,b:!(a>0),t:arq.replace(/\.\w+$/,'')}; n++}});
+    if(n) out.vistos.push(`${arq}: tabela de campanha Gurgel (${n} códigos)`)}
+  return out}
+/* calcula o preço de cada código; it = [{cod, base, obs}] (base = Tabela Base do Reprio) */
+function gurCalc(R,its){const B={}, O={}; its.forEach(i=>{const c=gcod(i.cod); B[c]=i.base; O[c]=i.obs||''}); const sim={...R.sim}; if(sim['LMJ-2T']) sim['LMJ-2T']='MJH-2T';
+  const M={}; const fx=f=>f.toLocaleString('pt-BR',{maximumFractionDigits:6});
+  const own=c=>{const b=B[c]; if(!(b>0)) return null; const d=R.desc[c]; const tipo=/BRUTA/.test(norm(O[c]))?'Tabela bruta':'Campanha geral Marcon';
+    if(!d) return {v:rHU(b),r:'Sem desconto cadastrado na aba GURGELMIX: Tabela Base sem desconto',pend:1};
+    return {v:rHU(b*d.f),r:`${tipo}: ${brl(b)} × ${fx(d.f)} (${d.d.map(v=>String(Math.round(v*10000)/100).replace('.',',')).join('/')})`}};
+  const P=(c,dp=0)=>{if(M[c]!==undefined) return M[c]; if(dp>4) return null; let x=null; const k=R.camp[c];
+    if(k) x={v:rHU(k.v),r:`Tabela Gurgel ${k.t}: preço ${k.b?'Campanha B (A vazio)':'Campanha A'} sem desconto`};
+    else{const s=sim[c]||(/^LM(PR|VM)/.test(c)?c.replace(/^LM(PR|VM)/,''):null); const q=s&&s!==c&&(B[s]>0||R.camp[s])?P(s,dp+1):null;
+      x=q?{v:q.v,r:`Igual ao Marcon ${s} (${q.r})`,pend:q.pend}:own(c)}
+    return M[c]=x};
+  its.forEach(i=>P(gcod(i.cod))); return M}
+async function admGur(rep){const a=$('#adm'); const T=await tabelas(rep,true); const tab=T.find(t=>ehGurgel(t.nome)); if(!tab){a.innerHTML='<p class="bad">Não encontrei a tabela Gurgelmix da Marcon.</p>'; return}
+  const salvo=gurRegraDe(tab); const cnt=o=>Object.keys(o||{}).length;
+  a.innerHTML=`<div class="card grid"><b>Regra de preço Gurgelmix (${esc(tab.nome)})</b>
+   <p class="hint" style="margin:0">1) Código nas tabelas de campanha Gurgel: preço da tabela, sem desconto. 2) Código da Gurgel (FG/LM) fora delas: mesmo preço do Marcon equivalente (similares). 3) Tabela bruta e campanhas gerais: Tabela Base × descontos da aba GURGELMIX (negativo = acréscimo). 4) Sem desconto nem similar: Tabela Base e fica em pendências.</p>
+   <p class="hint" style="margin:0">${salvo?`Regra salva em ${esc(new Date(salvo.em).toLocaleString('pt-BR'))}: ${cnt(salvo.camp)} preços de campanha, ${cnt(salvo.desc)} descontos, ${cnt(salvo.sim)} similares. Ao importar de novo a planilha Gurgelmix do Reprio, a regra é aplicada sozinha.`:'Ainda não há regra salva.'}</p>
+   <label class="f">Planilhas (tabelas Gurgel 18% CIF, descontos.xlsx, similares.xlsx; pode mandar só as que mudaram)<input id="gfiles" type="file" accept=".xlsx,.xls" multiple style="width:100%"></label>
+   ${salvo?'<div class="row"><button class="chip" id="grec">Recalcular com a regra salva</button></div>':''}<div id="gprev"></div></div>`;
+  const run=async novo=>{const pv=$('#gprev'); pv.innerHTML='<p class="hint">Calculando…</p>'; const R={camp:{...(salvo&&salvo.camp||{})},desc:{...(salvo&&salvo.desc||{})},sim:{...(salvo&&salvo.sim||{})},dup:[],vistos:[]};
+    if(novo){if(cnt(novo.camp)) R.camp=novo.camp; if(cnt(novo.desc)) R.desc=novo.desc; if(cnt(novo.sim)) R.sim=novo.sim; R.dup=novo.dup; R.vistos=novo.vistos}
+    const C=await catalog(rep,true); const PR=await prices(tab.id,true); const byId={}; C.forEach(p=>byId[p.id]=p);
+    const its=Object.keys(PR).map(pid=>byId[pid]).filter(Boolean).map(p=>({p,cod:p.cod,base:PR[p.id].base,obs:(p.attrs||{}).obs}));
+    const M=gurCalc(R,its); const ch=[], pend=[], arr=[]; let igual=0;
+    its.forEach(i=>{const x=M[gcod(i.cod)]; const o=PR[i.p.id].liq; if(!x){pend.push(`${i.cod}: sem Tabela Base, preço mantido`); return} if(x.pend) pend.push(`${i.cod}: ${x.r}`); if(o!=null&&Math.abs(x.v-o)<1e-9) igual++; else if(o!=null&&Math.abs(x.v-o)<.005) arr.push({i,o,x}); else ch.push({i,o,x})});
+    const naoTem=Object.keys(R.camp).filter(c=>!C.some(p=>gcod(p.cod)===c)); if(naoTem.length) pend.push(`Códigos das tabelas Gurgel que não estão no catálogo do Sistema (${naoTem.length}): ${naoTem.slice(0,40).join(', ')}${naoTem.length>40?'…':''}`);
+    const ok=cnt(R.camp)&&cnt(R.desc);
+    pv.innerHTML=`${R.vistos.length?`<p class="ok">${R.vistos.map(esc).join('<br>')}</p>`:''}${novo&&!R.vistos.length?'<p class="bad">Não reconheci nenhuma das planilhas.</p>':''}
+     ${!cnt(R.camp)?'<p class="bad">Faltam as tabelas de campanha Gurgel.</p>':''}${!cnt(R.desc)?'<p class="bad">Falta o descontos.xlsx (aba GURGELMIX).</p>':''}${!cnt(R.sim)?'<p class="warn">Sem similares: os códigos FG/LM ficam com o próprio preço.</p>':''}
+     <p>${its.length} produtos na tabela · <b>${ch.length}</b> preços mudam · ${igual+arr.length} já estavam certos${arr.length?` (${arr.length} só com casas decimais a mais, ficam com 2 casas)`:''}</p>
+     ${['4503','BF-2','FG-063','1','FG-115'].map(c=>{const x=M[c]; return x?`<span class="tag">${c}: ${brl(x.v)}</span> `:''}).join('')}
+     ${ch.length?`<div class="diff" style="margin-top:8px"><table class="t"><tr><th>Código</th><th>Descrição</th><th class="n">Antes</th><th class="n">Agora</th><th>Regra</th></tr>${ch.map(c=>`<tr><td>${esc(c.i.cod)}</td><td><small>${esc(String(c.i.p.descricao||'').slice(0,40))}</small></td><td class="n">${c.o==null?'—':brl(c.o)}</td><td class="n"><b>${brl(c.x.v)}</b></td><td><small>${esc(c.x.r)}</small></td></tr>`).join('')}</table></div>`:''}
+     ${pend.length||R.dup.length?`<details style="margin-top:8px"><summary class="warn">Pendências para conferir (${pend.length+R.dup.length})</summary><p class="hint">${[...R.dup,...pend].map(esc).join('<br>')}</p></details>`:''}
+     <div class="row" style="margin-top:10px">${ok?`<button class="btn" id="gapr">${ch.length||arr.length?'Aprovar e gravar':'Salvar a regra'}</button>`:''}<button class="chip" id="gxls">⬇ Planilha para o Reprio</button><span class="hint" id="gst"></span></div>`;
+    $('#gxls').onclick=async()=>{const ws=XLSX.utils.aoa_to_sheet([['Codigo','Descrição','Tabela Base','Preço de Custo','Regra'],...its.map(i=>{const x=M[gcod(i.cod)]; return [i.cod,i.p.descricao||'',i.base??'',x?x.v:PR[i.p.id].liq,x?x.r:'sem Tabela Base']})]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Produtos'); XLSX.writeFile(wb,'Precos_Gurgelmix_Marcon.xlsx')};
+    const b=$('#gapr'); if(b) b.onclick=async()=>{b.disabled=true; const st=$('#gst');
+      try{let ob={}; try{ob=JSON.parse(tab.obs||'{}')||{}}catch(e){ob={texto:tab.obs}} ob.gurgel={camp:R.camp,desc:R.desc,sim:R.sim,em:new Date().toISOString()};
+        await api(`tabelas?id=eq.${tab.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({obs:JSON.stringify(ob)})});
+        const pr=[...ch,...arr].map(c=>({tabela_id:tab.id,produto_id:c.i.p.id,nivel:'liq',preco:c.x.v,atualizado_em:new Date().toISOString()}));
+        for(let i=0;i<pr.length;i+=800){st.textContent=`Gravando ${i}/${pr.length}…`; await api('precos?on_conflict=tabela_id,produto_id,nivel',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(pr.slice(i,i+800))})}
+        await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:'regra_gurgelmix',resumo:[{tabela:tab.nome,itens:its.length,mudaram:ch.length,pendencias:pend.length}]})}).catch(()=>{});
+        (delete PRICES[tab.id],STALE.add('pr_'+tab.id)); (delete TABS[rep],STALE.add('tab_'+rep)); toast('Preços Gurgelmix gravados'); await admGur(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">✓ ${ch.length} preços da ${esc(tab.nome)} atualizados pela regra.</p>`)}
+      catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}};
+  $('#gfiles').onchange=async e=>{const fs=[...e.target.files]; if(!fs.length) return; await loadXLSX(); const N={camp:{},desc:{},sim:{},dup:[],vistos:[]};
+    for(const f of fs){const r=gurLer(XLSX.read(await f.arrayBuffer()),f.name); Object.keys(r.camp).forEach(c=>{if(!N.camp[c]) N.camp[c]=r.camp[c]}); Object.assign(N.desc,r.desc); Object.assign(N.sim,r.sim); N.dup.push(...r.dup); N.vistos.push(...r.vistos); if(!r.vistos.length) N.vistos.push(f.name+': não reconhecida (ignorada)')}
+    run(N).catch(err=>{$('#gprev').innerHTML=`<p class="bad">Erro: ${esc(err.message)}</p>`})};
+  const g=$('#grec'); if(g) g.onclick=()=>run(null)}
 
 /* ---------- trazer catálogo dos apps Medix/Marluvas (lê o pacote protegido com a senha da equipe; nada sai do aparelho além da gravação na base) ---------- */
 const APPSRC={marluvas:'/conversor-ca/teste/index.html',medix:'/medix-luvas/teste/index.html'};
@@ -1610,7 +1683,35 @@ async function finPainel(box){const de=mesIni(FST.y,FST.mo), ate=mesFim(FST.y,FS
     <div class="card"><b>📅 Vencem nos próximos 7 dias (${prox.length})</b>${prox.map(linha).join('')||'<p class="hint">Nada vencendo.</p>'}</div>
     <div class="card"><b>🏭 Comissões faturadas no mês</b><table class="t" style="margin-top:6px"><tr><th>Representada</th><th class="n">NFs</th><th class="n">Faturado</th><th class="n">Comissão</th></tr>${Object.entries(porRep).sort((a,b)=>b[1].c-a[1].c).map(([k,v])=>`<tr><td>${esc(repName(k))}</td><td class="n">${v.n}</td><td class="n">${brl(v.f)}</td><td class="n">${brl(v.c)}</td></tr>`).join('')||'<tr><td colspan="4" class="hint">Nenhuma NF-e importada neste mês.</td></tr>'}</table></div></div>`;
   box.onclick=e=>{const r=e.target.closest('[data-fl]'); if(r) finForm([...ab,...L1].find(x=>x.id==r.dataset.fl))}
+  finPECard(box);
   api('fin_xml_fila?select=id&processado=eq.false&limit=200').then(f=>{f=f.filter(x=>!FILA_PULADAS.has(x.id)); if(f.length&&box.isConnected) box.insertAdjacentHTML('afterbegin',`<button class="btn" data-fab="nfe" style="width:100%;margin-bottom:12px">📧 ${f.length} NF-e nova(s) do e-mail — importar agora</button>`)}).catch(()=>{})}
+
+/* ---------- ponto de equilíbrio: quanto a Chamaê precisa receber de comissão (e as fábricas faturarem) para cobrir as despesas fixas ---------- */
+const PE_FIXO=['pessoal','comercial','administrativa','financeiro'];
+async function finPECfg(){const r=await api('fin_config?select=valor&chave=eq.pe').catch(()=>[]); const c=Object.assign({meses:3,aliquota:null,vend:0,emprestimos:true,excluir:null},(r[0]||{}).valor||{});
+  if(!Array.isArray(c.excluir)) c.excluir=FIN.cats.filter(x=>x.tipo==='P'&&/rescis/i.test(x.nome)).map(x=>x.id); return c}
+async function finPE(){const c=await finPECfg(), hj=new Date(), y=hj.getFullYear(), mo=hj.getMonth(); const ini=ymd(new Date(Date.UTC(y,mo-c.meses,1))), fim=ymd(new Date(Date.UTC(y,mo,0)));
+  const [L1,N,P]=await Promise.all([api(`fin_lancamentos?select=categoria,valor,competencia,vencimento&tipo=eq.P&status=neq.cancelado&competencia=gte.${ini}&competencia=lte.${fim}`),
+    api(`fin_nfe?select=v_prod,comissao,emissao&cancelada=eq.false&emissao=gte.${maisDias(-120)}`),api(`pedidos?select=valor&data=gte.${mesIni(y,mo)}&data=lte.${mesFim(y,mo)}&or=(status.ilike.aprovado*,status.eq.finalizado)`).catch(()=>[])]);
+  const meses=new Set(L1.map(l=>(l.competencia||l.vencimento).slice(0,7))).size||1; const grupos={};
+  const entra=d=>PE_FIXO.includes(d)||(d==='impostos'&&c.aliquota==null)||(d==='emprestimo'&&c.emprestimos);
+  L1.forEach(l=>{if(c.excluir.includes(l.categoria)) return; const d=finCat(l.categoria).dre||'administrativa'; if(!entra(d)) return; grupos[d]=(grupos[d]||0)+(+l.valor||0)/meses});
+  const cf=Object.values(grupos).reduce((a,v)=>a+v,0), varp=((+c.aliquota||0)+(+c.vend||0))/100; const pe=varp<1?cf/(1-varp):0;
+  const fp=N.reduce((a,n)=>a+(+n.v_prod||0),0), cm=N.reduce((a,n)=>a+(+n.comissao||0),0); const regs=(FIN.regras||[]).filter(r=>r.pct!=null&&!r.rep.startsWith('_'));
+  const taxa=fp>0&&cm>0?cm/fp:(regs.length?regs.reduce((a,r)=>a+ +r.pct,0)/regs.length/100:0.03);
+  const mesN=N.filter(n=>n.emissao>=mesIni(y,mo)); const fatMes=mesN.reduce((a,n)=>a+(+n.v_prod||0),0), comMes=mesN.reduce((a,n)=>a+(+n.comissao||0),0), vendMes=P.reduce((a,p)=>a+(+p.valor||0),0);
+  let du=0; for(let d=new Date(hj); d.getMonth()===mo; d.setDate(d.getDate()+1)) if(d.getDay()%6) du++;
+  return {c,meses,grupos,cf,varp,pe,taxa,peFat:taxa?pe/taxa:0,fatMes,comMes,vendMes,du,ini,fim}}
+async function finPECard(box){let R; try{R=await finPE()}catch(e){return} if(!box.isConnected||!R.cf) return;
+  const barra=(v,meta,cor)=>`<div class="bt" style="height:12px;margin:4px 0 2px"><div style="height:100%;width:${Math.min(100,meta?v/meta*100:0).toFixed(1)}%;background:${cor};border-radius:6px"></div></div>`;
+  const falta=Math.max(0,R.peFat-R.vendMes); const nomes={pessoal:'Pessoal',comercial:'Comerciais',administrativa:'Administrativas',financeiro:'Financeiras',impostos:'Impostos (pagos)',emprestimo:'Parcelas de empréstimos'};
+  box.insertAdjacentHTML('beforeend',`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>⚖️ Ponto de equilíbrio da Chamaê</b><button class="chip" data-fab="aj">ajustar</button></div>
+   <p class="hint" style="margin:4px 0 10px">Média das despesas de ${dbr(R.ini).slice(3)} a ${dbr(R.fim).slice(3)} (${R.meses} ${R.meses>1?'meses':'mês'})${R.c.excluir.length?', sem as despesas não recorrentes marcadas':''}. Comissão média ${pct(R.taxa*100)} sobre o faturado${R.varp?`, impostos e vendedores ${pct(R.varp*100)} da comissão`:''}.</p>
+   <div class="kpis"><div class="kpi"><span class="hint">Despesas fixas por mês</span><b style="font-size:20px">${brl(R.cf)}</b></div><div class="kpi"><span class="hint">Comissão mínima por mês</span><b style="font-size:20px">${brl(R.pe)}</b></div>
+    <div class="kpi"><span class="hint">As fábricas precisam faturar</span><b style="font-size:20px;color:var(--accent)">${brl(R.peFat)}</b></div><div class="kpi"><span class="hint">Faltam vender neste mês</span><b class="${falta?'bad':'ok'}" style="font-size:20px">${falta?brl(falta):'✓ atingido'}</b><span class="hint">${falta&&R.du?brl(falta/R.du)+' por dia útil ('+R.du+' dias)':''}</span></div></div>
+   <div style="margin-top:10px"><div class="row" style="justify-content:space-between"><span>Vendido no mês (pedidos aprovados)</span><b>${brl(R.vendMes)} · ${pct(R.peFat?R.vendMes/R.peFat*100:0)}</b></div>${barra(R.vendMes,R.peFat,'var(--accent)')}
+    <div class="row" style="justify-content:space-between;margin-top:6px"><span>Faturado no mês (NF-e) · comissão ${brl(R.comMes)}</span><b>${brl(R.fatMes)} · ${pct(R.peFat?R.fatMes/R.peFat*100:0)}</b></div>${barra(R.fatMes,R.peFat,'var(--ok)')}</div>
+   <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Despesas fixas consideradas</summary><table class="t" style="margin-top:6px">${Object.entries(R.grupos).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(nomes[k]||k)}</td><td class="n">${brl(v)}</td></tr>`).join('')}</table></details></div>`)}
 
 /* ---------- contas a receber / a pagar ---------- */
 async function finLista(box){const tp=FST.ab, de=mesIni(FST.y,FST.mo), ate=mesFim(FST.y,FST.mo), h=hoje();
@@ -1824,7 +1925,7 @@ async function finDRE(box){const y=FST.y, cx=FST.dre==='caixa'; const L1=await a
     if(e.target.id==='fdx'){await loadXLSX(); const ws=XLSX.utils.aoa_to_sheet([['DRE '+y+(cx?' (caixa)':' (competência)'),...cols.map(i=>MESES[i]),'Ano'],...FDRE.map(([k,l])=>{const a=k.startsWith('=')?T[k]:g(k); return [l,...cols.map(i=>Math.round(a[i]*100)/100),Math.round(a.reduce((s,v)=>s+v,0)*100)/100]})]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'DRE'); XLSX.writeFile(wb,`DRE_${y}.xlsx`)}}}
 
 /* ---------- configurar: comissão por representada, contas bancárias, plano de contas ---------- */
-async function finAjustes(box){await finDados(true); if(!box.isConnected) return; const R=(REPS||[]).filter(r=>r.ativa);
+async function finAjustes(box){await finDados(true); const PC=await finPECfg(); if(!box.isConnected) return; const R=(REPS||[]).filter(r=>r.ativa);
   box.innerHTML=`<div class="card"><b>🏭 Comissão por representada</b><p class="hint">% fixo, ou pela tabela do pedido ligado à NF (Medix: SUDESTE 3 = 3%). Depois de mudar, use Recalcular na aba Comissões. Salva sozinho ao sair do campo. CNPJs emissores: o Sistema aprende ao importar a primeira nota de cada fábrica.</p>
     <div style="overflow-x:auto"><table class="t"><tr><th>Representada</th><th>Como calcula</th><th>% fixo</th><th>Base</th><th>Quando a fábrica paga</th><th>Dia</th><th>CNPJs das NF-e</th></tr>
     ${R.map(r=>{const g=finRegra(r.id); return `<tr data-rg="${r.id}" style="border-top:1px solid var(--line)"><td>${repIcon(r,16)} ${esc(r.nome)}</td><td><select data-k="modo"><option value="fixo"${g.modo!=='tabela'?' selected':''}>% fixo</option><option value="tabela"${g.modo==='tabela'?' selected':''}>Pela tabela do pedido</option></select>${g.modo==='tabela'?`<textarea data-k="tabelas" rows="2" style="margin-top:4px;min-width:170px" placeholder="Opcional, uma por linha: trecho do nome; %&#10;Sem nada: usa o número no fim do nome (SUDESTE 3 = 3%)">${esc(g.tabelas||'')}</textarea>`:''}</td><td><input data-k="pct" type="number" step="0.01" inputmode="decimal" value="${g.pct??''}" style="width:76px;padding:6px" placeholder="${g.modo==='tabela'?'se não achar':'%'}"></td>
@@ -1832,10 +1933,15 @@ async function finAjustes(box){await finDados(true); if(!box.isConnected) return
       <td><input data-k="dia" type="number" min="1" max="28" value="${g.dia??15}" style="width:58px;padding:6px" title="Dia do mês em que a comissão costuma cair"></td><td><input data-k="cnpjs" value="${esc((g.cnpjs||[]).join(', '))}" placeholder="aprende sozinho" style="min-width:150px;padding:6px"></td></tr>`}).join('')}<tr data-rg="_ignorar" style="border-top:1px solid var(--line)"><td>🚫 Ignorar</td><td colspan="4" class="hint">Notas destes CNPJs (fábricas que não representamos mais) nunca entram</td><td><input data-k="cnpjs" value="${esc((finRegra('_ignorar').cnpjs||[]).join(', '))}" placeholder="CNPJs" style="min-width:150px;padding:6px"></td></tr></table></div></div>
    <div class="card" style="margin-top:12px"><b>🏦 Contas bancárias</b>${FIN.contas.map(c=>`<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)${c.ativa?'':';opacity:.5'}"><span>${esc(c.nome)} <span class="hint">${esc(c.banco||'')} · saldo inicial ${brl(c.saldo_inicial)} em ${dbr(c.data_saldo)}</span></span><button class="chip" data-cta="${c.id}">${c.ativa?'Desativar':'Ativar'}</button></div>`).join('')||'<p class="hint">Nenhuma conta cadastrada.</p>'}
     <div class="row" style="margin-top:8px"><input id="fcn" placeholder="Nome (ex.: Itaú PJ)" style="flex:1;min-width:140px"><input id="fcb" placeholder="Banco / agência / conta" style="flex:1;min-width:140px"><input id="fcs" inputmode="decimal" placeholder="Saldo inicial R$" style="width:130px"><input id="fcd" type="date" value="${hoje()}"><button class="btn sm" id="fcadd">+ Conta</button></div></div>
+   <div class="card" style="margin-top:12px" id="fpecfg"><b>⚖️ Ponto de equilíbrio</b><p class="hint">Usa a média das despesas fixas dos últimos meses completos (pessoal, comerciais, administrativas e financeiras). Sem alíquota informada, os impostos pagos entram como despesa fixa.</p>
+    <div class="row"><label class="f">Meses na média<input data-pe="meses" type="number" min="1" max="12" value="${PC.meses}" style="width:90px"></label><label class="f">Impostos sobre a comissão (%)<input data-pe="aliquota" type="number" step="0.01" value="${PC.aliquota??''}" placeholder="ex.: Simples" style="width:150px"></label><label class="f">Comissão de vendedores (% da comissão)<input data-pe="vend" type="number" step="0.01" value="${PC.vend||''}" style="width:150px"></label><label class="f" style="align-self:end"><span><input data-pe="emprestimos" type="checkbox"${PC.emprestimos?' checked':''}> contar parcelas de empréstimos</span></label></div>
+    <div class="hint" style="margin-top:8px">Despesas não recorrentes (ficam fora da média):</div><div class="row" style="margin-top:4px">${FIN.cats.filter(c=>c.tipo==='P'&&c.ativa).map(c=>`<label class="chip" style="cursor:pointer"><input type="checkbox" data-peex="${esc(c.id)}"${PC.excluir.includes(c.id)?' checked':''}> ${esc(c.nome)}</label>`).join('')}</div></div>
    <div class="card" style="margin-top:12px"><b>📒 Plano de contas</b><div style="overflow-x:auto"><table class="t" style="margin-top:6px"><tr><th>Tipo</th><th>Grupo</th><th>Categoria</th><th>Linha da DRE</th><th></th></tr>
     ${FIN.cats.map(c=>`<tr style="border-top:1px solid var(--line)${c.ativa?'':';opacity:.5'}"><td>${c.tipo==='R'?'Receita':'Despesa'}</td><td>${esc(c.grupo)}</td><td>${esc(c.nome)}</td><td><select data-catdre="${esc(c.id)}">${FDRE.filter(([k])=>!k.startsWith('=')).map(([k,l])=>`<option value="${k}"${k===c.dre?' selected':''}>${l}</option>`).join('')}</select></td><td><button class="chip" data-cat="${c.id}">${c.ativa?'Ocultar':'Mostrar'}</button></td></tr>`).join('')}</table></div>
     <div class="row" style="margin-top:8px"><select id="ftt"><option value="P">Despesa</option><option value="R">Receita</option></select><input id="ftg" placeholder="Grupo (ex.: Administrativas)" style="flex:1;min-width:120px"><input id="ftn" placeholder="Categoria (ex.: Seguro)" style="flex:1;min-width:120px"><select id="ftd">${FDRE.filter(([k])=>!k.startsWith('=')).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select><button class="btn sm" id="ftadd">+ Categoria</button></div></div>`;
-  box.onchange=async e=>{const i=e.target, cd=i.closest('[data-catdre]'); if(cd){try{await api(`fin_categorias?id=eq.${encodeURIComponent(cd.dataset.catdre)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({dre:cd.value})}); cd.style.borderColor='var(--ok)'; await finDados(true)}catch(err){toast('Erro: '+err.message)} return} const tr=i.closest('[data-rg]'); if(!tr||!i.dataset.k) return; const k=i.dataset.k; let v=i.value;
+  box.onchange=async e=>{if(e.target.closest('#fpecfg')){const q=k=>box.querySelector(`[data-pe="${k}"]`); const v={meses:Math.min(12,Math.max(1,+q('meses').value||3)),aliquota:q('aliquota').value===''?null:+q('aliquota').value,vend:+q('vend').value||0,emprestimos:q('emprestimos').checked,excluir:[...box.querySelectorAll('[data-peex]:checked')].map(x=>x.dataset.peex)};
+      try{await api('fin_config?on_conflict=chave',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({chave:'pe',valor:v,atualizado_em:new Date().toISOString()})}); toast('Ponto de equilíbrio atualizado')}catch(err){toast('Erro: '+err.message)} return}
+    const i=e.target, cd=i.closest('[data-catdre]'); if(cd){try{await api(`fin_categorias?id=eq.${encodeURIComponent(cd.dataset.catdre)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({dre:cd.value})}); cd.style.borderColor='var(--ok)'; await finDados(true)}catch(err){toast('Erro: '+err.message)} return} const tr=i.closest('[data-rg]'); if(!tr||!i.dataset.k) return; const k=i.dataset.k; let v=i.value;
     if(k==='pct') v=v===''?null:+String(v).replace(',','.'); if(k==='dia') v=+v||15; if(k==='tabelas') v=v.trim()||null; if(k==='cnpjs') v=v.split(/[,;\s]+/).map(s=>s.replace(/\D/g,'')).filter(s=>s.length>=8);
     try{await api('fin_regras?on_conflict=rep',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({rep:tr.dataset.rg,[k]:v,atualizado_em:new Date().toISOString()})}); i.style.borderColor='var(--ok)'; await finDados(true); if(k==='modo') finAjustes(box)}catch(err){toast('Erro: '+err.message)}};
   box.onclick=async e=>{const t=e.target; try{

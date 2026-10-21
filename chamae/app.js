@@ -35,7 +35,7 @@ $('#lcria').onclick=async()=>{const em=$('#le').value.trim().toLowerCase(), pw=$
 async function afterLogin(){try{let p; try{p=await api('perfis?select=*&id=eq.'+sess.uid)}catch(_){p=await api('perfis?select=id,nome,email,papel&id=eq.'+sess.uid)} perfil=p[0]||null; S('perfil',perfil)}catch(e){}
   if(perfil&&perfil.aprovado===false){sess=null; S('sess',null); return showLock('Seu acesso está aguardando aprovação de um gestor (Mais › Equipe).')}
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
-  $('#lock').hidden=true; $('#nav').hidden=false; $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email;
+  $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email;
   w.onclick=()=>go('aj'); if(!window._bootCedo) go(L('route')||'home'); window._bootCedo=false; contaTarefas(); iniciarLembretes()}
 
 /* ---------- dados ---------- */
@@ -85,13 +85,47 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-app]'); if
 const Q=()=>L('quotes')||{}; const setQ=q=>{LS('quotes',q); badge()};
 const curQ=rep=>{const q=Q(); return q[rep]||(q[rep]={rep,itens:[],tabela:null,cli:null,transp:0,prazo:'',obs:'',id:String(Date.now())})};
 function saveQ(o){const q=Q(); q[o.rep]=o; setQ(q)}
-function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); const b=$('#qn'); b.hidden=!n; b.textContent=n}
+function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); const b=$('#qn'); if(!b) return; b.hidden=!n; b.textContent=n}
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); const nr=['rel','aj','reps','busca','admin','equipe','metas','fin'].includes(r)?'mais':r==='rep'?'home':r; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===nr)); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView}[r]||home)()}
+function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView}[r]||home)()}
 $('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
+
+/* ---------- barra de baixo: cada um escolhe os atalhos (Início e Mais ficam fixos) ---------- */
+const NAVSVG=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${d}</svg>`;
+const NAVOPC=[['cli','Clientes','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/>'],
+  ['tar','Tarefas','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/>','tn'],
+  ['orc','Orçamento','<path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/>','qn'],
+  ['ped','Pedidos','<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'],
+  ['prod','Produtos','<path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/>'],
+  ['fin','Financeiro','<rect x="2.5" y="6" width="19" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.8"/><path d="M6 9.5v.01M18 15.5v.01"/>'],
+  ['trans','Transmitir','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'],
+  ['rel','Relatórios','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
+  ['metas','Metas','<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'],
+  ['reps','Representadas','<path d="M3 21V10l6 3V8l6 3V4h6v17z"/>'],
+  ['busca','Buscar','<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6"/>']];
+const NAVPAD=['cli','tar','orc','ped','prod'], NAVMAX=6;
+const navOk=k=>NAVOPC.some(o=>o[0]===k)&&(k!=='fin'||FIN_ON());
+function navSel(){const s=(perfil&&perfil.nav)||L('nav_'+(sess&&sess.uid)); return (Array.isArray(s)&&s.length?s:NAVPAD).filter(navOk).slice(0,NAVMAX)}
+function montaNav(){const n=$('#nav'); if(!n) return; const b=(k,l,d,bd)=>`<button data-go="${k}">${NAVSVG(d)}${bd?`<span>${l} <span class="badge" id="${bd}" hidden>0</span></span>`:l}</button>`;
+  n.innerHTML=b('home','Início','<path d="M3 11l9-7 9 7v9H5v-9"/>')+navSel().map(k=>{const o=NAVOPC.find(x=>x[0]===k); return b(...o)}).join('')+b('mais','Mais','<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>')+`<span id="navAdm" hidden></span>`;
+  navMarca(); badge(); if(sess) contaTarefas()}
+function navMarca(){const tem=[...document.querySelectorAll('nav button')].some(b=>b.dataset.go===route); const nr=tem?route:route==='rep'?'home':'mais'; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===nr))}
+function navEditar(){let sel=navSel(); const ov=document.createElement('div'); ov.className='ov';
+  const draw=()=>{const ord=[...sel,...NAVOPC.map(o=>o[0]).filter(k=>navOk(k)&&!sel.includes(k))];
+    ov.innerHTML=`<div class="sh"><div class="row" style="justify-content:space-between"><div class="sec" style="font-size:20px;margin:0">Barra de atalhos</div><button class="chip" data-nx>Fechar</button></div>
+     <p class="hint">Escolha até ${NAVMAX} atalhos para a barra (Início e Mais ficam sempre). Use ▲▼ para mudar a ordem. Vale só para o seu usuário.</p>
+     ${ord.map(k=>{const o=NAVOPC.find(x=>x[0]===k), on=sel.includes(k), i=sel.indexOf(k); return `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><label class="row" style="gap:10px;cursor:pointer"><input type="checkbox" data-nk="${k}"${on?' checked':''} style="width:22px;height:22px"><span style="width:22px;display:inline-grid">${NAVSVG(o[2])}</span><b>${o[1]}</b></label>${on?`<div class="row"><button class="chip" data-nu="${k}"${i===0?' disabled':''}>▲</button><button class="chip" data-nd="${k}"${i===sel.length-1?' disabled':''}>▼</button></div>`:''}</div>`}).join('')}
+     <div class="row" style="justify-content:space-between;margin-top:12px"><button class="btn ghost sm" data-npad>Voltar ao padrão</button><button class="btn" data-nsv>Salvar</button></div></div>`};
+  draw(); document.body.appendChild(ov);
+  ov.onclick=async e=>{const t=e.target; if(t===ov||t.closest('[data-nx]')) return ov.remove();
+    const u=t.closest('[data-nu],[data-nd]'); if(u){const k=u.dataset.nu||u.dataset.nd, i=sel.indexOf(k), j=u.dataset.nu?i-1:i+1; [sel[i],sel[j]]=[sel[j],sel[i]]; return draw()}
+    if(t.closest('[data-npad]')){sel=NAVPAD.filter(navOk); return draw()}
+    if(t.closest('[data-nsv]')){LS('nav_'+sess.uid,sel); if(perfil) perfil.nav=sel; S('perfil',perfil); montaNav(); ov.remove(); toast('Barra atualizada');
+      try{await api('perfis?id=eq.'+sess.uid,{method:'PATCH',body:JSON.stringify({nav:sel})})}catch(e){} }};
+  ov.onchange=e=>{const c=e.target.closest('[data-nk]'); if(!c) return; const k=c.dataset.nk; if(c.checked){if(sel.length>=NAVMAX){toast(`No máximo ${NAVMAX} atalhos`); c.checked=false; return} sel.push(k)} else sel=sel.filter(x=>x!==k); draw()}}
 
 /* ---------- início ---------- */
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
@@ -1327,8 +1361,8 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
 
 /* ================= Mais ================= */
 function mais(){const m=$('#main'); const it=[['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🎯','Metas do mês'],['reps','🏭','Representadas'],['busca','🔍','Buscar'],['aj','⚙️','Ajustes'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Importar produtos e tabelas'],['equipe','👥','Equipe e acessos']]:[])];
-  m.innerHTML=`<div class="sec">Mais</div><div class="reps">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div><div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
+  m.onclick=e=>{if(e.target.closest('[data-navedit]')) return navEditar(); const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
 
 /* ================= botão Sincronizar Reprio ================= */
 async function sincronizarReprio(btn){if(!RK()){toast('Coloque a chave do Reprio em Mais › Ajustes'); return go('aj')} const lb=btn?btn.textContent:''; if(btn){btn.disabled=true; btn.textContent='Sincronizando…'}
@@ -1968,5 +2002,5 @@ async function finAjustes(box){await finDados(true); const PC=await finPECfg(); 
 /* ---------- início ---------- */
 badge();
 /* já tem login salvo: abre direto e confere em segundo plano (a tela de login só aparece se o acesso tiver expirado de verdade) */
-if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email; w.onclick=()=>go('aj'); window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
+if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email; w.onclick=()=>go('aj'); window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
 })();

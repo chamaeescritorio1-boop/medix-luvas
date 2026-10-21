@@ -883,25 +883,59 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   $('#ajSair').onclick=()=>{if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}};
   try{const [u]=await api('pedidos?select=data,num&origem=eq.reprio&order=data.desc&limit=1'); $('#ajSync').innerHTML=u?`Pedidos do Reprio sincronizados automaticamente a cada 2 horas. Último pedido recebido: <b>${esc(u.data.split('-').reverse().join('/'))}</b> (nº ${esc(u.num)}).`:'Nenhum pedido do Reprio sincronizado ainda.'}catch(e){$('#ajSync').textContent='Não consegui verificar agora.'}}
 
-/* ---------- minha semana ---------- */
+/* ---------- minha semana: meta da semana + na hora de comprar ---------- */
 const meuVend=()=>norm(meuNome()||'').split(/[\s.@_-]+/)[0];
 const dias=d=>Math.floor((Date.now()-new Date(d+'T12:00:00'))/864e5);
-async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===true; const eu=meuVend();
+const ymdL=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const diaUtil=d=>d.getDay()%6!==0;
+const uteisMes=(y,mo)=>{let n=0; for(const d=new Date(y,mo,1);d.getMonth()===mo;d.setDate(d.getDate()+1)) if(diaUtil(d)) n++; return n};
+/* ciclo de compra = mediana dos intervalos entre pedidos (cliente × representada, 12 meses, pelo menos 3 datas); "na hora" = entre 85% e 150% do ciclo */
+function naHoraDeComprar(P,C,mine){const G={}, hoje=ymdL(new Date());
+  P.forEach(x=>{const k=String(x.cnpj||'').replace(/\D/g,''); if(!k||!x.data||x.data>hoje) return; const g=G[k+'|'+x.representada]=G[k+'|'+x.representada]||{cnpj:k,rep:x.representada,ds:new Set(),v:''}; g.ds.add(x.data); if(!g.u||x.data>=g.u){g.u=x.data; g.v=x.vendedor||''}});
+  const byC={}; C.forEach(c=>byC[c.cnpj]=c); const out=[];
+  Object.values(G).forEach(g=>{if(g.ds.size<3||!mine(g.v)) return; const ds=[...g.ds].sort(), gap=[]; for(let i=1;i<ds.length;i++) gap.push(Math.round((new Date(ds[i])-new Date(ds[i-1]))/864e5));
+    gap.sort((a,b)=>a-b); const ciclo=gap[gap.length>>1]; if(ciclo<7||ciclo>180) return; const d=dias(g.u), r=d/ciclo; if(r<.85||r>1.5) return;
+    out.push({...g,n:(byC[g.cnpj]||{}).n||g.cnpj,ciclo,d,r})});
+  return out.sort((a,b)=>Math.abs(a.r-1)-Math.abs(b.r-1))}
+/* vai inativar: cada representada tem seu prazo (regras.inativa_dias, em Políticas comerciais); avisa quem está a até 20 dias de passar do prazo naquela fábrica */
+function vaiInativar(C,R,mine){const PZ={}; R.forEach(r=>{const n=+(r.regras||{}).inativa_dias; if(n>0) PZ[HIST_REP[r.id]||r.nome]=n}); const out=[];
+  C.forEach(c=>Object.values(c.reps).forEach(x=>{const pz=PZ[x.representada]; if(!pz||!x.ultimo||!mine(x.vendedor)) return; const d=dias(x.ultimo), f=pz-d; if(f>=0&&f<=20) out.push({cnpj:c.cnpj,n:c.n,rep:x.representada,d,f})}));
+  return {temPz:Object.keys(PZ).length>0,L:out.sort((a,b)=>a.f-b.f)}}
+async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===true; const eu=meuVend(); let todos=false, viR='', viT=false;
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
-  try{const ini=new Date(); const mIni=`${ini.getFullYear()}-${String(ini.getMonth()+1).padStart(2,'0')}-01`;
-    const [C,O,P]=await Promise.all([clientes(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=representada,valor,vendedor,data:data_ref&data_ref=gte.${mIni}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).catch(()=>[])]);
-    const meuC=c=>!so||!eu||Object.values(c.reps).some(x=>norm(x.vendedor||'').startsWith(eu));
-    const rec=[]; C.filter(meuC).forEach(c=>Object.values(c.reps).forEach(x=>{if(!x.ultimo) return; const d=dias(x.ultimo); if(d>=30&&d<=120) rec.push({c,x,d})}));
-    rec.sort((a,b)=>a.d-b.d); const b30=rec.filter(r=>r.d<60).length,b60=rec.filter(r=>r.d>=60&&r.d<90).length,b90=rec.filter(r=>r.d>=90).length;
+  try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
+    const a12=new Date(hj); a12.setFullYear(hj.getFullYear()-1); const meses=[...new Set(wd.map(d=>d.getFullYear()*12+d.getMonth()))];
+    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a12)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
+    const mine=v=>!so||!eu||norm(v||'').startsWith(eu);
+    /* meta da semana: meta do mês ÷ dias úteis do mês × dias úteis desta semana (seg–sex) */
+    const metaRep=M=>{const o={}; M.filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; o[r]=(o[r]||0)+(+x.valor||0)}); return o};
+    const MR={}; meses.forEach((k,i)=>MR[k]=metaRep(MM[i]));
+    const meta={}, vend={}; wd.forEach(d=>{const k=d.getFullYear()*12+d.getMonth(), u=uteisMes(d.getFullYear(),d.getMonth()); Object.entries(MR[k]).forEach(([r,v])=>meta[r]=(meta[r]||0)+v/u)});
+    const s0=ymdL(seg), s1=ymdL(dom); P.forEach(x=>{if(x.data>=s0&&x.data<=s1&&mine(x.vendedor)) vend[x.representada]=(vend[x.representada]||0)+(+x.valor||0)});
+    const mT=Object.values(meta).reduce((a,b)=>a+b,0), vT=Object.values(vend).reduce((a,b)=>a+b,0), rest=wd.filter(d=>d>=hj).length, falta=Math.max(0,mT-vT);
+    const linhas=[...new Set([...Object.keys(meta).filter(r=>meta[r]>0),...Object.keys(vend)])].sort((a,b)=>(meta[b]||0)-(meta[a]||0)||(vend[b]||0)-(vend[a]||0));
+    const bar=(v,m)=>m?`<div class="mbar"><i style="width:${Math.min(100,v/m*100)}%${v>=m?'':';background:var(--warn)'}"></i></div>`:'';
+    const metaHtml=`<div class="card grid"><div class="row" style="justify-content:space-between"><b>🎯 Meta da semana</b><span class="hint">${seg.getDate()}/${seg.getMonth()+1} a ${wd[4].getDate()}/${wd[4].getMonth()+1}</span></div>
+      ${mT?`<div class="tot" style="margin:0"><span class="hint" style="font-family:var(--body);font-size:13px">${brl(vT)} de ${brl(mT)}</span><b class="${vT>=mT?'ok':''}">${(vT/mT*100).toFixed(0)}%</b></div>${bar(vT,mT)}
+      <p style="margin:0">${falta?(rest?`Falta <b>${brl(falta)}</b> · <b>${brl(falta/rest)}</b> por dia útil (${rest} ${rest>1?'dias':'dia'})`:`Semana fechou faltando <b>${brl(falta)}</b>`):'Meta da semana batida ✅'}</p>`
+      :`<p class="hint" style="margin:0">Sem meta${so?' sua':''} cadastrada para este mês. <a href="#" data-gometas>Definir metas</a></p>${vT?`<div class="tot" style="margin:0"><span class="hint" style="font-family:var(--body);font-size:13px">Vendido na semana</span><b>${brl(vT)}</b></div>`:''}`}
+      ${linhas.map(r=>{const m=meta[r]||0, v=vend[r]||0; return `<div><div class="row" style="justify-content:space-between;font-size:14px"><span>${esc(r)}</span><span>${brl(v)}${m?` <span class="hint">/ ${brl(m)}</span>`:''}</span></div>${bar(v,m)}</div>`}).join('')||(mT?'':'<p class="hint" style="margin:0">Nenhum pedido nesta semana ainda.</p>')}</div>`;
+    const NH=naHoraDeComprar(P,C,mine), VI=vaiInativar(C,RR,mine);
+    const viHtml=()=>{const L=VI.L.filter(x=>!viR||x.rep===viR), cnt={}; VI.L.forEach(x=>cnt[x.rep]=(cnt[x.rep]||0)+1);
+      return `<b>⏳ Vai inativar</b>${!VI.temPz?'<p class="hint" style="margin:0">Defina em quantos dias sem comprar o cliente inativa em cada fábrica: <a href="#" data-gorep>Representadas › Políticas comerciais</a>.</p>':`${Object.keys(cnt).length>1?`<div class="row" style="gap:6px"><button class="chip${viR?'':' on'}" data-vir="">Todas (${VI.L.length})</button>${Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<button class="chip${viR===k?' on':''}" data-vir="${esc(k)}">${esc(k)} (${n})</button>`).join('')}</div>`:''}
+      ${(viT?L:L.slice(0,6)).map(x=>`<button class="chip" style="text-align:left" data-pc="${esc(x.cnpj)}" data-pl="vi"><b>${esc(x.n)}</b> · ${esc(x.rep)}<br><span class="hint">sem comprar há ${x.d} dias ·</span> <span class="${x.f<=7?'bad':'warn'}">${x.f?`inativa em ${x.f} ${x.f>1?'dias':'dia'}`:'inativa hoje'}</span></button>`).join('')||'<p class="hint" style="margin:0">Ninguém perto de inativar nos próximos 20 dias. 👏</p>'}${L.length>6?`<button class="chip" data-vim style="justify-self:start">${viT?'Mostrar menos':`Ver todos (${L.length})`}</button>`:''}`}`};
     const par=O.filter(o=>(!so||o.user_id===sess.uid)&&['orcamento','aguardando_aprovacao','aguardando_atg'].includes(stOf(o))&&dias(o.atualizado_em.slice(0,10))>=5).slice(0,6);
-    const Pm=P.filter(x=>!so||!eu||norm(x.vendedor||'').startsWith(eu)); const porRep={}; Pm.forEach(x=>porRep[x.representada]=(porRep[x.representada]||0)+(+x.valor||0)); const tot=Object.values(porRep).reduce((a,b)=>a+b,0);
     const stl=k=>(STATUS.find(s=>s[0]===k)||[,k])[1];
+    const nhHtml=()=>`<b>🛒 Na hora de comprar</b><p class="hint" style="margin:0">Clientes chegando no tempo em que costumam comprar de cada fábrica.</p>${(todos?NH:NH.slice(0,6)).map(x=>`<button class="chip" style="text-align:left" data-pc="${esc(x.cnpj)}"><b>${esc(x.n)}</b> · ${esc(x.rep)}<br><span class="hint">compra a cada ${x.ciclo} dias ·</span> <span class="${x.d>x.ciclo?'warn':'ok'}">${x.d>x.ciclo?`passou ${x.d-x.ciclo} ${x.d-x.ciclo>1?'dias':'dia'}`:`está com ${x.d}`}</span></button>`).join('')||'<p class="hint" style="margin:0">Ninguém no ponto de compra agora.</p>'}${NH.length>6?`<button class="chip" data-nhm style="justify-self:start">${todos?'Mostrar menos':`Ver todos (${NH.length})`}</button>`:''}`;
     box.innerHTML=`<div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Minha semana</div><div class="row"><button class="chip${so?' on':''}" data-sm="1">Só meus</button><button class="chip${so?'':' on'}" data-sm="0">Equipe toda</button></div></div>
-    <div class="sem">${priv?'':`<div class="card grid"><b>Vendas no mês</b><div class="tot" style="margin:0"><span class="hint" style="font-family:var(--body);font-size:13px">${Pm.length} pedidos</span><b>${brl(tot)}</b></div>${Object.entries(porRep).sort((a,b)=>b[1]-a[1]).map(([r,v])=>`<div class="row" style="justify-content:space-between"><span>${esc(r)}</span><span>${brl(v)}</span></div>`).join('')||'<p class="hint">Nenhum pedido ainda neste mês.</p>'}</div>
-     `}<div class="card grid"><b>Clientes para recontatar</b><div class="row"><span class="chip">30–59 dias: <b>${b30}</b></span><span class="chip">60–89: <b>${b60}</b></span><span class="chip">90–120: <b class="bad">${b90}</b></span></div>${rec.slice(0,6).map(r=>`<button class="chip" style="text-align:left" data-bq="${esc(r.c.cnpj)}"><b>${esc(r.c.n)}</b> · ${esc(r.x.representada)} · <span class="${r.d>=90?'bad':r.d>=60?'warn':''}">${r.d} dias</span></button>`).join('')}</div>
+    <div class="sem">${metaHtml}<div class="card grid" data-nh>${nhHtml()}</div><div class="card grid" data-vi>${viHtml()}</div>
      <div class="card grid" id="sgAl" hidden></div><div class="card grid"><b>Orçamentos parados</b>${par.map(o=>`<button class="chip" style="text-align:left" data-bo="${esc(o.cliente||'')}"><b>${esc(o.cliente||'Sem cliente')}</b> · ${esc(repName(o.app))}${priv?'':' · '+brl(o.total)} · ${esc(stl(stOf(o)))} · ${dias(o.atualizado_em.slice(0,10))} dias</button>`).join('')||'<p class="hint">Nada parado há mais de 5 dias. 👏</p>'}</div></div>`;
     alertaSigma(box.querySelector('#sgAl'),so);
-    box.onclick=e=>{const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box)} const q=e.target.closest('[data-bq]'); if(q){e.stopPropagation(); return go('busca',{q:q.dataset.bq})} const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
+    box.onclick=e=>{const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box,priv)} if(e.target.closest('[data-gometas]')){e.preventDefault(); e.stopPropagation(); return go('metas')}
+      if(e.target.closest('[data-nhm]')){todos=!todos; box.querySelector('[data-nh]').innerHTML=nhHtml(); return} const vb=e.target.closest('[data-vir],[data-vim]'); if(vb){if(vb.dataset.vir!=null){viR=vb.dataset.vir; viT=false} else viT=!viT; box.querySelector('[data-vi]').innerHTML=viHtml(); return}
+      if(e.target.closest('[data-gorep]')){e.preventDefault(); e.stopPropagation(); return go('reps')}
+      const c=e.target.closest('[data-pc]'); if(c){e.stopPropagation(); return painelCliente(c.dataset.pc,(c.dataset.pl?VI.L.filter(x=>!viR||x.rep===viR):NH).map(x=>x.cnpj))}
+      const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
   catch(e){box.innerHTML=''}}
 
 /* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo, agrupados por orçamento */
@@ -1102,7 +1136,7 @@ async function limparCarrinho(rep,silent){const qq=Q(); const o=qq[rep]; if(!o) 
 
 /* ================= Representadas: cadastro completo ================= */
 const REP_F=[['razao','Razão social'],['cnpj','CNPJ'],['site','Site'],['portal','Portal / sistema da fábrica (link)'],['endereco','Endereço'],['cidade','Cidade/UF'],['telefone','Telefone'],['email','E-mail geral']];
-const REP_C=[['pedido_min','Pedido mínimo (R$)','number'],['frete','Política de frete (aparece no orçamento)'],['comissao','Comissão (%)','number'],['ipi_info','IPI / impostos (observação)'],['prazo_entrega','Prazo de entrega padrão'],['descontos','Descontos / campanhas vigentes']];
+const REP_C=[['pedido_min','Pedido mínimo (R$)','number'],['frete','Política de frete (aparece no orçamento)'],['comissao','Comissão (%)','number'],['ipi_info','IPI / impostos (observação)'],['prazo_entrega','Prazo de entrega padrão'],['inativa_dias','Cliente inativa após (dias sem comprar)','number'],['descontos','Descontos / campanhas vigentes']];
 async function admReps(){const m=$('#main'); if(ctx.rid!==undefined) return fichaRep(ctx.rid); const R=await reps(true); if(!m.isConnected) return;
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div>${ehGestor()?'<button class="btn sm" id="rnova">+ Nova representada</button>':''}</div><p class="hint">Dados, políticas, prazos de pagamento, contatos internos e arquivos de cada fábrica.</p>
    <div class="reps">${R.map(r=>`<button class="rep${r.ativa?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rid="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.ativa?'':'inativa · '}${r.n||0} produtos · ${((r.regras||{}).contatos||[]).length} contatos</small></button>`).join('')}</div>`;

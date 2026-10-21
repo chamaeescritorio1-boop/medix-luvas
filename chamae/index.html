@@ -43,6 +43,9 @@ label.f{display:grid;gap:5px;font-size:12px;color:var(--muted)}
 .pc .d{font-size:13px;color:var(--muted);line-height:1.3}
 .pc .pr{font-size:20px;font-weight:700;color:var(--accent)} .pc .pr small{font-size:12px;color:var(--muted);font-weight:500}
 .tags{display:flex;gap:4px;flex-wrap:wrap} .tag{font-size:11px;padding:2px 7px;border-radius:6px;background:#21263d;color:var(--ink)}
+.tag.rt{background:transparent;border:1px solid currentColor;white-space:nowrap;font-weight:700}.tag.rt.ok{color:var(--ok)}.tag.rt.warn{color:var(--warn)}.tag.rt.bad{color:var(--bad)}
+.pcb{margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}.pcb>summary{cursor:pointer}.pcb .hint{margin:2px 0}
+.pcl{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
 .qty{display:flex;align-items:center;gap:6px} .qty button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);font-size:18px;cursor:pointer} .qty input{width:70px;text-align:center;padding:7px}
 table.t{width:100%;border-collapse:collapse;font-size:13px} table.t th,table.t td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top} table.t .n{text-align:right;white-space:nowrap}
 .tot{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--display);font-size:26px;margin-top:8px} .tot b{color:var(--accent)}
@@ -127,7 +130,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202610222100"></script>
+<script src="app.js?v=202610222200"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

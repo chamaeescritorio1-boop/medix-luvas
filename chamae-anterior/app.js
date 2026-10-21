@@ -65,8 +65,10 @@ const TRANSP={marcon:[{n:'Cliente retira (FOB)',p:0},{n:'Alfa Transportes FOB (~
 const EXTERNAL={marluvas:'/conversor-ca/teste/',medix:'/medix-luvas/teste/'};
 
 /* ---------- apps Marluvas/Medix dentro do Sistema: mesmo login, volta ao início sem recarregar ---------- */
+/* senha da equipe vem da base: conversores (app ou ⇄ Converter CA) abrem sem pedir senha */
+async function garantirTp(){let tp=null; try{tp=localStorage.getItem('chamae_tp')}catch(_){} if(tp) return tp; try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]){localStorage.setItem('chamae_tp',sg[0].valor); return sg[0].valor}}catch(e){} return null}
 async function abrirApp(rep){if(!EXTERNAL[rep]) return; let ov=document.getElementById('appOv-'+rep);
-  if(!ov&&!localStorage.getItem('chamae_tp')){try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}} /* senha da equipe vem da base: o app abre sem pedir */
+  if(!ov) await garantirTp();
   if(!ov){ov=document.createElement('div'); ov.id='appOv-'+rep; ov.className='appov'; ov.style.cssText='position:fixed;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column';
     ov.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px;background:#1c2340;color:#fff"><button class="btn sm" data-fechaapp>‹ Início</button><b style="font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.03em">${esc(repName(rep))}</b></div><iframe title="${esc(repName(rep))}" src="${EXTERNAL[rep]}?inapp=1" style="flex:1;border:0;width:100%;background:#fff"></iframe>`;
     document.body.appendChild(ov)}
@@ -205,7 +207,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   render()}
 
 /* ---------- conversor de CA (o mesmo motor dos apps, embutido; só Marluvas e Medix) ---------- */
-function abrirCA(rep,o,q){const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
+async function abrirCA(rep,o,q){await garantirTp(); const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh" style="max-width:960px;width:100%;height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"><div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">⇄ Converter CA · ${esc(repName(rep))}</b><span class="hint" id="caN">Toque em “+ orçamento” no produto escolhido</span><button class="btn sm" id="caX">Concluir</button></div><iframe title="Conversor de CA" src="${EXTERNAL[rep]}?embed=1&canal=${encodeURIComponent(canal)}${q?'&q='+encodeURIComponent(q):''}" style="flex:1;border:0;width:100%;background:#fff"></iframe></div>`;
   document.body.appendChild(ov); let n=0;
   const onm=async e=>{if(e.origin!==location.origin||!e.data||e.data.t!=='chamae-add'||e.data.rep!==rep) return; const C=await catalog(rep); const P=await prices(o.tabela); const lst=e.data.items||[{ref:e.data.ref,cod:e.data.cod,qt:null}]; const falta=[];
@@ -665,7 +667,7 @@ async function prevJobs(rep,jobs,C,T,pv){
 const APPSRC={marluvas:'/conversor-ca/teste/index.html',medix:'/medix-luvas/teste/index.html'};
 const MDX_LN={SAFE:'Safety',PROF:'Profissional',HOSP:'Hospitalar',VF:'Vida Fácil'};
 const APPC={}; function lerApp(rep){return APPC[rep]||(APPC[rep]=lerApp0(rep).catch(e=>{delete APPC[rep]; throw e}))}
-async function lerApp0(rep){const tp=localStorage.getItem('chamae_tp'); if(!tp) throw new Error('Saia e entre de novo no sistema para liberar os apps.');
+async function lerApp0(rep){const tp=await garantirTp(); if(!tp) throw new Error('Não consegui liberar o app (sem conexão com a base). Tente de novo.');
   const h=await (await fetch(APPSRC[rep]+'?v='+Date.now(),{cache:'no-store'})).text(); const m=h.match(/const ENC=\{s:"([^"]+)",i:"([^"]+)",d:"([^"]+)",n:(\d+)\}/); if(!m) throw new Error('Não encontrei o pacote do app.');
   const ub=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0)); const bk=await crypto.subtle.importKey('raw',new TextEncoder().encode(tp),'PBKDF2',false,['deriveBits']);
   const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:ub(m[1]),iterations:+m[4],hash:'SHA-256'},bk,256); const k=await crypto.subtle.importKey('raw',bits,'AES-GCM',false,['decrypt']);

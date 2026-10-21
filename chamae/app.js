@@ -58,7 +58,8 @@ const TRANSP={marcon:[{n:'Cliente retira (FOB)',p:0},{n:'Alfa Transportes FOB (~
 const EXTERNAL={marluvas:'/conversor-ca/teste/',medix:'/medix-luvas/teste/'};
 
 /* ---------- apps Marluvas/Medix dentro do Sistema: mesmo login, volta ao início sem recarregar ---------- */
-function abrirApp(rep){if(!EXTERNAL[rep]) return; let ov=document.getElementById('appOv-'+rep);
+async function abrirApp(rep){if(!EXTERNAL[rep]) return; let ov=document.getElementById('appOv-'+rep);
+  if(!ov&&!localStorage.getItem('chamae_tp')){try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}} /* senha da equipe vem da base: o app abre sem pedir */
   if(!ov){ov=document.createElement('div'); ov.id='appOv-'+rep; ov.className='appov'; ov.style.cssText='position:fixed;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column';
     ov.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px;background:#1c2340;color:#fff"><button class="btn sm" data-fechaapp>‹ Início</button><b style="font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.03em">${esc(repName(rep))}</b></div><iframe title="${esc(repName(rep))}" src="${EXTERNAL[rep]}?inapp=1" style="flex:1;border:0;width:100%;background:#fff"></iframe>`;
     document.body.appendChild(ov)}

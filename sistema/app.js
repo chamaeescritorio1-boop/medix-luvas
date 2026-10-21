@@ -273,12 +273,12 @@ const vendNome=o=>o.vend||(meuNome()||'');
 /* lista bruta: descontos comercial e de pagamento escolhidos pelo vendedor, item a item */
 const ehBruta=p=>/BRUTA/.test(norm((p.attrs||{}).obs||''));
 const leadTime=p=>{const m=String((p.attrs||{}).obs||'').match(/lead\s*time\s*:?\s*(\d+)/i); const d=m?m[1]:(p.attrs||{}).prazo; return d!=null&&d!==''?String(d):''};
-function descBruta(rep,o,p){if(!ehBruta(p)) return null; const r=((REPS||[]).find(x=>x.id===rep)||{}); const g=r.regras||{}; const padrao=rep==='marcon'; let com=g.db_com!=null?+g.db_com:(padrao?5:0), pag=g.db_pag!=null?+g.db_pag:(padrao?3:0);
+function descBruta(rep,o,p){if(!ehBruta(p)) return null; if(rep==='marcon'&&ehGurgel(((TABS[rep]||[]).find(t=>t.id==o.tabela)||{}).nome)) return null; /* Gurgelmix: o preço da tabela já tem os descontos 2/5/3/4 */ const r=((REPS||[]).find(x=>x.id===rep)||{}); const g=r.regras||{}; const padrao=rep==='marcon'; let com=g.db_com!=null?+g.db_com:(padrao?5:0), pag=g.db_pag!=null?+g.db_pag:(padrao?3:0);
   const cn=String((o.cli&&o.cli.cnpj)||o.cnpj||'').replace(/\D/g,''); const gr=norm(grupoOf(rep,p));
   String(g.db_exc||'').split(/\n/).forEach(l=>{const [c,gp,pg,cm]=l.split(';').map(x=>(x||'').trim()); if(!c) return; const cc=c.replace(/\D/g,''); if(!cc||!cn.startsWith(cc.slice(0,8))) return; if(gp&&!gr.includes(norm(gp))&&!norm(gp).includes(gr)) return; if(pg!=='') pag=+String(pg).replace(',','.')||pag; if(cm!=null&&cm!=='') com=+String(cm).replace(',','.')||com});
   return com||pag?{com,pag}:null}
 async function linhasDe(o){const C=await catalog(o.rep).catch(()=>[]); const P=o.tabela?await prices(o.tabela):{};
-  return o.itens.map(i=>{const p=C.find(x=>x.id===i.pid)||{}; const pr=P[i.pid]||{}; const plista=pr.liq||0; const db=descBruta(o.rep,o,p); const f=(db&&i.dc?1-db.com/100:1)*(db&&i.dp?1-db.pag/100:1); const ptab=Math.round(plista*f*100)/100; const pu=i.pu!=null?+i.pu:ptab; return {i,p,pu,ptab,plista,db,lt:leadTime(p),neg:i.pu!=null,icms:pr.icms,tot:pu*i.qt,ipiv:pu*i.qt*(+p.ipi||0)/100}})}
+  return o.itens.map(i=>{const p=C.find(x=>x.id===i.pid)||{}; const pr=P[i.pid]||{}; const plista=pr.liq||0; const db=descBruta(o.rep,o,p); const f=(db&&i.dc?1-db.com/100:1)*(db&&i.dp?1-db.pag/100:1); const ptab=rHU(plista*f); const pu=i.pu!=null?+i.pu:ptab; return {i,p,pu,ptab,plista,db,lt:leadTime(p),neg:i.pu!=null,icms:pr.icms,tot:pu*i.qt,ipiv:pu*i.qt*(+p.ipi||0)/100}})}
 function textoCliente(o,rows,tt){const c=o.cli; return `Olá${c?', '+(c.fa||c.n):''}! Segue o orçamento ${repName(o.rep)}:\n`+rows.map(r=>`• ${r.p.cod} ${String(r.p.descricao||'').slice(0,60)} — ${r.i.qt} x ${brl(r.pu)}${gradeTxt(r.i.gq)?'\n   Grade: '+gradeTxt(r.i.gq):''}`).join('\n')+`\nTotal: ${brl(tt.sub+tt.ipi+tt.fr)}${tt.ipi?' (IPI incluso '+brl(tt.ipi)+')':''}\nPrazo: ${o.prazo||'a combinar'}\n${vendNome(o)?vendNome(o)+' – ':''}Chamae Representações`}
 
 async function orc(){const m=$('#main'); m.onclick=null; m.onchange=null; m.oninput=null; await reps(); const q=Q(); const ab=Object.keys(q).filter(r=>q[r]&&(q[r].itens.length||q[r].cli||r===ctx.rep));
@@ -646,9 +646,9 @@ const keyOf=h=>{const n=String(h||'').trim().toLowerCase(); for(const k in COLS)
 const nameFromFile=f=>{const m=f.match(/reprio_(.+?)_(\w{2})_\d{4}/i); return m?(m[1].replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())+' '+m[2].toUpperCase()):f.replace(/\.\w+$/,'')};
 async function admin(){const m=$('#main'); if(!ehGestor()){m.innerHTML='<p class="hint">Só gestores.</p>';return} const R=await reps();
   const rep=ctx.rep||L('admRep')||'marcon';
-  m.innerHTML=`<div class="sec">Produtos e tabelas</div><div class="row"><select id="arep">${R.map(r=>`<option value="${r.id}"${r.id===rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="chip on" data-t="imp">Importar planilhas</button><button class="chip" data-t="ed">Editar produto</button><button class="chip" data-t="tb">Tabelas</button>${APPSRC[rep]?'<button class="chip" data-t="app">Trazer do app '+esc((R.find(r=>r.id===rep)||{}).nome||rep)+'</button>':''}</div><div id="adm" style="margin-top:12px"></div>`;
+  m.innerHTML=`<div class="sec">Produtos e tabelas</div><div class="row"><select id="arep">${R.map(r=>`<option value="${r.id}"${r.id===rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="chip on" data-t="imp">Importar planilhas</button><button class="chip" data-t="ed">Editar produto</button><button class="chip" data-t="tb">Tabelas</button>${rep==='marcon'?'<button class="chip" data-t="gur">Regra Gurgelmix</button>':''}${APPSRC[rep]?'<button class="chip" data-t="app">Trazer do app '+esc((R.find(r=>r.id===rep)||{}).nome||rep)+'</button>':''}</div><div id="adm" style="margin-top:12px"></div>`;
   $('#arep').onchange=e=>{LS('admRep',e.target.value); ctx.rep=e.target.value; admin()};
-  m.querySelector('.row').onclick=e=>{const b=e.target.closest('[data-t]'); if(!b) return; m.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); ({imp:admImp,ed:admEd,tb:admTab,app:admApp})[b.dataset.t](rep)};
+  m.querySelector('.row').onclick=e=>{const b=e.target.closest('[data-t]'); if(!b) return; m.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); ({imp:admImp,ed:admEd,tb:admTab,app:admApp,gur:admGur})[b.dataset.t](rep)};
   admImp(rep)}
 function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p class="hint">Suba uma ou várias planilhas (uma por tabela de preço). O nome da tabela vem do arquivo e pode ser ajustado. Nada é gravado antes da sua aprovação.</p>
   <input id="files" type="file" accept=".xlsx,.xls,.csv" multiple style="width:100%"><div id="prev"></div></div>`;
@@ -660,6 +660,7 @@ function admImp(rep){const a=$('#adm'); a.innerHTML=`<div class="card grid"><p c
     if(rep==='marluvas'&&jobs.length===1){const j0=jobs[0]; if(!j0.tab){j0.nome='0 · Tabela geral SP'; j0.tab=T.find(t=>norm(t.nome)===norm(j0.nome))} const CN=[['REV60-318',3],['REV60-518',5],['REV79-717',7],['REV80-1016',10],['ECON-1115',11],['ECO12-1314',13],['HCEN-1012',10],['HCE600-1111',11],['HCE600-1211',12],['ATC500-109',10],['ATC2M-128',12],['DBI599-76',7],['DBI600-95',9],['DBI2M-114',11],['DBI5M-133',13]];
       CN.forEach(([n,d])=>jobs.push({...j0,nome:n,tab:T.find(t=>norm(t.nome)===norm(n)),items:j0.items.map(it=>({...it,liq:Math.round(it.liq*(1-d/100)*100)/100}))}));
       pv.insertAdjacentHTML('beforebegin','<p class="hint">Marluvas: a tabela geral gera automaticamente as 15 tabelas de canal (Revenda, E-commerce, Homecenter, Atacado e Distribuidor) com os descontos de cada canal.</p>')}
+    if(rep==='marcon') jobs.forEach(j=>{const R=ehGurgel(j.nome)&&gurRegraDe(j.tab); if(!R) return; const M=gurCalc(R,j.items); let n=0; j.items.forEach(it=>{const x=M[gcod(it.cod)]; if(x&&Math.abs(x.v-(it.liq??0))>=.005){it.liq=x.v; n++}}); pv.insertAdjacentHTML('beforebegin',`<p class="hint">${esc(j.nome)}: regra de preço Gurgelmix aplicada (${n} preços corrigidos em relação à planilha). Confira em “Regra Gurgelmix”.</p>`)});
     await prevJobs(rep,jobs,C,T,pv)}}
 async function prevJobs(rep,jobs,C,T,pv){
     // prévia
@@ -686,6 +687,78 @@ async function prevJobs(rep,jobs,C,T,pv){
         (delete CAT[rep],STALE.add('cat_'+rep)); (delete TABS[rep],STALE.add('tab_'+rep)); (REPS=null,STALE.add('reps')); st.textContent=''; toast('Importação concluída'); admImp(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">✓ ${jobs.length} tabela(s) e ${arr.length} produtos gravados.</p>`)}
       catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}}
 
+
+/* ---------- regra de preço Marcon → Gurgelmix (mesma regra da planilha de conferência) ----------
+   1) código nas tabelas de campanha Gurgel (18% CIF): preço da tabela (Campanha A, ou B se A vazio), sem desconto nenhum;
+   2) código da Gurgel (FG/LM, via similares) fora dessas tabelas: mesmo preço final do código Marcon equivalente;
+   3/4) Tabela Bruta ou campanha geral Marcon: Tabela Base × cascata Desc 1..6 da aba GURGELMIX (negativo = acréscimo);
+   5) sem desconto cadastrado nem similar: Tabela Base (fator 1) e fica na lista de pendências. */
+const rHU=v=>Math.round(Math.round(v*1e6)/1e4)/100; /* 2 casas, meio para cima (166,345 → 166,35) */
+const gcod=c=>String(c??'').trim().replace(/\s+/g,' ').toUpperCase();
+const gnum=v=>{if(typeof v==='number') return v; const s=String(v??'').replace(/[^\d,.-]/g,''); if(!s) return null; const n=+(s.includes(',')?s.replace(/\./g,'').replace(',','.'):s); return isNaN(n)?null:n};
+const ehGurgel=nome=>/GURGEL/.test(norm(nome));
+function gurRegraDe(tab){try{const o=JSON.parse((tab&&tab.obs)||'{}'); return o&&o.gurgel||null}catch(e){return null}}
+/* lê as planilhas: tabelas de campanha (cabeçalho "Ref." + "Campanha A"), descontos (aba GURGELMIX), similares (Tabela | Cod Terceiro | Cod Marcon) */
+function gurLer(wb,arq){const out={camp:{},desc:{},sim:{},dup:[],vistos:[]}; const H=r=>r.map(c=>norm(c).trim());
+  for(const sn of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+    if(norm(sn).trim()==='GURGELMIX'){const hi=rows.findIndex(r=>H(r).some(c=>/^COD/.test(c))&&H(r).some(c=>/^DESC/.test(c))); if(hi<0) continue; const h=H(rows[hi]); const ic=h.findIndex(c=>/^COD/.test(c)); const id=[1,2,3,4,5,6].map(k=>h.findIndex(c=>c.replace(/\s/g,'')==='DESC'+k));
+      let n=0; rows.slice(hi+1).forEach(r=>{const c=gcod(r[ic]); if(!c||out.desc[c]) return; const D=id.map(i=>{if(i<0) return 0; let v=gnum(r[i])||0; if(Math.abs(v)>=1) v/=100; return v}); out.desc[c]={d:D.map(v=>Math.round(v*1e6)/1e6),f:D.reduce((f,v)=>f*(1-v),1)}; n++}); out.vistos.push(`${arq}: descontos GURGELMIX (${n} códigos)`); continue}
+    const hs=rows.findIndex(r=>H(r).includes('COD TERCEIRO')&&H(r).includes('COD MARCON'));
+    if(hs>=0){const h=H(rows[hs]); const it=h.indexOf('TABELA'), i3=h.indexOf('COD TERCEIRO'), im=h.indexOf('COD MARCON'); let n=0;
+      rows.slice(hs+1).forEach(r=>{if(it>=0&&!/GURGEL/.test(norm(r[it]))) return; const a=gcod(r[i3]), b=gcod(r[im]); if(!a||!b) return; if(out.sim[a]){if(out.sim[a]!==b) out.dup.push(`${a} aparece 2x no similares (${out.sim[a]} e ${b}); usei ${out.sim[a]}`); return} out.sim[a]=b; n++});
+      out.vistos.push(`${arq}: similares Gurgelmix (${n} códigos)`); continue}
+    let n=0, h=null, ia=-1, ib=-1, ir=-1;
+    rows.forEach(r=>{const hh=H(r); if(hh.some(c=>/^REF\.?$/.test(c))&&hh.includes('CAMPANHA A')){h=hh; ir=hh.findIndex(c=>/^REF\.?$/.test(c)); ia=hh.indexOf('CAMPANHA A'); ib=hh.indexOf('CAMPANHA B'); return} if(!h) return;
+      const c=gcod(r[ir]); if(!c) return; const a=gnum(r[ia]), b=ib>=0?gnum(r[ib]):null; const v=a>0?a:(b>0?b:null); if(v==null) return; if(!out.camp[c]){out.camp[c]={v,b:!(a>0),t:arq.replace(/\.\w+$/,'')}; n++}});
+    if(n) out.vistos.push(`${arq}: tabela de campanha Gurgel (${n} códigos)`)}
+  return out}
+/* calcula o preço de cada código; it = [{cod, base, obs}] (base = Tabela Base do Reprio) */
+function gurCalc(R,its){const B={}, O={}; its.forEach(i=>{const c=gcod(i.cod); B[c]=i.base; O[c]=i.obs||''}); const sim={...R.sim}; if(sim['LMJ-2T']) sim['LMJ-2T']='MJH-2T';
+  const M={}; const fx=f=>f.toLocaleString('pt-BR',{maximumFractionDigits:6});
+  const own=c=>{const b=B[c]; if(!(b>0)) return null; const d=R.desc[c]; const tipo=/BRUTA/.test(norm(O[c]))?'Tabela bruta':'Campanha geral Marcon';
+    if(!d) return {v:rHU(b),r:'Sem desconto cadastrado na aba GURGELMIX: Tabela Base sem desconto',pend:1};
+    return {v:rHU(b*d.f),r:`${tipo}: ${brl(b)} × ${fx(d.f)} (${d.d.map(v=>String(Math.round(v*10000)/100).replace('.',',')).join('/')})`}};
+  const P=(c,dp=0)=>{if(M[c]!==undefined) return M[c]; if(dp>4) return null; let x=null; const k=R.camp[c];
+    if(k) x={v:rHU(k.v),r:`Tabela Gurgel ${k.t}: preço ${k.b?'Campanha B (A vazio)':'Campanha A'} sem desconto`};
+    else{const s=sim[c]||(/^LM(PR|VM)/.test(c)?c.replace(/^LM(PR|VM)/,''):null); const q=s&&s!==c&&(B[s]>0||R.camp[s])?P(s,dp+1):null;
+      x=q?{v:q.v,r:`Igual ao Marcon ${s} (${q.r})`,pend:q.pend}:own(c)}
+    return M[c]=x};
+  its.forEach(i=>P(gcod(i.cod))); return M}
+async function admGur(rep){const a=$('#adm'); const T=await tabelas(rep,true); const tab=T.find(t=>ehGurgel(t.nome)); if(!tab){a.innerHTML='<p class="bad">Não encontrei a tabela Gurgelmix da Marcon.</p>'; return}
+  const salvo=gurRegraDe(tab); const cnt=o=>Object.keys(o||{}).length;
+  a.innerHTML=`<div class="card grid"><b>Regra de preço Gurgelmix (${esc(tab.nome)})</b>
+   <p class="hint" style="margin:0">1) Código nas tabelas de campanha Gurgel: preço da tabela, sem desconto. 2) Código da Gurgel (FG/LM) fora delas: mesmo preço do Marcon equivalente (similares). 3) Tabela bruta e campanhas gerais: Tabela Base × descontos da aba GURGELMIX (negativo = acréscimo). 4) Sem desconto nem similar: Tabela Base e fica em pendências.</p>
+   <p class="hint" style="margin:0">${salvo?`Regra salva em ${esc(new Date(salvo.em).toLocaleString('pt-BR'))}: ${cnt(salvo.camp)} preços de campanha, ${cnt(salvo.desc)} descontos, ${cnt(salvo.sim)} similares. Ao importar de novo a planilha Gurgelmix do Reprio, a regra é aplicada sozinha.`:'Ainda não há regra salva.'}</p>
+   <label class="f">Planilhas (tabelas Gurgel 18% CIF, descontos.xlsx, similares.xlsx; pode mandar só as que mudaram)<input id="gfiles" type="file" accept=".xlsx,.xls" multiple style="width:100%"></label>
+   ${salvo?'<div class="row"><button class="chip" id="grec">Recalcular com a regra salva</button></div>':''}<div id="gprev"></div></div>`;
+  const run=async novo=>{const pv=$('#gprev'); pv.innerHTML='<p class="hint">Calculando…</p>'; const R={camp:{...(salvo&&salvo.camp||{})},desc:{...(salvo&&salvo.desc||{})},sim:{...(salvo&&salvo.sim||{})},dup:[],vistos:[]};
+    if(novo){if(cnt(novo.camp)) R.camp=novo.camp; if(cnt(novo.desc)) R.desc=novo.desc; if(cnt(novo.sim)) R.sim=novo.sim; R.dup=novo.dup; R.vistos=novo.vistos}
+    const C=await catalog(rep,true); const PR=await prices(tab.id,true); const byId={}; C.forEach(p=>byId[p.id]=p);
+    const its=Object.keys(PR).map(pid=>byId[pid]).filter(Boolean).map(p=>({p,cod:p.cod,base:PR[p.id].base,obs:(p.attrs||{}).obs}));
+    const M=gurCalc(R,its); const ch=[], pend=[], arr=[]; let igual=0;
+    its.forEach(i=>{const x=M[gcod(i.cod)]; const o=PR[i.p.id].liq; if(!x){pend.push(`${i.cod}: sem Tabela Base, preço mantido`); return} if(x.pend) pend.push(`${i.cod}: ${x.r}`); if(o!=null&&Math.abs(x.v-o)<1e-9) igual++; else if(o!=null&&Math.abs(x.v-o)<.005) arr.push({i,o,x}); else ch.push({i,o,x})});
+    const naoTem=Object.keys(R.camp).filter(c=>!C.some(p=>gcod(p.cod)===c)); if(naoTem.length) pend.push(`Códigos das tabelas Gurgel que não estão no catálogo do Sistema (${naoTem.length}): ${naoTem.slice(0,40).join(', ')}${naoTem.length>40?'…':''}`);
+    const ok=cnt(R.camp)&&cnt(R.desc);
+    pv.innerHTML=`${R.vistos.length?`<p class="ok">${R.vistos.map(esc).join('<br>')}</p>`:''}${novo&&!R.vistos.length?'<p class="bad">Não reconheci nenhuma das planilhas.</p>':''}
+     ${!cnt(R.camp)?'<p class="bad">Faltam as tabelas de campanha Gurgel.</p>':''}${!cnt(R.desc)?'<p class="bad">Falta o descontos.xlsx (aba GURGELMIX).</p>':''}${!cnt(R.sim)?'<p class="warn">Sem similares: os códigos FG/LM ficam com o próprio preço.</p>':''}
+     <p>${its.length} produtos na tabela · <b>${ch.length}</b> preços mudam · ${igual+arr.length} já estavam certos${arr.length?` (${arr.length} só com casas decimais a mais, ficam com 2 casas)`:''}</p>
+     ${['4503','BF-2','FG-063','1','FG-115'].map(c=>{const x=M[c]; return x?`<span class="tag">${c}: ${brl(x.v)}</span> `:''}).join('')}
+     ${ch.length?`<div class="diff" style="margin-top:8px"><table class="t"><tr><th>Código</th><th>Descrição</th><th class="n">Antes</th><th class="n">Agora</th><th>Regra</th></tr>${ch.map(c=>`<tr><td>${esc(c.i.cod)}</td><td><small>${esc(String(c.i.p.descricao||'').slice(0,40))}</small></td><td class="n">${c.o==null?'—':brl(c.o)}</td><td class="n"><b>${brl(c.x.v)}</b></td><td><small>${esc(c.x.r)}</small></td></tr>`).join('')}</table></div>`:''}
+     ${pend.length||R.dup.length?`<details style="margin-top:8px"><summary class="warn">Pendências para conferir (${pend.length+R.dup.length})</summary><p class="hint">${[...R.dup,...pend].map(esc).join('<br>')}</p></details>`:''}
+     <div class="row" style="margin-top:10px">${ok?`<button class="btn" id="gapr">${ch.length||arr.length?'Aprovar e gravar':'Salvar a regra'}</button>`:''}<button class="chip" id="gxls">⬇ Planilha para o Reprio</button><span class="hint" id="gst"></span></div>`;
+    $('#gxls').onclick=async()=>{const ws=XLSX.utils.aoa_to_sheet([['Codigo','Descrição','Tabela Base','Preço de Custo','Regra'],...its.map(i=>{const x=M[gcod(i.cod)]; return [i.cod,i.p.descricao||'',i.base??'',x?x.v:PR[i.p.id].liq,x?x.r:'sem Tabela Base']})]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Produtos'); XLSX.writeFile(wb,'Precos_Gurgelmix_Marcon.xlsx')};
+    const b=$('#gapr'); if(b) b.onclick=async()=>{b.disabled=true; const st=$('#gst');
+      try{let ob={}; try{ob=JSON.parse(tab.obs||'{}')||{}}catch(e){ob={texto:tab.obs}} ob.gurgel={camp:R.camp,desc:R.desc,sim:R.sim,em:new Date().toISOString()};
+        await api(`tabelas?id=eq.${tab.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({obs:JSON.stringify(ob)})});
+        const pr=[...ch,...arr].map(c=>({tabela_id:tab.id,produto_id:c.i.p.id,nivel:'liq',preco:c.x.v,atualizado_em:new Date().toISOString()}));
+        for(let i=0;i<pr.length;i+=800){st.textContent=`Gravando ${i}/${pr.length}…`; await api('precos?on_conflict=tabela_id,produto_id,nivel',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(pr.slice(i,i+800))})}
+        await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:'regra_gurgelmix',resumo:[{tabela:tab.nome,itens:its.length,mudaram:ch.length,pendencias:pend.length}]})}).catch(()=>{});
+        (delete PRICES[tab.id],STALE.add('pr_'+tab.id)); (delete TABS[rep],STALE.add('tab_'+rep)); toast('Preços Gurgelmix gravados'); await admGur(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">✓ ${ch.length} preços da ${esc(tab.nome)} atualizados pela regra.</p>`)}
+      catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}};
+  $('#gfiles').onchange=async e=>{const fs=[...e.target.files]; if(!fs.length) return; await loadXLSX(); const N={camp:{},desc:{},sim:{},dup:[],vistos:[]};
+    for(const f of fs){const r=gurLer(XLSX.read(await f.arrayBuffer()),f.name); Object.keys(r.camp).forEach(c=>{if(!N.camp[c]) N.camp[c]=r.camp[c]}); Object.assign(N.desc,r.desc); Object.assign(N.sim,r.sim); N.dup.push(...r.dup); N.vistos.push(...r.vistos); if(!r.vistos.length) N.vistos.push(f.name+': não reconhecida (ignorada)')}
+    run(N).catch(err=>{$('#gprev').innerHTML=`<p class="bad">Erro: ${esc(err.message)}</p>`})};
+  const g=$('#grec'); if(g) g.onclick=()=>run(null)}
 
 /* ---------- trazer catálogo dos apps Medix/Marluvas (lê o pacote protegido com a senha da equipe; nada sai do aparelho além da gravação na base) ---------- */
 const APPSRC={marluvas:'/conversor-ca/teste/index.html',medix:'/medix-luvas/teste/index.html'};

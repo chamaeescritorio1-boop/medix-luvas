@@ -13,7 +13,11 @@ const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase(
 let sess=G('sess'), perfil=G('perfil');
 async function auth(body,grant){const r=await fetch(SB+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error_description||j.msg||j.error||('HTTP '+r.status)); return j}
 const setSess=j=>{sess={at:j.access_token,rt:j.refresh_token,exp:Date.now()+(j.expires_in-60)*1000,uid:j.user&&j.user.id,email:j.user&&j.user.email}; S('sess',sess)};
-async function token(){if(!sess) return null; if(Date.now()<sess.exp) return sess.at; try{setSess(await auth({refresh_token:sess.rt},'refresh_token')); return sess.at}catch(e){sess=null;S('sess',null); return null}}
+async function token(){if(!sess) return null; const st=G('sess'); if(!st){sess=null; return null} if(st.rt!==sess.rt&&(st.exp||0)>=(sess.exp||0)) sess=st; if(Date.now()<sess.exp) return sess.at;
+  /* renova uma vez só, mesmo com Sistema e Marluvas/Medix abertos juntos; sem internet mantém o login */
+  const renova=async()=>{const cur=G('sess'); if(cur&&Date.now()<cur.exp){sess=cur; return sess.at} try{setSess(await auth({refresh_token:(cur||sess).rt},'refresh_token')); return sess.at}
+    catch(e){const ag=G('sess'); if(ag&&Date.now()<ag.exp){sess=ag; return sess.at} if(/invalid|expired|not found|already used|revoked/i.test(e.message)){sess=null;S('sess',null); return null} return sess.at}};
+  return navigator.locks?navigator.locks.request('chamae-auth',renova):renova()}
 let SEM_DREF=false; async function api(path,opt={}){const t=await token(); if(!t){showLock(); throw new Error('Entre novamente')} if(SEM_DREF&&path.includes('data_ref')) path=path.replace(/data_ref/g,'data'); const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+t,'Content-Type':'application/json',...(opt.headers||{})}}); const tx=await r.text(); if(!r.ok){if(path.includes('data_ref')&&/data_ref/.test(tx)){SEM_DREF=true; return api(path,opt)} throw new Error(tx.slice(0,300)||('HTTP '+r.status))} return tx?JSON.parse(tx):null}
 async function apiAll(path){const out=[]; let off=0; const sep=path.includes('?')?'&':'?'; while(true){const r=await api(`${path}${sep}limit=1000&offset=${off}`); out.push(...r); if(r.length<1000) break; off+=1000} return out}
 const ehGestor=()=>perfil&&perfil.papel==='gestor';
@@ -25,7 +29,7 @@ async function afterLogin(){try{let p; try{p=await api('perfis?select=*&id=eq.'+
   if(perfil&&perfil.aprovado===false){sess=null; S('sess',null); return showLock('Seu acesso está aguardando aprovação de um gestor (Mais › Equipe).')}
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
   $('#lock').hidden=true; $('#nav').hidden=false; $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email;
-  w.onclick=()=>go('aj'); go(L('route')||'home'); contaTarefas(); iniciarLembretes()}
+  w.onclick=()=>go('aj'); if(!window._bootCedo) go(L('route')||'home'); window._bootCedo=false; contaTarefas(); iniciarLembretes()}
 
 /* ---------- dados ---------- */
 let REPS=null; const CAT={}, TABS={}, PRICES={};
@@ -53,6 +57,19 @@ const HIST_REP={marcon:'Marcon',marluvas:'Marluvas',medix:'Medix',sigma:'Sigma T
 const TRANSP={marcon:[{n:'Cliente retira (FOB)',p:0},{n:'Alfa Transportes FOB (~5%)',p:5},{n:'Transportadora Floresta FOB (~5%)',p:5},{n:'Transportadora a ser indicada (FOB)',p:0}]};
 const EXTERNAL={marluvas:'/conversor-ca/teste/',medix:'/medix-luvas/teste/'};
 
+/* ---------- apps Marluvas/Medix dentro do Sistema: mesmo login, volta ao início sem recarregar ---------- */
+async function abrirApp(rep){if(!EXTERNAL[rep]) return; let ov=document.getElementById('appOv-'+rep);
+  if(!ov&&!localStorage.getItem('chamae_tp')){try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}} /* senha da equipe vem da base: o app abre sem pedir */
+  if(!ov){ov=document.createElement('div'); ov.id='appOv-'+rep; ov.className='appov'; ov.style.cssText='position:fixed;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column';
+    ov.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px;background:#1c2340;color:#fff"><button class="btn sm" data-fechaapp>‹ Início</button><b style="font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.03em">${esc(repName(rep))}</b></div><iframe title="${esc(repName(rep))}" src="${EXTERNAL[rep]}?inapp=1" style="flex:1;border:0;width:100%;background:#fff"></iframe>`;
+    document.body.appendChild(ov)}
+  document.querySelectorAll('.appov').forEach(o=>o.style.display='none'); ov.style.display='flex'; try{history.pushState({app:rep},'')}catch(e){}}
+function fecharApp(){document.querySelectorAll('.appov').forEach(o=>o.style.display='none')}
+const voltarInicio=()=>fecharApp(); /* sem history.back(): o histórico do app aberto dentro não pode ser desfeito por engano */
+addEventListener('popstate',fecharApp);
+addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.t==='chamae-home') voltarInicio()});
+document.addEventListener('click',e=>{const a=e.target.closest('[data-app]'); if(a){e.preventDefault(); return abrirApp(a.dataset.app)} if(e.target.closest('[data-fechaapp]')) voltarInicio()});
+
 /* ---------- orçamentos (um por representada) ---------- */
 const Q=()=>L('quotes')||{}; const setQ=q=>{LS('quotes',q); badge()};
 const curQ=rep=>{const q=Q(); return q[rep]||(q[rep]={rep,itens:[],tabela:null,cli:null,transp:0,prazo:'',obs:'',id:String(Date.now())})};
@@ -71,7 +88,7 @@ async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregand
      return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos':ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
    <div id="semana"></div>
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><button class="btn ghost" data-go2="orc">＋ Novo orçamento</button><button class="btn ghost" data-go2="cli">📞 Bater carteira</button><button class="btn ghost" data-go2="tar">✔️ Tarefas</button><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!r.n) location.href=EXTERNAL[id]; else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; minhaSemana($('#semana'),true)}
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!r.n) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; minhaSemana($('#semana'),true)}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -117,7 +134,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
        <div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div><div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span><span class="tag">EAN ${esc(p.attrs&&p.attrs.ean||'—')}</span><span class="tag">NCM ${esc(p.ncm||'—')}</span>${pr.icms!=null?`<span class="tag">ICMS ${pct(pr.icms)}</span>`:''}${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
        ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
     $('#cnt').textContent=`${list.length} produtos${list.length>80?' · mostrando 80, refine a busca':''}`; $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${repIcon(rep,32)} ${esc(repName(rep))}</div><div class="row">${EXTERNAL[rep]?`<button class="chip on" id="caBtn">⇄ Converter CA</button>`:''}<button class="chip${enc.on?' on':''}" id="encT">Encarte</button>${o.itens.length?'<button class="chip" id="czer">🧹</button>':''}<button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${repIcon(rep,32)} ${esc(repName(rep))}</div><div class="row">${EXTERNAL[rep]?`<button class="chip on" id="caBtn">⇄ Converter CA</button><button class="chip" data-app="${esc(rep)}">📱 App ${esc(repName(rep))}</button>`:''}<button class="chip${enc.on?' on':''}" id="encT">Encarte</button>${o.itens.length?'<button class="chip" id="czer">🧹</button>':''}<button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
    <div class="card grid" style="margin:10px 0"><label class="f">Cliente<input id="cq" type="search" placeholder="Buscar cliente por nome, CNPJ ou cidade" value="${o.cli?esc(o.cli.n):''}"></label><div id="cres"></div>
     ${o.cli&&o.cli.ult?`<p class="hint" style="margin:0">Último pedido: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))} · prazo ${esc(o.cli.ult.ultimo_prazo||'—')}</p>`:''}
     <div class="r2"><label class="f">Tabela de preço${o.cli?' (do cliente)':''}<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
@@ -1348,5 +1365,7 @@ function iniciarLembretes(){verificarLembretes(); clearInterval(window._lembT); 
   try{if('Notification' in window&&Notification.permission==='default'&&!L('notifPerg')){LS('notifPerg',1); setTimeout(()=>{if(confirm('Quer receber avisos das tarefas no horário, mesmo com o app em segundo plano?')) Notification.requestPermission()},4000)}}catch(e){}}
 
 /* ---------- início ---------- */
-badge(); if(sess) afterLogin(); else showLock();
+badge();
+/* já tem login salvo: abre direto e confere em segundo plano (a tela de login só aparece se o acesso tiver expirado de verdade) */
+if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email; w.onclick=()=>go('aj'); window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
 })();

@@ -78,8 +78,13 @@ async function abrirApp(rep,orc){if(!EXTERNAL[rep]) return; let ov=document.getE
 function fecharApp(){document.querySelectorAll('.appov').forEach(o=>o.style.display='none')}
 const voltarInicio=()=>fecharApp(); /* sem history.back(): o histórico do app aberto dentro não pode ser desfeito por engano */
 addEventListener('popstate',fecharApp);
-addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.t==='chamae-home') voltarInicio()});
-document.addEventListener('click',e=>{const a=e.target.closest('[data-app]'); if(a){e.preventDefault(); return abrirApp(a.dataset.app)} if(e.target.closest('[data-fechaapp]')) voltarInicio()});
+const SUJO={}; /* conversor avisa quando o orçamento tem alterações não salvas */
+const repDoFrame=w=>{const o=[...document.querySelectorAll('.appov')].find(x=>{const f=x.querySelector('iframe'); return f&&f.contentWindow===w}); return o?o.id.replace('appOv-',''):''};
+addEventListener('message',e=>{if(e.origin!==location.origin||!e.data) return; if(e.data.t==='chamae-sujo'){const r=repDoFrame(e.source); if(r) SUJO[r]=!!e.data.v; return} if(e.data.t==='chamae-home') sairApp()});
+function sairApp(){const ov=[...document.querySelectorAll('.appov')].find(o=>o.style.display!=='none'); const rep=ov?ov.id.replace('appOv-',''):'';
+  if(rep&&SUJO[rep]&&confirm('O orçamento '+repName(rep)+' tem alterações não salvas.\n\nOK = salvar e sair\nCancelar = sair sem salvar (ele continua em andamento no '+repName(rep)+')')){try{ov.querySelector('iframe').contentWindow.postMessage({t:'chamae-salvar'},location.origin)}catch(e){}}
+  voltarInicio()}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-app]'); if(a){e.preventDefault(); return abrirApp(a.dataset.app)} if(e.target.closest('[data-fechaapp]')) sairApp()});
 
 /* ---------- orçamentos (um por representada) ---------- */
 const Q=()=>L('quotes')||{}; const setQ=q=>{LS('quotes',q); badge()};

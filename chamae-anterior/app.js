@@ -17,6 +17,8 @@ const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase(
 const TIME=['CLAYTON','DRAUZIO','VICTOR'], EXV={RENATO:'VICTOR',JOAOP:'VICTOR',JOAO:'VICTOR',CAE:'CLAYTON',ALESSANDRO:'CLAYTON'};
 const vAt=v=>{const k=norm(v).trim(); if(!k) return v||''; return EXV[k.replace(/[^A-Z]/g,'')]||EXV[k.split(/\s+/)[0]]||k};
 const vAtL=a=>{(a||[]).forEach(x=>{if(x&&x.vendedor) x.vendedor=vAt(x.vendedor)}); return a};
+/* pedidos do sistema antigo vieram duas vezes: leg-<nº> (planilha, representada certa) e uma cópia do Reprio com o mesmo nº e "TABELA BASE" — fica só a da planilha */
+const semDupLeg=a=>{const L=new Set((a||[]).filter(x=>String(x.id||'').startsWith('leg-')).map(x=>String(x.id).slice(4))); return L.size?a.filter(x=>!(x.origem==='reprio'&&x.num&&L.has(String(x.num)))):a};
 
 /* ---------- Supabase ---------- */
 let sess=G('sess'), perfil=G('perfil');
@@ -553,7 +555,7 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
       const ef='or(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)'; let cond=[ef]; let p='pedidos?select=id,num,oc,representada,cnpj,cliente,cidade,data,valor,prazo,vendedor,status,itens,origem&order=data.desc';
       if(ids) p+=`&id=in.(${ids.map(x=>'"'+x+'"').join(',')})`; else if(f.q){const qx=encodeURIComponent(f.q.replace(/[(),*]/g,' ').trim()); const dg=f.q.replace(/\D/g,''); cond.push(`or(oc.ilike.*${qx}*,num.ilike.*${qx}*,cliente.ilike.*${qx}*${dg.length>=4?`,cnpj.like.*${dg}*`:''})`)}
       p+='&and=('+cond.join(',')+')'; if(f.rep) p+='&representada=eq.'+encodeURIComponent(f.rep); if(f.vend){const vv=vAt(f.vend); p+='&vendedor=in.('+[vv,...Object.keys(EXV).filter(k=>EXV[k]===vv)].map(encodeURIComponent).join(',')+')'} if(!f.q&&!ids){p+='&data_ref=gte.'+de+'&data_ref=lte.'+ate}
-      r.innerHTML='<p class="hint">Buscando no histórico…</p>'; const R=await apiAll(p); const tot=R.reduce((s,x)=>s+(+x.valor||0),0); const anos=[...new Set(R.map(x=>String(x.data).slice(0,4)))].sort();
+      r.innerHTML='<p class="hint">Buscando no histórico…</p>'; const R=semDupLeg(await apiAll(p)); const tot=R.reduce((s,x)=>s+(+x.valor||0),0); const anos=[...new Set(R.map(x=>String(x.data).slice(0,4)))].sort();
       r.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><p class="hint" style="margin:0">${R.length} pedido(s) · <b>${brl(tot)}</b>${anos.length?` · ${anos[0]}${anos.length>1?'–'+anos[anos.length-1]:''}`:''}${f.q?' · busca em todo o histórico':''}${R.length>400?' · mostrando os 400 mais recentes (exporte para ver todos)':''}</p><button class="chip" id="pcsv">Exportar</button></div>
        <div class="ptab"><div class="ph"><span>Nº / Data</span><span>Representada</span><span>Cliente</span><span>Vendedor</span><span class="n">Valor</span><span>Origem</span></div>${R.slice(0,400).map(x=>`<button class="pr" data-pd="${esc(x.id)}" style="--sc:${x.origem==='reprio'?'#5aa9ff':x.origem==='sistema'?'#4fd18b':'#9aa1b8'}"><span class="c-num"><b>${esc(x.num||'—')}</b><small>${fmtDt(x.data)}</small>${x.oc?`<small class="lk">OC ${esc(x.oc)}</small>`:''}</span><span class="c-rep">${repIcon(REPID[x.representada]||x.representada,22)}<span>${esc(x.representada)}</span></span><span class="c-cli"><b>${esc(x.cliente||'')}</b><small>${esc(x.cidade||'')}${x.prazo?' · '+esc(x.prazo):''}</small></span><span class="c-ven">${esc(x.vendedor||'—')}</span><span class="c-val n"><b>${brl(x.valor)}</b><small>${x.itens||0} itens</small></span><span class="c-st"><span class="tg ${x.origem==='reprio'?'tg-r':x.origem==='sistema'?'tg-s':''}">${x.origem==='reprio'?'Reprio':x.origem==='sistema'?'Sistema':'Histórico'}</span></span></button>`).join('')}</div>`;
       $('#pcsv').onclick=()=>csv('pedidos',[['Data','Representada','Pedido','OC','Cliente','CNPJ','Cidade','Vendedor','Prazo','Valor'],...R.map(x=>[fmtDt(x.data),x.representada,x.num,x.oc,x.cliente,x.cnpj,x.cidade,x.vendedor,x.prazo,String(x.valor).replace('.',',')])])}
@@ -637,8 +639,8 @@ let PEDS=null, PEDS_EXPIRE=0; const CACHE_TTL=5*60*1000;
 let PEDS_BG=null; const corta=(x,de)=>x.de===de?x.d:x.d.filter(p=>p.data>=de); const assin=d=>d.length+':'+Math.round(d.reduce((s,p)=>s+(+p.valor||0),0));
 async function pedidosPeriodo(de){
   if(PEDS&&PEDS.de<=de&&Date.now()<PEDS_EXPIRE) return corta(PEDS,de);
-  const busca=()=>apiAll(`pedidos?select=cnpj,cliente,cidade,representada,data:data_ref,valor,vendedor&data_ref=gte.${de}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)&order=data`).then(d=>{vAtL(d); PEDS={de,d}; PEDS_EXPIRE=Date.now()+CACHE_TTL; kv.set('peds2',{de,d,t:Date.now()}); return d});
-  const c=await kv.get('peds2'); if(c&&c.de<=de&&Date.now()-c.t<12*3600e3){PEDS={de:c.de,d:c.d}; PEDS_EXPIRE=Date.now()+60e3; const a0=assin(corta(c,de));
+  const busca=()=>apiAll(`pedidos?select=id,num,origem,cnpj,cliente,cidade,representada,data:data_ref,valor,vendedor&data_ref=gte.${de}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)&order=data`).then(d=>{d=semDupLeg(vAtL(d)); PEDS={de,d}; PEDS_EXPIRE=Date.now()+CACHE_TTL; kv.set('peds3',{de,d,t:Date.now()}); return d});
+  const c=await kv.get('peds3'); if(c&&c.de<=de&&Date.now()-c.t<12*3600e3){PEDS={de:c.de,d:c.d}; PEDS_EXPIRE=Date.now()+60e3; const a0=assin(corta(c,de));
     if(!PEDS_BG) PEDS_BG=busca().then(d=>{PEDS_BG=null; if(route==='rel'&&assin(d)!==a0) rel()}).catch(()=>{PEDS_BG=null}); return corta(c,de)}
   return busca()}
 const MEMO={}; const memo=(k,ttl,fn)=>{const x=MEMO[k]; if(x&&Date.now()<x.t) return x.p; const p=fn().catch(e=>{delete MEMO[k]; throw e}); MEMO[k]={p,t:Date.now()+ttl}; return p};
@@ -934,7 +936,7 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
     const a12=new Date(hj); a12.setFullYear(hj.getFullYear()-1); const meses=[...new Set(wd.map(d=>d.getFullYear()*12+d.getMonth()))];
-    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a12)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).then(vAtL).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
+    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=id,num,origem,cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a12)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).then(d=>semDupLeg(vAtL(d))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
     const mine=v=>!so||!eu||norm(v||'').startsWith(eu);
     /* meta da semana: meta do mês ÷ dias úteis do mês × dias úteis desta semana (seg–sex) */
     const metaRep=M=>{const o={}; M.filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; o[r]=(o[r]||0)+(+x.valor||0)}); return o};
@@ -1057,22 +1059,31 @@ async function reprioAoVivo(desde,force){const k=RK(); if(!k) return null; if(LI
 
 /* ================= Painel do mês (dashboard) ================= */
 const CORES=['#f2b632','#5aa9ff','#4fd18b','#ff7a70','#b37bff','#2ec4b6','#ff9f43','#9aa1b8','#e05a1b','#1f6fd1','#c8102e','#d4a017'];
-async function painel(box){if(!box) return; const st=Object.assign({y:new Date().getFullYear(),mo:new Date().getMonth(),rep:'',vend:''},L('painel')||{}); const save=()=>LS('painel',st);
+/* conferência "pasta por pasta": representada › cliente › pedidos; os totais batem com o card Vendido */
+function confPedidos(V,tot,st,nomeCli){const by=(a,f)=>{const g={}; a.forEach(r=>{const k=f(r); (g[k]=g[k]||[]).push(r)}); return Object.entries(g).map(([k,l])=>[k,l,l.reduce((s,r)=>s+(+r.valor||0),0)]).sort((a,b)=>b[2]-a[2])};
+  const dt=d=>String(d||'').slice(8,10)+'/'+String(d||'').slice(5,7);
+  const linha=r=>`<button class="cr" data-pd="${esc(r.id)}"><span>${dt(r.data_ped||r.data)}${r.data_fat&&r.data_fat!==r.data_ped?`<small class="hint" title="Conta no mês pela data de faturamento"> fat. ${dt(r.data_fat)}</small>`:''}</span><span>${esc(r.num||'—')}${r.oc?`<small class="hint"> OC ${esc(r.oc)}</small>`:''}</span><span>${esc(r.vendedor||'—')}</span><span class="n">${brl(r.valor)}</span></button>`;
+  const cli=l=>by(l,r=>r.cnpj||r.cliente||'—').map(([c,ps,v],_,all)=>`<details class="pasta"${all.length===1?' open':''}><summary><span>📁 ${esc(nomeCli[c]||ps[0].cliente||c)}</span><span class="hint">${ps.length} ped.</span><b>${brl(v)}</b></summary><div class="pz">${ps.sort((a,b)=>String(a.data_ped||a.data).localeCompare(String(b.data_ped||b.data))).map(linha).join('')}</div></details>`).join('');
+  const reps=by(V,r=>r.representada||'—');
+  return `<div class="card grid" id="dconf" style="margin-top:10px"><div class="row" style="justify-content:space-between"><b style="font-family:var(--display);font-size:18px;text-transform:uppercase">📂 Conferir pedidos</b><button class="chip" id="dcsv"${V.length?'':' disabled'}>⬇ Planilha</button></div>
+    <p class="hint" style="margin:0">${V.length} pedido(s) efetivado(s) somando <b>${brl(tot)}</b> (sem impostos)${st.rep||st.vend||st.cli?' no filtro escolhido':''}. Abra a pasta da representada, depois a do cliente; toque no pedido para ver os itens.</p>
+    ${reps.map(([r,l,v])=>`<details class="pasta"${reps.length===1?' open':''}><summary><span>${repIcon(REPID[r]||r,20)} ${esc(r)}</span><span class="hint">${l.length} ped. · ${new Set(l.map(x=>x.cnpj)).size} cli.</span><b>${brl(v)}</b></summary><div class="pz">${cli(l)}</div></details>`).join('')||'<p class="hint">Sem pedidos no período.</p>'}</div>`}
+async function painel(box){if(!box) return; const st=Object.assign({y:new Date().getFullYear(),mo:new Date().getMonth(),rep:'',vend:'',cli:''},L('painel')||{}); const save=()=>LS('painel',st);
   const ini=mesIni(st.y,st.mo), fim=mesFim(st.y,st.mo), pIni=mesIni(st.mo?st.y:st.y-1,st.mo?st.mo-1:11), pFim=mesFim(st.mo?st.y:st.y-1,st.mo?st.mo-1:11);
   box.innerHTML='<div class="card"><p class="hint">Montando o painel do mês…</p></div>';
-  let rows=[], erroBase=''; try{rows=vAtL(await apiAll(`pedidos?select=id,representada,cnpj,cliente,data:data_ref,valor,vendedor,status,origem&data_ref=gte.${pIni}&data_ref=lte.${fim}`))}catch(e){erroBase=e.message||String(e)}
+  let rows=[], erroBase=''; try{rows=vAtL(await apiAll(`pedidos?select=id,num,oc,representada,cnpj,cliente,data:data_ref,data_ped:data,data_fat,valor,vendedor,status,origem&data_ref=gte.${pIni}&data_ref=lte.${fim}`))}catch(e){erroBase=e.message||String(e)}
   if(!rows.length){try{const tot=await api('pedidos?select=id,data,origem&order=data.desc&limit=3'); const mes=await api(`pedidos?select=id,data,status,representada&data=gte.${ini}&data=lte.${fim}&limit=5`); erroBase=(erroBase?erroBase+' · ':'')+`Diagnóstico: perfil=${perfil?perfil.papel+(perfil.aprovado===false?' (não aprovado)':''):'?'} · coluna data_ref ${SEM_DREF?'NÃO existe (usando data)':'ok'} · pedidos visíveis: ${tot.length?tot.length+'+ (último '+tot[0].data+', '+tot[0].origem+')':'NENHUM'} · neste mês pela data: ${mes.length?mes.length+'+ ('+mes.map(x=>x.representada+'/'+x.status).join(', ')+')':'nenhum'}`}catch(e2){erroBase=(erroBase?erroBase+' · ':'')+'Diagnóstico falhou: '+(e2.message||e2)}}
   const now=new Date(); const isCur=st.y===now.getFullYear()&&st.mo===now.getMonth(); let liveInfo='';
-  if(isCur&&RK()){try{const L2=await reprioAoVivo(pIni); if(L2){const byId={}; rows.forEach(r=>byId[r.id]=r); L2.rows.forEach(r=>byId[r.id]=r); rows=Object.values(byId); liveInfo='ao vivo do Reprio · '+new Date(L2.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}}catch(e){liveInfo='Reprio indisponível agora; mostrando a última sincronização'}}
-  if(!box.isConnected) return;
+  if(isCur&&RK()){try{const L2=await reprioAoVivo(pIni); if(L2){const byId={}; rows.forEach(r=>byId[r.id]=r); L2.rows.forEach(r=>{const o=byId[r.id]; byId[r.id]=o&&o.data_fat?{...r,data:o.data_fat,data_ped:r.data,data_fat:o.data_fat}:{...r,data_ped:r.data}}); rows=Object.values(byId); liveInfo='ao vivo do Reprio · '+new Date(L2.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}}catch(e){liveInfo='Reprio indisponível agora; mostrando a última sincronização'}}
+  rows=semDupLeg(rows); if(!box.isConnected) return;
   const ok=r=>!r.status||efOk(r.status), orcS=r=>r.status==='rascunho'||r.status==='em_digitacao';
-  const flt=r=>(!st.rep||r.representada===st.rep)&&(!st.vend||norm(r.vendedor||'')===st.vend);
+  const flt=r=>(!st.rep||r.representada===st.rep)&&(!st.vend||norm(r.vendedor||'')===st.vend)&&(!st.cli||r.cnpj===st.cli);
   const cur=rows.filter(r=>r.data>=ini&&r.data<=fim&&flt(r)), prev=rows.filter(r=>r.data>=pIni&&r.data<=pFim&&flt(r));
   const V=cur.filter(ok), Vp=prev.filter(ok), O=cur.filter(orcS); const sum=a=>a.reduce((s,r)=>s+(+r.valor||0),0);
   const dia=isCur?now.getDate():31; const VpAte=Vp.filter(r=>+r.data.slice(8)<=dia);
   const tot=sum(V), totP=sum(VpAte), var_=totP?(tot/totP-1)*100:null; const cli=new Set(V.map(r=>r.cnpj)).size;
   const grp=(a,k)=>{const g={}; a.forEach(r=>{const x=r[k]||'—'; g[x]=(g[x]||0)+(+r.valor||0)}); return Object.entries(g).sort((a,b)=>b[1]-a[1])};
-  const byRep=grp(V,'representada'), byVend=grp(V,'vendedor'), byCli=grp(V,'cliente').slice(0,8);
+  const byRep=grp(V,'representada'), byVend=grp(V,'vendedor'), byCli=grp(V,'cnpj').slice(0,8); const nomeCli={}; rows.forEach(r=>{if(r.cnpj&&r.cliente) nomeCli[r.cnpj]=r.cliente});
   const ndias=new Date(st.y,st.mo+1,0).getDate(); const acum=a=>{const d=Array(ndias).fill(0); a.forEach(r=>{const i=+r.data.slice(8)-1; if(i>=0&&i<ndias) d[i]+=+r.valor||0}); let s=0; return d.map(v=>s+=v)};
   const A=acum(V), Ap=acum(Vp); const mx=Math.max(1,...A,...Ap);
   const W=600,H=170,pad=28; const pt=(arr,lim)=>arr.slice(0,lim).map((v,i)=>`${pad+i*(W-2*pad)/(ndias-1)},${H-20-(v/mx)*(H-40)}`).join(' ');
@@ -1081,16 +1092,20 @@ async function painel(box){if(!box) return; const st=Object.assign({y:new Date()
   const metaV=st.rep?mRep(st.rep):st.vend?mVen(st.vend):(mG&&mG.valor); const metaP=!st.rep&&!st.vend&&mG?mG.positivacao:null; const proj=isCur&&dia>0?tot/dia*ndias:tot;
   box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b style="font-family:var(--display);font-size:22px;text-transform:uppercase">Painel do mês</b>
      <div class="row"><select id="dmo">${MESES.map((n,i)=>`<option value="${i}"${i===st.mo?' selected':''}>${n}</option>`).join('')}</select><select id="dy">${[0,1,2,3].map(i=>now.getFullYear()-i).map(y=>`<option${y===st.y?' selected':''}>${y}</option>`).join('')}</select>${isCur?`<button class="chip" id="dlive" title="Buscar agora no Reprio">↻ Reprio</button>`:''}</div></div>
-    ${erroBase?`<div class="card bad" style="margin-top:8px">Painel sem dados — ${esc(erroBase)}</div>`:''}<div class="hint" style="margin-top:-6px">${liveInfo||(isCur&&!RK()?'Coloque a chave do Reprio em Ajustes para ver ao vivo · ':'')+'Base sincronizada a cada 30 min'}${st.rep||st.vend?` · filtro: ${esc(st.rep||'')} ${esc(st.vend||'')} <button class="chip" id="dclr">limpar</button>`:''}</div>
+    ${erroBase?`<div class="card bad" style="margin-top:8px">Painel sem dados — ${esc(erroBase)}</div>`:''}<div class="hint" style="margin-top:-6px">${liveInfo||(isCur&&!RK()?'Coloque a chave do Reprio em Ajustes para ver ao vivo · ':'')+'Base sincronizada a cada 30 min'}${st.rep||st.vend||st.cli?` · filtro: ${esc(st.rep||'')} ${esc(st.vend||'')} ${esc(st.cli?nomeCli[st.cli]||fmtCnpj(st.cli):'')} <button class="chip" id="dclr">limpar</button>`:''}</div>
     <div class="kpis"><div class="kpi"><small>Vendido (s/ impostos)</small><b>${brl(tot)}</b><small class="${var_==null?'':var_>=0?'ok':'bad'}">${var_==null?'—':(var_>=0?'▲ ':'▼ ')+Math.abs(var_).toFixed(0)+'% vs mesmo período do mês anterior'}</small>${metaV?`<div class="mbar"><i style="width:${Math.min(100,tot/metaV*100)}%"></i></div><small>${(tot/metaV*100).toFixed(0)}% da meta de ${brl(metaV)}${isCur?' · projeção '+brl(proj)+(proj>=metaV?' ✅':' ⚠️'):''}</small>`:'<small><a href="#" data-gometas>definir meta</a></small>'}</div>
-     <div class="kpi"><small>Pedidos</small><b>${V.length}</b><small>ticket médio ${brl(V.length?tot/V.length:0)}</small></div>
+     <div class="kpi" data-gconf style="cursor:pointer"><small>Pedidos</small><b>${V.length}</b><small>ticket médio ${brl(V.length?tot/V.length:0)} · conferir ›</small></div>
      <div class="kpi"><small>Clientes positivados</small><b>${cli}</b><small>mês anterior: ${new Set(Vp.map(r=>r.cnpj)).size}</small>${metaP?`<div class="mbar"><i style="width:${Math.min(100,cli/metaP*100)}%"></i></div><small>${(cli/metaP*100).toFixed(0)}% da meta de ${metaP}</small>`:''}</div>
      <div class="kpi" data-gorc="1" style="cursor:pointer"><small>Orçamentos abertos no Reprio</small><b>${O.length}</b><small>${brl(sum(O))} em negociação ›</small></div></div>
     <svg viewBox="0 0 ${W} ${H}" class="spark" role="img" aria-label="Vendas acumuladas no mês"><polyline points="${pt(Ap,ndias)}" fill="none" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="2"/><polyline points="${pt(A,isCur?dia:ndias)}" fill="none" stroke="var(--accent)" stroke-width="3"/>
      <text x="${pad}" y="14" class="sv">Acumulado no mês</text><text x="${W-pad}" y="14" text-anchor="end" class="sv">— mês anterior · ━ este mês</text><text x="${pad}" y="${H-4}" class="sv">1</text><text x="${W-pad}" y="${H-4}" text-anchor="end" class="sv">${ndias}</text></svg>
-    <div class="dgrid"><div><b>Por representada</b>${bars(byRep,'rep',st.rep)}</div><div><b>Por vendedor</b>${bars(byVend,'vend',st.vend)}</div><div><b>Maiores clientes</b>${byCli.map(([n,v])=>`<div class="row" style="justify-content:space-between;font-size:13px;border-bottom:1px solid var(--line);padding:4px 0"><span>${esc(n)}</span><b>${brl(v)}</b></div>`).join('')||'<p class="hint">—</p>'}</div></div></div>`;
+    <div class="dgrid"><div><b>Por representada</b>${bars(byRep,'rep',st.rep)}</div><div><b>Por vendedor</b>${bars(byVend,'vend',st.vend)}</div><div><b>Maiores clientes</b>${byCli.map(([c,v])=>`<button class="bar cl${st.cli===c?' on':''}" data-f="cli" data-v="${esc(c)}"><span class="bl">${esc(nomeCli[c]||c)}</span><b>${brl(v)}</b></button>`).join('')||'<p class="hint">—</p>'}</div></div>
+    <p class="hint" style="margin:0">Toque numa representada, vendedor ou cliente para filtrar o painel e a conferência abaixo.</p></div>
+    ${confPedidos(V,tot,st,nomeCli)}`;
   box.onclick=async e=>{const b=e.target.closest('[data-f]'); if(b){const k=b.dataset.f, v=b.dataset.v; st[k]=st[k]===(k==='vend'?norm(v):v)?'':(k==='vend'?norm(v):v); save(); return painel(box)}
-    if(e.target.id==='dclr'){st.rep=st.vend=''; save(); return painel(box)} if(e.target.closest('[data-gometas]')){e.preventDefault(); return go('metas')} if(e.target.id==='dlive'){await sincronizarReprio(e.target); return painel(box)}
+    const pd=e.target.closest('[data-pd]'); if(pd) return detalhe(pd.dataset.pd); if(e.target.closest('[data-gconf]')) return box.querySelector('#dconf').scrollIntoView({behavior:'smooth'});
+    if(e.target.id==='dcsv') return csv(`pedidos_${MESES[st.mo]}_${st.y}`,[['Data do pedido','Conta no mês em','Nº','OC','Representada','Vendedor','Cliente','CNPJ','Valor s/ impostos','Situação','Origem'],...V.map(r=>[fmtDt(r.data_ped||r.data),fmtDt(r.data),r.num||'',r.oc||'',r.representada||'',r.vendedor||'',r.cliente||'',fmtCnpj(r.cnpj||''),String(+r.valor||0).replace('.',','),r.status||'',r.origem||''])]);
+    if(e.target.id==='dclr'){st.rep=st.vend=st.cli=''; save(); return painel(box)} if(e.target.closest('[data-gometas]')){e.preventDefault(); return go('metas')} if(e.target.id==='dlive'){await sincronizarReprio(e.target); return painel(box)}
     if(e.target.closest('[data-gorc]')){LS('pedF',{...(L('pedF')||{}),tipo:'orc',y:st.y,mo:st.mo,de:'',ate:'',q:'',st:''}); go('ped')}};
   box.onchange=e=>{if(e.target.id==='dmo'){st.mo=+e.target.value; save(); painel(box)} if(e.target.id==='dy'){st.y=+e.target.value; save(); painel(box)}}}
 
@@ -1538,7 +1553,7 @@ function mais(){const m=$('#main'); const it=[['trans','🚚','Para transmitir n
 async function sincronizarReprio(btn){if(!RK()){toast('Coloque a chave do Reprio em Mais › Ajustes'); return go('aj')} const lb=btn?btn.textContent:''; if(btn){btn.disabled=true; btn.textContent='Sincronizando…'}
   try{const d=new Date(); d.setDate(d.getDate()-120); LIVE=null; const r=await reprioAoVivo(ymd(d),true);
     if(r.gravou){try{await api('rpc/atualizar_resumos',{method:'POST',body:'{}'})}catch(e){}}
-    STALE.add('clis3'); delete CLIM.c; CLIS=null; PEDS=null; kv.set('peds2',null); for(const k in MEMO) delete MEMO[k];
+    STALE.add('clis3'); delete CLIM.c; CLIS=null; PEDS=null; kv.set('peds3',null); for(const k in MEMO) delete MEMO[k];
     toast(r.gravou?`✓ ${r.rows.length} pedidos/orçamentos dos últimos 120 dias atualizados do Reprio`:r.erro?'Li o Reprio, mas não gravei: '+r.erro:`Li ${r.rows.length} pedidos do Reprio (para gravar na base é preciso ser gestor)`)}
   catch(e){toast('Reprio: '+e.message)} if(btn){btn.disabled=false; btn.textContent=lb}}
 
@@ -1820,7 +1835,7 @@ async function metasView(){const m=$('#main'); const st=Object.assign({y:new Dat
 /* ================= relatório: conversão e positivação mês a mês ================= */
 async function relConversao(box,repF){box.innerHTML='<p class="hint">Calculando…</p>'; const hoje_=new Date(); const meses=[]; for(let i=11;i>=0;i--){const d=new Date(hoje_.getFullYear(),hoje_.getMonth()-i,1); meses.push([d.getFullYear(),d.getMonth()])}
   const de=mesIni(meses[0][0],meses[0][1]);
-  const [P,O]=await Promise.all([apiAll(`pedidos?select=representada,cnpj,valor,status,origem,data:data_ref,vendedor&data_ref=gte.${de}`).catch(()=>[]),apiAll(`orcamentos?select=app,status,situacao,total,atualizado_em,cnpj&atualizado_em=gte.${de}`).catch(()=>[])]);
+  const [P,O]=await Promise.all([apiAll(`pedidos?select=id,num,representada,cnpj,valor,status,origem,data:data_ref,vendedor&data_ref=gte.${de}`).then(semDupLeg).catch(()=>[]),apiAll(`orcamentos?select=app,status,situacao,total,atualizado_em,cnpj&atualizado_em=gte.${de}`).catch(()=>[])]);
   const rows=meses.map(([y,mo])=>{const ini=mesIni(y,mo), fim=mesFim(y,mo); const pm=P.filter(p=>p.data>=ini&&p.data<=fim&&(!repF||p.representada===repF)); const om=O.filter(o=>String(o.atualizado_em).slice(0,10)>=ini&&String(o.atualizado_em).slice(0,10)<=fim&&(!repF||repName(o.app)===repF));
     const rep=pm.filter(p=>p.origem==='reprio'); const ganhos=rep.filter(p=>efOk(p.status)).length, perd=rep.filter(p=>p.status==='cancelado').length, abertos=rep.filter(p=>p.status==='rascunho'||p.status==='em_digitacao').length;
     const sGan=om.filter(o=>stOf(o)==='transmitido').length, sPer=om.filter(o=>stOf(o)==='cancelado').length, sAb=om.filter(o=>!['transmitido','cancelado'].includes(stOf(o))).length;
@@ -2026,7 +2041,7 @@ async function finImportarXML(files){const res={ok:0,dup:0,ev:0,err:[],semRep:[]
   return res}
 async function finSalvarNF(n,xml,res){const ped=await finPedido(n), pedido_id=ped&&ped.id||null; n.tabela=ped&&ped.tabela||null; const c=finCalc(n); const {tpNF,natOp,cStat,...row}=n;
   const [nf]=await api('fin_nfe',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({...row,...c,pedido_id,xml,origem:n.origem||'upload'})}); await finGerarComissao(nf);
-  if(pedido_id) await api(`pedidos?id=eq.${encodeURIComponent(pedido_id)}&data_fat=is.null`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data_fat:n.emissao})}).catch(()=>{});
+  /* não grava pedidos.data_fat: a 1ª NF (às vezes parcial) jogava o pedido inteiro para o mês dela; o faturado do mês vem das próprias NF-e */
   res.ok++; if(c.pct==null) res.semPct++; if(!pedido_id) res.semPed++}
 async function finEscolherRep(it){return new Promise(ok=>{const ov=document.createElement('div'); ov.className='ov';
   ov.innerHTML=`<div class="sh grid"><b style="font-size:18px">De qual representada é esta NF?</b><p class="hint">NF ${esc(it.n.numero)} emitida por <b>${esc(it.n.emit_nome)}</b> (CNPJ ${esc(it.n.emit_cnpj)}) para ${esc(it.n.dest_nome)}. O Sistema lembra a escolha para as próximas notas deste CNPJ.</p>
@@ -2070,7 +2085,7 @@ async function finNFDet(id){const [n]=await api(`fin_nfe?select=*&id=eq.${id}`);
    <div class="row"><button class="btn ghost" id="fnx">Baixar XML</button><button class="btn ghost" id="fnd" style="color:var(--bad)">Excluir nota</button><button class="btn ghost" data-x>Fechar</button></div></div>`;
   document.body.appendChild(ov); ov.onclick=async e=>{const t=e.target; if(t===ov||t.closest('[data-x]')) return ov.remove();
     try{const np=t.closest('[data-np]'); if(np){const pp=P.find(p=>p.id===np.dataset.np); const nn={...n,v_prod:+n.v_prod||0,v_desc:+n.v_desc||0,v_ipi:+n.v_ipi||0,v_nf:+n.v_nf||0,tabela:pp&&pp.tabela||null}; await finDados(true); const c=finCalc(nn);
-      await api(`fin_nfe?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({pedido_id:np.dataset.np||null,tabela:nn.tabela,...c})}); await finGerarComissao({...nn,...c}); if(np.dataset.np) await api(`pedidos?id=eq.${encodeURIComponent(np.dataset.np)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data_fat:n.emissao})}).catch(()=>{}); ov.remove(); toast(np.dataset.np?'Pedido ligado':'Desligado'); return finNFDet(id)}
+      await api(`fin_nfe?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({pedido_id:np.dataset.np||null,tabela:nn.tabela,...c})}); await finGerarComissao({...nn,...c}); ov.remove(); toast(np.dataset.np?'Pedido ligado':'Desligado'); return finNFDet(id)}
       if(t.id==='fnx'){const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([n.xml||''],{type:'text/xml'})); a.download=`NFe_${n.chave}.xml`; a.click(); return}
       if(t.id==='fnd'){if(!confirm('Excluir esta nota e as parcelas de comissão dela?')) return; await api(`fin_nfe?id=eq.${id}`,{method:'DELETE'}); ov.remove(); toast('Nota excluída'); finView()}}catch(err){toast('Erro: '+err.message)}}}
 

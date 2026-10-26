@@ -86,6 +86,7 @@ async function garantirTp(){let tp=null; try{tp=localStorage.getItem('chamae_tp'
 /* Marluvas e Medix usam a tela dos conversores (grade, níveis, tabelas) dentro do Sistema; orc = orçamento da base para reabrir nele */
 async function abrirApp(rep,orc){if(!EXTERNAL[rep]) return; let ov=document.getElementById('appOv-'+rep);
   if(ov&&orc){try{ov.querySelector('iframe').contentWindow.postMessage({t:'chamae-abrir-orc',id:orc},location.origin)}catch(e){}}
+  if(ov){try{ov.querySelector('iframe').contentWindow.postMessage({t:'chamae-produtos'},location.origin)}catch(e){}} /* conversor já aberto: puxa de novo os produtos alterados aqui no Sistema */
   if(!ov) await garantirTp();
   if(!ov){ov=document.createElement('div'); ov.id='appOv-'+rep; ov.className='appov'; ov.style.cssText='position:fixed;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column';
     ov.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px;background:#1c2340;color:#fff"><button class="btn sm" data-fechaapp>‹ Início</button><b style="font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.03em">${esc(repName(rep))}</b></div><iframe title="${esc(repName(rep))}" src="${EXTERNAL[rep]}?inapp=1${orc?'&orc='+encodeURIComponent(orc):''}" style="flex:1;border:0;width:100%;background:#fff"></iframe>`;

@@ -118,6 +118,7 @@ async function criarORV(o: any) {
   const avisos: string[] = [];
 
   await login();
+  let abriu = false, gravou = false;
   try {
     // 1) rascunho em aberto no login compartilhado? não mexe
     const pg = await pagina('/orcamentos');
@@ -128,9 +129,12 @@ async function criarORV(o: any) {
     }
     if (/data-pedido=["']?True\b/i.test(bt)) return { ocupada: true };
 
-    // 2) abre o assistente
-    await pagina('/pedidosnovo/inserir?orc=true&prospect=false');
-    const instanceId = String(Math.floor(Math.random() * 1e9));
+    // 2) abre o assistente; o instanceId vem do servidor no HTML da página (um número qualquer dá {"returnUrl":"/pedidos"})
+    const ins0 = await pagina('/pedidosnovo/inserir?orc=true&prospect=false');
+    abriu = true;
+    const instanceId = ins0.html.match(/pevwa001\.instanceId\s*=\s*(\d+)\s*;/)?.[1];
+    if (!instanceId) throw new Error(`A Sigma não abriu o orçamento novo (HTTP ${ins0.status} em ${ins0.url})`);
+    if (/config\.orcamento\s*=\s*false/i.test(ins0.html)) { abriu = false; throw new Error('A Sigma abriu um rascunho de pedido em vez de orçamento; envio interrompido'); }
 
     // 3) cliente pelo CNPJ
     const lv = await jreq(`/lov/cllva001?queryFilter=${cnpj}&pl=100&lovAvancada=false&init=`);
@@ -228,15 +232,17 @@ async function criarORV(o: any) {
       const cf = await jreq('/PedidosNovo/Confirmar', form({ idPedidoTemp: tmp }));
       const orv = cf.j?.Pedido?.Pedido;
       if (!orv) throw new Error('Gravar: ' + (cf.j?.Message || 'HTTP ' + cf.status));
-      tmp = 0;
+      tmp = 0; gravou = true;
       return {
         orv: 'ORV-' + orv, num: orv, total: +p4.Pet101Totalprod || null, impostos: +p4.Pet101Totalimpostos || null,
         totalPed: +p4.Pet101Totalpedi || null, cond: p1.Condicao?.Taa008Descricao || String(cond), lista, avisos,
       };
     } finally {
-      if (tmp) await req('/PedidosNovo/Cancelar', { method: 'POST' }).then((r) => r.text()).catch(() => {});
+      tmp = 0;
     }
   } finally {
+    // descarta só o rascunho que esta função abriu (antes de abrir, conferimos que não havia nenhum)
+    if (abriu && !gravou) await req('/PedidosNovo/Cancelar', { method: 'POST' }).then((r) => r.text()).catch(() => {});
     await req('/Home/Logout').then((r) => r.text()).catch(() => {});
   }
 }

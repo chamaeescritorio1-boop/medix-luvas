@@ -35,6 +35,25 @@ async function req(path: string, init: RequestInit = {}) {
   guardar(r);
   return r;
 }
+// tela inteira, como o navegador: sem X-Requested-With e seguindo redirecionamentos (com os cookies)
+async function pagina(path: string) {
+  let url = path;
+  for (let i = 0; i < 6; i++) {
+    const r = await fetch(BASE + url, {
+      headers: { 'User-Agent': UA, Cookie: cookie(), Accept: 'text/html,application/xhtml+xml' },
+      redirect: 'manual', signal: AbortSignal.timeout(30000),
+    });
+    guardar(r);
+    const loc = r.headers.get('location');
+    if (r.status >= 300 && r.status < 400 && loc) {
+      await r.text().catch(() => {});
+      url = loc.startsWith('http') ? loc.replace(/^https?:\/\/[^/]+/, '') : loc.startsWith('/') ? loc : '/' + loc;
+      continue;
+    }
+    return { status: r.status, url, html: await r.text() };
+  }
+  throw new Error('A Sigma ficou redirecionando ' + path);
+}
 const form = (o: Record<string, unknown>) => ({
   method: 'POST',
   headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
@@ -73,6 +92,8 @@ async function login() {
   if (status !== 200 || !j || j.ResponseObject?.valida2FA || j.ResponseObject?.precisaAlterarSenha || (!j.returnUrl && j.Success === false)) {
     throw new Error('Login na Sigma falhou (HTTP ' + status + '): ' + (j?.Message || txt.slice(0, 200)));
   }
+  // como o navegador: abre a página de destino do login (pode escolher empresa/filial na sessão)
+  if (typeof j.returnUrl === 'string' && j.returnUrl.startsWith('/')) await pagina(j.returnUrl).catch(() => {});
 }
 
 const n2t = (v: unknown) => (v == null || v === '' ? '0' : String(v).replace('.', ','));
@@ -99,13 +120,16 @@ async function criarORV(o: any) {
   await login();
   try {
     // 1) rascunho em aberto no login compartilhado? não mexe
-    const pg = await (await req('/orcamentos')).text();
-    const bt = pg.match(/<[^>]*id="sw-btn-inserir"[^>]*>/i)?.[0] || '';
-    if (!bt) throw new Error('Não achei o botão de novo orçamento na Sigma (tela mudou?)');
-    if (/data-pedido="True"/i.test(bt)) return { ocupada: true };
+    const pg = await pagina('/orcamentos');
+    const bt = pg.html.match(/<[^>]*\bid=["']?sw-btn-inserir\b[^>]*>/i)?.[0] || '';
+    if (!bt) {
+      const tit = (pg.html.match(/<title>([^<]*)/i)?.[1] || pg.html.replace(/\s+/g, ' ').slice(0, 80)).trim();
+      throw new Error(`Não achei o botão de novo orçamento na Sigma (HTTP ${pg.status} em ${pg.url}: ${tit})`);
+    }
+    if (/data-pedido=["']?True\b/i.test(bt)) return { ocupada: true };
 
     // 2) abre o assistente
-    await (await req('/pedidosnovo/inserir?orc=true&prospect=false')).text();
+    await pagina('/pedidosnovo/inserir?orc=true&prospect=false');
     const instanceId = String(Math.floor(Math.random() * 1e9));
 
     // 3) cliente pelo CNPJ

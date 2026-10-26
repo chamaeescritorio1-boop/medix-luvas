@@ -117,6 +117,17 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 .mbar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:4px}.mbar i{display:block;height:100%;background:var(--ok);border-radius:99px}
 .cbar{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:170px;margin-top:10px}.cbar>div{display:grid;grid-template-rows:1fr auto auto;height:100%;text-align:center;gap:2px}.cbar span{align-self:end;background:var(--accent);border-radius:6px 6px 0 0;min-height:2px}.cbar small{font-size:10px;color:var(--muted)}
 #lembretes{position:fixed;right:16px;bottom:92px;z-index:70;display:grid;gap:8px;max-width:340px;width:calc(100vw - 32px)}.lemb{background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:lin .3s ease}@keyframes lin{from{transform:translateY(20px);opacity:0}}@media(min-width:1000px){#lembretes{bottom:20px}}
+/* tabelas de preço (estilo Reprio) */
+.tpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.tpc{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--surface);color:var(--ink);text-align:left;display:grid;gap:6px;cursor:pointer;font-family:inherit}.tpc b{font-size:15px}.tpc:hover{border-color:var(--accent)}.tpc.off{opacity:.6}.tpc.nova{border-style:dashed;background:transparent}
+.tpk .kpi{border:1px solid transparent;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink)}.tpk .kpi.on{border-color:var(--accent)}
+.tpf{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}.tpf input{width:auto;margin:0}
+table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[type=checkbox]{width:auto;margin:0}
+.tpv{background:none;border:1px dashed transparent;border-radius:8px;padding:4px 6px;color:var(--ink);font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}.tpv:hover{border-color:var(--line)}
+.tpi{background:none;border:0;cursor:pointer;font-size:15px;color:var(--accent);padding:2px 6px}
+.tpin{width:110px;padding:6px;text-align:right;font-size:14px}
+.tag.ok{background:transparent;border:1px solid currentColor}
+#tpAc button:disabled{opacity:.45;cursor:default}
 </style>
 </head>
 <body>

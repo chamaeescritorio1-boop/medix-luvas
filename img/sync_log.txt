@@ -1,8 +1,9 @@
-283 páginas de produto
+284 páginas de produto
 sem img/sku https://medixbrasil.com.br/produto/babador-odontologico-impermeavel-supreme-1782766574 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/babador-odontologico-supreme-colorido-1782766574.jpg 0
 sem img/sku https://medixbrasil.com.br/produto/couropro-fp-luva-de-vaqueta-para-impacto-e-corte-1792174128 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/fotos-couropro-fp-par-fundo-branco-1-1792174128.jpg 0
 sem img/sku https://medixbrasil.com.br/produto/luva-de-palpacao-1785244623 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/luva-de-palpacao-mockup-1785244624.jpg 0
 sem img/sku https://medixbrasil.com.br/produto/luva-para-procedimento-nao-cirurgico-latex-ambidestra https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/luva-para-proced-1789396810.jpg 0
 sem img/sku https://medixbrasil.com.br/produto/q-latexpro-lisa-1746710066 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/qlatexprolisa-1747233882.jpg 0
+sem img/sku https://medixbrasil.com.br/produto/rolo-dental-classic-1792762317 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/mockup-rolo-dental-classic-frente-1792762317.jpg 0
 sem img/sku https://medixbrasil.com.br/produto/tampa-protetora-com-alcool-1792098887 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/tampa-protetora-com-alcool-caixa-secundaria-1792098887.jpg 0
 1025 SKUs com foto

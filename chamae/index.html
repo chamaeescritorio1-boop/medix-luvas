@@ -52,6 +52,8 @@ table.t{width:100%;border-collapse:collapse;font-size:13px} table.t th,table.t t
 nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:rgba(14,17,32,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0)}
 nav button{flex:1;border:0;background:none;color:var(--muted);padding:10px 4px 12px;font-size:12px;font-weight:600;display:grid;justify-items:center;gap:2px;cursor:pointer;font-family:inherit}
 nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav button.on svg{color:var(--accent)}
+.fabOrc{position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:7;box-shadow:0 8px 24px rgba(0,0,0,.45);padding:13px 18px;font-size:15px;border-radius:999px} .fabOrc[hidden]{display:none}
+@media(min-width:1000px){.fabOrc{bottom:24px;right:24px}}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#eef0f7;color:#111;padding:10px 14px;border-radius:12px;z-index:50;font-size:14px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,.4)}
 #lock{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
 #lock form{width:100%;max-width:340px;display:grid;gap:12px;text-align:center}
@@ -133,7 +135,7 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202610261800"></script>
+<script src="app.js?v=202610261830"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

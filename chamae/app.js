@@ -2095,7 +2095,7 @@ async function enviarEmail({cnpj,cliente,assunto,texto,gerarPDF,ref}){const L=aw
     try{let anexo=null; if(ov.querySelector('#ema').checked){const g=await gerarPDF(); anexo={nome:g.fname,base64:await b64(g.blob)}} st.textContent='Enviando…';
       const tk=await token(); const r=await fetch(SB+'/functions/v1/enviar-email',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({para,cc,assunto:ov.querySelector('#ems').value,texto:ov.querySelector('#emt').value,anexo,ref})});
       const j=await r.json().catch(()=>({})); if(r.status===404) throw new Error('O envio pelo sistema ainda não foi ativado (Edge Function “enviar-email”). Veja Mais › Ajustes.'); if(!r.ok) throw new Error(j.erro||('HTTP '+r.status));
-      ov.remove(); toast('✓ E-mail enviado de '+(j.de||'seu e-mail')); fim(true)}catch(err){st.textContent=''; t.disabled=false; toast(err.message.slice(0,160))}}; return pronto}
+      ov.remove(); toast('✓ E-mail enviado de '+(j.de||'seu e-mail')); fim(true)}catch(err){st.textContent=''; t.disabled=false; toast(err instanceof TypeError&&/fetch|network|load/i.test(err.message)?'Sem conexão com o servidor de e-mail. Tente de novo em instantes.':err.message.slice(0,160))}}; return pronto}
 
 function fichaTopo(F){return `<div class="ftopo">${F.map(([l,v,big])=>`<div class="${big?'ft-big':''}"><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div>`}
 

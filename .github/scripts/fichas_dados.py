@@ -21,7 +21,9 @@ def campos(txt):
         v=float(m.group(1).replace(',','.'));  v=v*10 if v<100 else v
         if 150<=v<=700: d['comp']=str(int(v))
     m=re.search(r'\bCOR(?:ES)?\s*[:\-]\s*([A-Z ]{3,30}?)(?=\s*(?:[;.,]|TAMANHO|MATERIAL|ESPESSURA|COMPRIMENTO|EMBALAGEM|CA\b|$))',t)
-    if m and m.group(1).strip(): d['cor']=m.group(1).strip().title()
+    if m:
+        cor=re.sub(r'\b(DISPONIVEL|DISPONIVEIS|NOS|NAS|EM|TAMANHOS?|APIROGENI\w*)\b.*$','',m.group(1)).strip()
+        if cor: d['cor']=cor.title()
     m=re.search(r'\bC\.?\s?A\.?\s*(?:N[O°º]?\.?)?\s*[:\-]?\s*(\d{1,3}\.\d{3}|\d{4,6})\b',t)
     if m: d['ca']=m.group(1).replace('.','')
     m=re.search(r'(?:REGISTRO|ANVISA|MS)[^0-9]{0,30}(\d{11})',t)
@@ -57,6 +59,28 @@ for url in sorted(set(site.values())):
     if ids: d['drive']=ids[0]
     pags[url]=d
 print(len(pags),'páginas lidas de',len(set(site.values())))
+STOP={'FICHA','TECNICA','MEDIX','BRASIL','PDF','REV','OK','SEM','CAD','DE','DA','DO','PARA','E','COM','PROFISSIONAL'}
+def toks(t): return {w for w in re.split(r'[^A-Z0-9]+',sem_acento(t)) if len(w)>1 and not w.isdigit() and w not in STOP}|({'COMPO'} if re.search(r'COM[ -]PO\b',sem_acento(t).replace('-',' ')) else set())|({'SEMPO'} if re.search(r'SEM[ -]PO\b',sem_acento(t).replace('-',' ')) else set())
+PT={k:toks(v['n']) for k,v in pdf.items()}
+K={'CIRURGICA','PROCEDIMENTO','POLYBAG','SUPREME','ESTERIL','HDPE','AMG','PRETA','ROSA','AZUL','VIOLETA','LATEX','NITRILO','VINIL','COMPO','SEMPO','POLIISOPRENO','THERMOPLAST','TPE','MULTIUSO'}
+def melhor(url):
+    a=toks(re.sub(r'-\d{6,}$','',url.rstrip('/').split('/')[-1]))
+    if not a: return None
+    mod=re.split(r'-',url.rstrip('/').split('/')[-1])[0].upper()
+    r=[]
+    for k,b in PT.items():
+        if not b: continue
+        if ('PLUS' in a)!=('PLUS' in b): continue
+        if mod!='LUVA' and len(mod)>2 and mod in b: r.append((2+len(a&b)/len(a|b),k)); continue
+        if (a&K)!=(b&K): continue
+        r.append((len(a&b)/len(a|b),k))
+    r.sort(reverse=True)
+    if r and r[0][0]>=0.45 and (len(r)<2 or r[0][0]>r[1][0]): return r[0][1]
+    return None
+for url,p in pags.items():
+    if not p.get('drive'):
+        k=melhor(url)
+        if k: p['drive']=k
 cod={}
 for c,url in site.items():
     p=dict(pags.get(url) or {}); did=p.pop('drive',None); f=pdf.get(did or '',{})

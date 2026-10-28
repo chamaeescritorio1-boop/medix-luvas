@@ -482,7 +482,7 @@ async function escolherCtPdf(cli){const P=await api(`cliente_pessoas?select=*&cn
 
 /* PDF padrão (mesmo layout do app Medix) para todas as representadas */
 /* o que aparece no PDF do orçamento, por representada (regras.pdf: off = itens desligados, textos editáveis) */
-const PDF_OP=[['Cliente e condições',[['ac','Contato A/C do cliente'],['tabela','Nome da tabela de preço'],['vendedor','Vendedor'],['frete_cab','Frete / transportadora no quadro'],['icms_cab','ICMS no quadro']]],
+const PDF_OP=[['Cliente e condições',[['rep','Dados da representada (logo, razão social, CNPJ, endereço)'],['ac','Contato A/C do cliente'],['tabela','Nome da tabela de preço'],['vendedor','Vendedor'],['frete_cab','Frete / transportadora no quadro'],['icms_cab','ICMS no quadro']]],
   ['Itens',[['foto','Foto do produto'],['desc','Descrição completa'],['campanha','Selo e texto de campanha'],['grade','Grade'],['ca','CA'],['ean','EAN'],['ncm','NCM'],['ipi','IPI'],['icms','ICMS do item'],['emb','Embalagem'],['tam','Tamanho'],['lt','Lead time'],['lista','Lista bruta com descontos'],['ficha','Link da ficha técnica'],['cipi','Preço com IPI embaixo do unitário']]],
   ['Totais',[['subtotal','Subtotal, IPI e frete separados'],['unid','Quantidade total de unidades']]],
   ['Textos no final',[['obs','Observação digitada no orçamento'],['frete','Política de frete'],['min','Pedido mínimo'],['precos','Texto sobre preços e IPI'],['icms_txt','Texto do ICMS'],['oc','Ordem de compra'],['extra','Texto próprio da fábrica']]]];
@@ -491,42 +491,23 @@ const pdfCfg=(rep,cfg)=>{const c=cfg||(((REPS||[]).find(x=>x.id===rep)||{}).regr
 const pdfFill=(s,v)=>String(s||'').replace(/\{(\w+)\}/g,(_,k)=>v[k]??'').replace(/\s*\(\s*\)/g,'').trim();
 /* dados cadastrais da representada que saem no PDF (aba Dados da ficha da representada) */
 const fmtFone=x=>{x=String(x||'').replace(/\D/g,''); return x.length>=10?`(${x.slice(0,2)}) ${x.slice(2,-4)}-${x.slice(-4)}`:x};
-const hexRgb=h=>{const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(h||''); return m?[1,2,3].map(i=>parseInt(m[i],16)):[42,49,87]};
 function repDados(rep,rg){const r=(REPS||[]).find(x=>x.id===rep)||{}; const g=rg||r.regras||{}; if(!g.razao&&!g.cnpj) return null; const cu=repCidUf(g);
-  return {nome:r.nome||repName(rep),cor:hexRgb(r.cor),logo:g.logo||'',ini:String(r.nome||rep).split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(),razao:g.razao||r.nome||repName(rep),
+  return {nome:r.nome||repName(rep),logo:g.logo||'',razao:g.razao||r.nome||repName(rep),
     doc:[g.cnpj?'CNPJ '+fmtCnpj(g.cnpj):'',g.ie?'IE '+g.ie:''].filter(Boolean).join('  ·  '),end:[g.endereco,g.bairro].filter(Boolean).join(' - '),cid:[cu.cidade&&cu.uf?cu.cidade+'/'+cu.uf:cu.cidade||cu.uf,g.cep?'CEP '+g.cep:''].filter(Boolean).join('  ·  '),
     con:[fmtFone(g.telefone),g.email,g.site].filter(Boolean).join('  ·  ')}}
 async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'});
   const W=210,M=12; const NAVY=[28,35,64],GOLD=[224,161,0],GREY=[110,104,98],LINE=[221,214,207]; const c=o.cli; const num=o.num||new Date().toISOString().replace(/\D/g,'').slice(2,12); const RN=repName(o.rep);
   const logo=await imgData('logo.jpg',900); const rg=regra(o.rep); const uf=c?ufOf(c.cid):''; const ic=icmsUF(uf,o.rep); const gur=ehGurO(o,t.tab); if(gur) rg.frete=gurFrete; const pzT=gur?gurPrazo(o.prazo):o.prazo; const F=pdfCfg(o.rep,t.cfg), on=F.on;
-  let MOD=t.repMod||(t.cfg||(((REPS||[]).find(x=>x.id===o.rep)||{}).regras||{}).pdf||{}).rep_modelo||''; const RD=MOD?repDados(o.rep,t.repG):null; if(!RD) MOD=''; const Y0=MOD==='c'?54:38; const rlogo=RD&&RD.logo?await imgData(RD.logo,300):null;
-  /* selo da fábrica: logo cadastrado ou iniciais na cor da representada */
-  const selo=(x,y0,sz,claro)=>{if(rlogo){const k=Math.min(sz/rlogo.w,sz/rlogo.h); doc.setFillColor(255);doc.roundedRect(x,y0,sz,sz,1.5,1.5,'F'); doc.addImage(rlogo.d,'JPEG',x+(sz-rlogo.w*k)/2,y0+(sz-rlogo.h*k)/2,rlogo.w*k,rlogo.h*k); return} doc.setFillColor(...(claro?[255,255,255]:RD.cor));doc.roundedRect(x,y0,sz,sz,1.5,1.5,'F');doc.setTextColor(...(claro?RD.cor:[255,255,255]));doc.setFont('helvetica','bold');doc.setFontSize(sz*.95);doc.text(RD.ini,x+sz/2,y0+sz/2+sz*.17,{align:'center'});doc.setFont('helvetica','normal')};
+  const RD=on('rep')?repDados(o.rep,t.repG):null; const rlogo=RD&&RD.logo?await imgData(RD.logo,400):null;
   const head=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24);
     doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('ORÇAMENTO',W-M,13,{align:'right'});
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Nº ${num}  ·  ${new Date().toLocaleDateString('pt-BR')}`,W-M,19,{align:'right'});doc.text('Produtos '+RN,W-M,24,{align:'right'});
-    if(MOD==='c'){const lum=(RD.cor[0]*.299+RD.cor[1]*.587+RD.cor[2]*.114)/255; doc.setFillColor(...RD.cor);doc.rect(0,30,W,16,'F');doc.setFillColor(...GOLD);doc.rect(0,46,W,.8,'F'); selo(M,32.5,11,true); const tc=lum>.62?30:255; doc.setTextColor(tc);
-      doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text(doc.splitTextToSize(RD.razao,112)[0],M+14,34.8);doc.setFont('helvetica','normal');doc.setFontSize(7.6);[RD.doc,RD.con].filter(Boolean).forEach((l,k)=>doc.text(doc.splitTextToSize(l,112)[0],M+14,38.8+k*3.6));
-      doc.text([doc.splitTextToSize(RD.end||'',60)[0]||'',RD.cid||''].filter(Boolean),W-M,36.4,{align:'right',lineHeightFactor:1.35})}};
-  head(); let y=Y0; doc.setTextColor(30);
-  if(MOD==='a'){const L3=[RD.doc,[RD.end,RD.cid].filter(Boolean).join('  ·  '),RD.con].filter(Boolean); doc.setFontSize(8.3); const L4=L3.map(l=>doc.splitTextToSize(l,W-2*M-24)[0]); const h=Math.max(19,12.5+L4.length*3.9);
-    doc.setFillColor(250,247,240);doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,h,2,2,'FD');doc.setFillColor(...RD.cor);doc.rect(M,y+3,1.2,h-6,'F'); selo(M+4.5,y+(h-12)/2,12);
-    doc.setFontSize(7);doc.setTextColor(...GREY);doc.text('REPRESENTADA / FABRICANTE',M+20,y+5.2);doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(doc.splitTextToSize(RD.razao,W-2*M-24)[0],M+20,y+10);
-    doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(60);L4.forEach((l,k)=>doc.text(l,M+20,y+14.4+k*3.9)); y+=h+4}
-  if(MOD==='b'){const cw=(W-2*M-4)/2, xR=M+cw+4; doc.setFontSize(10.5); const nmC=doc.splitTextToSize(c?c.n:'Cliente não informado',cw-8).slice(0,2);
-    const cts=(on('ac')&&c&&c.ct||[]).map(x=>'A/C '+x.n+(x.cg?' ('+x.cg+')':'')+[x.tel,x.em].filter(Boolean).map(z=>'  ·  '+z).join(''));
-    const LC=c?[c.fa,[c.cnpj?'CNPJ '+fmtCnpj(c.cnpj):'',c.cid].filter(Boolean).join('  ·  '),c.tel,c.em].filter(Boolean):[];
-    doc.setFontSize(10); const nmR=doc.splitTextToSize(RD.razao,cw-22).slice(0,2); doc.setFontSize(8.3); const LR=[RD.doc,...doc.splitTextToSize(RD.end||'',cw-8).slice(0,2),RD.cid,...doc.splitTextToSize(RD.con||'',cw-8).slice(0,2)].filter(Boolean);
-    const hL=13+nmC.length*4.6+(LC.length+cts.length)*4, hR=13+Math.max(12,nmR.length*4.4)+LR.length*3.9, h=Math.max(hL,hR,30);
-    doc.setDrawColor(...LINE);doc.roundedRect(M,y,cw,h,2,2);doc.roundedRect(xR,y,cw,h,2,2);doc.setFillColor(...RD.cor);doc.rect(xR,y+3,1.2,h-6,'F');
-    doc.setFontSize(8);doc.setTextColor(...GREY);doc.text('CLIENTE',M+4,y+6);doc.text('REPRESENTADA / FABRICANTE',xR+4,y+6);
-    doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(nmC,M+4,y+12);doc.setFont('helvetica','normal');doc.setFontSize(8.6);let yy=y+12+nmC.length*4.6;
-    LC.forEach(l=>{doc.text(doc.splitTextToSize(l,cw-8)[0],M+4,yy);yy+=4}); doc.setFont('helvetica','bold');cts.forEach(l=>{doc.text(doc.splitTextToSize(l,cw-8)[0],M+4,yy);yy+=4});doc.setFont('helvetica','normal');
-    selo(xR+4,y+8.5,12); doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(nmR,xR+19,y+12.5);doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(60);
-    yy=y+13+Math.max(12,nmR.length*4.4); LR.forEach(l=>{doc.text(l,xR+4,yy);yy+=3.9}); y+=h+4;
-    const K=[['CONDIÇÃO DE PAGAMENTO',pzT?pzT+(/^[\d/ ]+$/.test(pzT)?' dias':''):'A combinar'],...(t.tab&&on('tabela')?[['TABELA',t.tab.nome]]:[]),...(vendNome(o)&&on('vendedor')?[['VENDEDOR',vendNome(o)]]:[]),...(on('frete_cab')&&(t.tr||o.transpN)?[[t.tr?'FRETE':'TRANSPORTADORA',t.tr?t.tr.n:o.transpN]]:[]),...(ic!=null&&on('icms_cab')?[['ICMS',ic+'%']]:[])];
-    const kw=(W-2*M)/K.length; doc.setFillColor(253,244,214);doc.roundedRect(M,y,W-2*M,13,2,2,'F'); K.forEach(([l,v],k)=>{const x=M+4+k*kw; doc.setFontSize(7);doc.setTextColor(...GREY);doc.text(l,x,y+5);doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.text(doc.splitTextToSize(String(v),kw-6)[0],x,y+10);doc.setFont('helvetica','normal')}); y+=20}
-  else{
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Nº ${num}  ·  ${new Date().toLocaleDateString('pt-BR')}`,W-M,19,{align:'right'});doc.text('Produtos '+RN,W-M,24,{align:'right'});};
+  head(); let y=38; doc.setTextColor(30);
+  if(RD){const tw=W-2*M-8-(rlogo?30:0), x0=M+4+(rlogo?30:0); const L3=[RD.doc,[RD.end,RD.cid].filter(Boolean).join('  ·  '),RD.con].filter(Boolean); doc.setFontSize(8.3); const L4=L3.map(l=>doc.splitTextToSize(l,tw)[0]); const h=Math.max(rlogo?22:0,12.5+L4.length*3.9);
+    doc.setFillColor(250,247,240);doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,h,2,2,'FD');
+    if(rlogo){const bw=26,bh=h-6,k=Math.min(bw/rlogo.w,bh/rlogo.h); doc.addImage(rlogo.d,'JPEG',M+4+(bw-rlogo.w*k)/2,y+3+(bh-rlogo.h*k)/2,rlogo.w*k,rlogo.h*k)}
+    doc.setFontSize(7);doc.setTextColor(...GREY);doc.text('REPRESENTADA / FABRICANTE',x0,y+5.2);doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(doc.splitTextToSize(RD.razao,tw)[0],x0,y+10);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(60);L4.forEach((l,k)=>doc.text(l,x0,y+14.4+k*3.9)); y+=h+4}
   const cts=(on('ac')&&c&&c.ct||[]).map(x=>'A/C '+x.n+(x.cg?' ('+x.cg+')':'')+[x.tel,x.em].filter(Boolean).map(z=>'  ·  '+z).join('')); const nL=c?[c.fa,c.cnpj||c.cid,c.tel||c.em].filter(Boolean).length+cts.length:0; const hC=Math.max((c?30:16)+(ic!=null&&on('icms_cab')?11:7),c?(doc.setFontSize(9),(doc.splitTextToSize(c.n,110).length>1?22:17)+nL*4.2):0); doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,hC,2,2);
   doc.setFontSize(8);doc.setTextColor(...GREY);doc.text('CLIENTE',M+4,y+6);doc.text('CONDIÇÃO DE PAGAMENTO',130,y+6);
   doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(doc.splitTextToSize(c?c.n:'Cliente não informado',110),M+4,y+12);
@@ -535,9 +516,9 @@ async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); awai
   doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(doc.splitTextToSize(pzT?pzT+(/^[\d/ ]+$/.test(pzT)?' dias':''):'A combinar',66)[0],130,y+12);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);doc.text(t.tab&&on('tabela')?'Tabela: '+t.tab.nome:'',130,y+17); if(vendNome(o)&&on('vendedor')) doc.text('Vendedor: '+vendNome(o),130,y+22);
   const cond2=[on('frete_cab')?(t.tr?'Frete: '+t.tr.n:o.transpN?'Transportadora: '+o.transpN:''):'',ic!=null&&on('icms_cab')?`ICMS: ${ic}%`:''].filter(Boolean);
-  doc.setTextColor(30);doc.setFontSize(9);doc.setFont('helvetica','bold');cond2.forEach((s,k)=>doc.text(s,130,y+(c?28:20)+k*4.6));doc.setFont('helvetica','normal'); y+=hC+7}
+  doc.setTextColor(30);doc.setFontSize(9);doc.setFont('helvetica','bold');cond2.forEach((s,k)=>doc.text(s,130,y+(c?28:20)+k*4.6));doc.setFont('helvetica','normal'); y+=hC+7;
   let un=0;
-  for(const r of rows){const it=r.p, qt=r.i.qt, pu=r.pu; un+=qt; const hBox=35; if(y+hBox>280){doc.addPage();head();y=Y0}
+  for(const r of rows){const it=r.p, qt=r.i.qt, pu=r.pu; un+=qt; const hBox=35; if(y+hBox>280){doc.addPage();head();y=38}
     doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,hBox,2,2);
     const im=it.img&&on('foto')?await imgData(it.img,400):null; if(im){const s=Math.min(24/im.w,24/im.h);doc.addImage(im.d,'JPEG',M+3+(24-im.w*s)/2,y+3+(24-im.h*s)/2,im.w*s,im.h*s)}
     const x0=M+(im?31:4); const nome=String(it.descricao||'').split(/ — | · /)[0]; doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(doc.splitTextToSize(`${it.cod} · ${it.ref&&it.ref!==it.cod?it.ref:nome}`,100)[0],x0,y+8);
@@ -552,14 +533,14 @@ async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); awai
     doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GREY);doc.text(+it.ipi&&on('cipi')?`unit. s/ IPI · c/ IPI ${brl(pu*(1+it.ipi/100))}`:'preço unitário',W-M-6,y+17.2,{align:'right'});
     doc.setTextColor(30);doc.setFontSize(8.5);doc.text(`${qt} ${String(it.un||'un.').toLowerCase().slice(0,6)} x ${pu?brl(pu):'-'} =`,W-M-6,y+21.8,{align:'right'});
     doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(pu?brl(pu*qt):'-',W-M-6,y+26.5,{align:'right'});doc.setFont('helvetica','normal'); y+=hBox+4}
-  if(y+44>285){doc.addPage();head();y=Y0}
+  if(y+44>285){doc.addPage();head();y=38}
   if((t.ipi||t.fr)&&on('subtotal')){doc.setFontSize(9);doc.setTextColor(30);[['Subtotal (sem IPI)',t.sub],['IPI',t.ipi],...(t.fr?[[`Frete estimado (${pct(t.tr.p)})`,t.fr]]:[])].forEach(([l,v])=>{doc.text(l,W-M-60,y+4);doc.text(brl(v),W-M-5,y+4,{align:'right'});y+=5});y+=2}
   doc.setFillColor(...NAVY);doc.roundedRect(M,y,W-2*M,14,2,2,'F');doc.setTextColor(255);doc.setFontSize(10);doc.text(on('unid')?`TOTAL  ·  ${un} un.`:'TOTAL',M+5,y+9);
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(brl(t.sub+t.ipi+t.fr),W-M-5,y+9.5,{align:'right'});doc.setFont('helvetica','normal');y+=20;
   doc.setTextColor(...GREY);doc.setFontSize(8.5);
   const TV={tabela:t.tab?t.tab.nome:'',uf,icms:ic??'',minimo:rg.min?brl(rg.min):'',representada:RN,prazo:pzT||''};
   const obs=[on('obs')?o.obs:'',[on('frete')?rg.frete:'',on('min')&&rg.min?`Pedido mínimo para faturamento: ${brl(rg.min)}`+(t.sub<rg.min?` (este orçamento soma ${brl(t.sub)}; faltam ${brl(rg.min-t.sub)}).`:'.'):''].filter(Boolean).join(' '),on('precos')?pdfFill(F.tx('precos'),TV):'',ic!=null&&on('icms_txt')?pdfFill(F.tx('icms_txt'),TV):'',on('oc')&&o.oc?'Ordem de compra: '+o.oc:'',on('extra')?pdfFill(F.tx('extra'),TV):''].filter(Boolean);
-  obs.forEach(s=>{const l=doc.splitTextToSize(s,W-2*M); if(y+l.length*4>284){doc.addPage();head();y=Y0} doc.text(l,M,y);y+=l.length*4+1});
+  obs.forEach(s=>{const l=doc.splitTextToSize(s,W-2*M); if(y+l.length*4>284){doc.addPage();head();y=38} doc.text(l,M,y);y+=l.length*4+1});
   const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){doc.setPage(i);doc.setDrawColor(...GOLD);doc.setLineWidth(.6);doc.line(M,287,W-M,287);doc.setFontSize(8);doc.setTextColor(...GREY);doc.text('Chamae Representações Comerciais  ·  CNPJ 18.308.187/0001-50  ·  (16) 99793-7802  ·  victor.crepaldi@chamae.com.br',W/2,292,{align:'center'})}
   const fname=`Orcamento-${RN.replace(/[^A-Za-z0-9]+/g,'')}-${(c?c.fa||c.n:'cliente').replace(/[^A-Za-z0-9]+/g,'-').slice(0,30)}-${num}.pdf`;
   const blob=doc.output('blob'); const file=new File([blob],fname,{type:'application/pdf'}); const subj=`Orçamento ${RN} Nº ${num}${c?' – '+(c.fa||c.n):''}`; const body=$('#wat')?$('#wat').textContent:'';
@@ -1578,7 +1559,6 @@ async function fichaRep(id){const m=$('#main'); const R=await reps(true); if(id)
    ${id?(()=>{const pc=g.pdf||{}, off=new Set(pc.off||[]), tx=pc.tx||{}, dis=ges?'':' disabled';
      return `<div class="card grid" data-rp="f" hidden><p class="hint" style="margin:0">Escolha o que sai no PDF do orçamento de ${esc(r.nome)}. Vale para o orçamento, para os Salvos e para os Pedidos. Desmarcado não aparece.</p>
      ${PDF_OP.map(([gr,L])=>`<div class="card grid" style="background:var(--surface2)"><div class="row" style="justify-content:space-between"><b>${gr}</b>${ges?`<span class="row" style="gap:4px"><button class="chip" data-pdfall="1">Todos</button><button class="chip" data-pdfall="0">Nenhum</button></span>`:''}</div><div class="r2">${L.map(([k,l])=>`<label class="row" style="gap:6px;flex-wrap:nowrap"><input type="checkbox" data-pdfon="${k}"${off.has(k)?'':' checked'} style="width:auto"${dis}> ${l}</label>`).join('')}</div></div>`).join('')}
-     <div class="card grid" style="background:var(--surface2)"><b>Dados da representada no PDF</b><p class="hint" style="margin:0">Razão social, CNPJ, IE, endereço, telefone e e-mail cadastrados na aba Dados. Toque em Ver PDF de exemplo para comparar os modelos.</p><select data-pdfmod${dis}>${[['','Não mostrar'],['a','Modelo 1 · cartão acima do cliente'],['b','Modelo 2 · lado a lado com o cliente'],['c','Modelo 3 · faixa na cor da fábrica no topo']].map(([v,l])=>`<option value="${v}"${(pc.rep_modelo||'')===v?' selected':''}>${l}</option>`).join('')}</select>${g.razao||g.cnpj?'':'<p class="hint warn" style="margin:0">Preencha razão social e CNPJ na aba Dados (use a 🔍) para os dados saírem no PDF.</p>'}</div>
      <div class="card grid" style="background:var(--surface2)"><b>Textos no final do PDF</b><p class="hint" style="margin:0">Em branco usa o texto padrão. Pode usar {tabela}, {icms}, {uf}, {minimo}, {prazo} e {representada}, que são trocados pelo valor do orçamento. O texto do frete e o pedido mínimo ficam em Políticas comerciais.</p>
       <label class="f">Texto sobre preços e IPI<textarea data-pdftx="precos" rows="2" placeholder="${esc(PDF_TX.precos)}"${ro}>${esc(tx.precos||'')}</textarea></label>
       <label class="f">Texto do ICMS (só sai quando o cliente tem estado e a fábrica tem ICMS)<textarea data-pdftx="icms_txt" rows="2" placeholder="${esc(PDF_TX.icms_txt)}"${ro}>${esc(tx.icms_txt||'')}</textarea></label>
@@ -1588,7 +1568,7 @@ async function fichaRep(id){const m=$('#main'); const R=await reps(true); if(id)
    ${ges?'<button class="btn" id="rsave" style="margin-top:12px">Salvar representada</button>':'<p class="hint">Somente gestores editam.</p>'}`;
   if(id) campAdmin(id,$('#campBox'));
   if(ges) m.querySelectorAll('[data-g="cnpj"],[data-g="cep"]').forEach(i=>{let ult=''; i.addEventListener('input',()=>{const d=i.value.replace(/\D/g,''); const k=i.dataset.g; if(d!==ult&&d.length===(k==='cnpj'?14:8)){ult=d; (k==='cnpj'?buscaCnpj:buscaCep)(m,false)}})});
-  const coletar=()=>{const ng={...g}; m.querySelectorAll('[data-g]').forEach(i=>{const v=i.value.trim(); ng[i.dataset.g]=v===''?null:(i.type==='number'?+v:v)}); const ic={}; m.querySelectorAll('[data-icms]').forEach(i=>{const v=i.value.trim().replace(',','.'); if(v!=='') ic[i.dataset.icms]=+v}); ng.icms=Object.keys(ic).length?ic:null; if(ng.cnpj) ng.cnpj=String(ng.cnpj).replace(/\D/g,'')||null; const io=m.querySelector('#icor'), ii=m.querySelector('#icin'); if(io){ng.icms_origem=io.value||null; ng.icms_interna=ii.value===''?null:+ii.value} if(m.querySelector('[data-pdfon]')){const tx={}; m.querySelectorAll('[data-pdftx]').forEach(i=>{const v=i.value.trim(); if(v) tx[i.dataset.pdftx]=v}); ng.pdf={off:[...m.querySelectorAll('[data-pdfon]')].filter(i=>!i.checked).map(i=>i.dataset.pdfon),tx,rep_modelo:(m.querySelector('[data-pdfmod]')||{}).value||undefined}} return ng};
+  const coletar=()=>{const ng={...g}; m.querySelectorAll('[data-g]').forEach(i=>{const v=i.value.trim(); ng[i.dataset.g]=v===''?null:(i.type==='number'?+v:v)}); const ic={}; m.querySelectorAll('[data-icms]').forEach(i=>{const v=i.value.trim().replace(',','.'); if(v!=='') ic[i.dataset.icms]=+v}); ng.icms=Object.keys(ic).length?ic:null; if(ng.cnpj) ng.cnpj=String(ng.cnpj).replace(/\D/g,'')||null; const io=m.querySelector('#icor'), ii=m.querySelector('#icin'); if(io){ng.icms_origem=io.value||null; ng.icms_interna=ii.value===''?null:+ii.value} if(m.querySelector('[data-pdfon]')){const tx={}; m.querySelectorAll('[data-pdftx]').forEach(i=>{const v=i.value.trim(); if(v) tx[i.dataset.pdftx]=v}); ng.pdf={off:[...m.querySelectorAll('[data-pdfon]')].filter(i=>!i.checked).map(i=>i.dataset.pdfon),tx}} return ng};
   const gravar=async(ng,extra)=>{const body={regras:ng,pedido_min:ng.pedido_min??null,...(extra||{})}; if(id) await api(`representadas?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)}); STALE.add('reps'); REPS=null; await reps(true)};
   m.onclick=async e=>{const t=e.target; const tb=t.closest('[data-rt]'); if(tb){m.querySelectorAll('[data-rt]').forEach(x=>x.classList.toggle('on',x===tb)); m.querySelectorAll('[data-rp]').forEach(x=>x.hidden=x.dataset.rp!==tb.dataset.rt); return}
     if(t.closest('[data-back]')) return go('reps'); if(t.closest('[data-catal]')) return go('rep',{rep:id});

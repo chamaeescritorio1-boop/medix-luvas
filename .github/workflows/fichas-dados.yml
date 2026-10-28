@@ -1,0 +1,21 @@
+name: Dados das fichas técnicas Medix
+# Lê espessura, comprimento, cor e CA das páginas e fichas (PDF) da Medix para a busca técnica do Sistema.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 10 * * 1'
+permissions:
+  contents: write
+concurrency: fichas-dados
+jobs:
+  f:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y -q poppler-utils
+      - run: python3 .github/scripts/fichas_dados.py
+      - run: |
+          git config user.name "medix-bot"; git config user.email "actions@users.noreply.github.com"
+          git add fichas_dados.json
+          git diff --cached --quiet || (git commit -m "Dados das fichas técnicas Medix" && git pull --rebase -q && git push)

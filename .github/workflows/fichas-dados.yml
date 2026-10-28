@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get install -y -q poppler-utils
+      - run: pip install -q pypdf
       - run: python3 .github/scripts/fichas_dados.py
       - run: |
           git config user.name "medix-bot"; git config user.email "actions@users.noreply.github.com"

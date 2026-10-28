@@ -1,6 +1,6 @@
 # Lê as páginas de produto e as fichas técnicas (PDF) da Medix e grava fichas_dados.json
 # com espessura, comprimento, cor, CA e link da ficha por código de produto (usado na busca técnica do Sistema).
-import re, json, os, io, time, html, subprocess, tempfile, unicodedata, urllib.request
+import re, json, os, io, time, html, unicodedata, urllib.request, urllib.parse
 UA={'User-Agent':'Mozilla/5.0'}
 def get(u,tent=3):
     for k in range(tent):
@@ -30,10 +30,11 @@ def campos(txt):
     elif re.search(r'COM PO|PO BIOABSORV|AMIDO',t): d['po']='com pó'
     return d
 def pdf_txt(b):
-    with tempfile.NamedTemporaryFile(suffix='.pdf') as f:
-        f.write(b); f.flush()
-        try: return subprocess.run(['pdftotext','-layout',f.name,'-'],capture_output=True,timeout=60).stdout.decode('utf8','ignore')
-        except Exception: return ''
+    try:
+        from pypdf import PdfReader
+        return '\n'.join((pg.extract_text() or '') for pg in PdfReader(io.BytesIO(b)).pages[:6])
+    except Exception as e:
+        print('pdf ilegível',e); return ''
 site=json.load(open('fichas.json')); drive=json.load(open('fichas_drive.json'))
 limpa=lambda n: re.sub(r'^(OK|SEM CAD)\s*-\s*','',n).strip().lower()
 porNome={limpa(x['n']):x['id'] for x in drive}

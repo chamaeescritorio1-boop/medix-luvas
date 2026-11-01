@@ -4,7 +4,7 @@
 //   enviado → transcrevendo → analisando → pronto  (ou erro, com a mensagem em `erro`).
 // Secrets (Supabase › Edge Functions › Secrets):
 //   ANTHROPIC_API_KEY  – opcional: resumo, próximos passos e feedback com o Claude (pago, melhor feedback)
-//                        sem ela, o resumo usa a IA grátis da Groq (GROQ_LLM_MODEL, padrão llama-3.3-70b-versatile)
+//                        sem ela, o resumo usa a IA grátis da Groq (escolhe sozinho um modelo ativo; GROQ_LLM_MODEL fixa um)
 //   GROQ_API_KEY       – transcrição (Whisper na Groq, tem plano grátis)  …ou OPENAI_API_KEY (Whisper da OpenAI)
 //   CLAUDE_MODEL       – opcional, padrão claude-opus-5-5
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
@@ -119,20 +119,37 @@ Responda em português do Brasil, direto e prático, como um gerente de vendas e
 - alertas: riscos ou oportunidades importantes (cliente insatisfeito, comprando de concorrente, pedido grande à vista, reclamação). Lista vazia se não houver.
 Se o áudio não tiver conteúdo útil (silêncio, caixa postal, ruído), use tipo_audio "sem_conteudo", resultado "Não atendeu" se for o caso, e listas vazias.`;
 
+// Modelos de texto da Groq em ordem de preferência; a Groq tira modelos do ar, então escolhe o primeiro que a conta tiver.
+const PREF_GROQ = ['openai/gpt-oss-120b', 'moonshotai/kimi-k2-instruct-0905', 'moonshotai/kimi-k2-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'qwen/qwen3-32b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'];
+let modeloGroq: string | null = null;
+async function escolherModeloGroq(key: string, ruim?: string) {
+  const fixo = Deno.env.get('GROQ_LLM_MODEL');
+  if (fixo && fixo !== ruim) return fixo;
+  if (modeloGroq && modeloGroq !== ruim) return modeloGroq;
+  const r = await fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: 'Bearer ' + key } });
+  if (r.status === 401) throw new Error('A chave da Groq não foi aceita. Confira o secret GROQ_API_KEY no Supabase.');
+  const ids: string[] = r.ok ? ((await r.json()).data || []).filter((m: any) => m.active !== false).map((m: any) => String(m.id)) : [];
+  const ok = ids.filter((id) => id !== ruim && !/whisper|tts|guard|distil|playai|orpheus|compound/i.test(id));
+  modeloGroq = PREF_GROQ.find((m) => ok.includes(m)) || ok.find((id) => /gpt-oss|kimi|llama|qwen|gemma|mistral/i.test(id)) || ok[0] || null;
+  if (!modeloGroq) throw new Error('Não achei nenhum modelo de IA disponível na sua conta Groq.');
+  return modeloGroq;
+}
+
 async function analisarGroq(msg: string) {
   const key = Deno.env.get('GROQ_API_KEY')!;
+  let modelo = await escolherModeloGroq(key);
   const sis = SISTEMA + '\n\nResponda SOMENTE com um objeto JSON neste formato (todas as chaves, listas podem ser vazias): ' + JSON.stringify(ESQUEMA);
   let ultimo = '';
-  for (let t = 0; t < 2; t++) {
+  for (let t = 0; t < 3; t++) {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: Deno.env.get('GROQ_LLM_MODEL') || 'llama-3.3-70b-versatile', response_format: { type: 'json_object' }, max_tokens: 4000,
+      body: JSON.stringify({ model: modelo, response_format: { type: 'json_object' }, max_tokens: 8000,
         messages: [{ role: 'system', content: sis }, { role: 'user', content: msg }] }),
     });
     const tx = await r.text();
     if (r.status === 401) throw new Error('A chave da Groq não foi aceita. Confira o secret GROQ_API_KEY no Supabase.');
     if (r.status === 429) throw new Error('Limite grátis da Groq atingido. Tente de novo em alguns minutos.');
-    if (!r.ok) { ultimo = tx; continue; }
+    if (!r.ok) { ultimo = tx; if (/model_not_found|decommissioned|does not exist|not supported/i.test(tx)) { modeloGroq = null; modelo = await escolherModeloGroq(key, modelo); } continue; }
     try {
       const o = JSON.parse(JSON.parse(tx).choices[0].message.content);
       const arr = (x: unknown) => Array.isArray(x) ? x.map(String) : [];

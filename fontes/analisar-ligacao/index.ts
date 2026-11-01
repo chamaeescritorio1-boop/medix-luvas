@@ -3,7 +3,8 @@
 // Responde na hora e trabalha em segundo plano; o app acompanha pela coluna `status`:
 //   enviado → transcrevendo → analisando → pronto  (ou erro, com a mensagem em `erro`).
 // Secrets (Supabase › Edge Functions › Secrets):
-//   ANTHROPIC_API_KEY  – resumo, próximos passos e feedback (Claude)
+//   ANTHROPIC_API_KEY  – opcional: resumo, próximos passos e feedback com o Claude (pago, melhor feedback)
+//                        sem ela, o resumo usa a IA grátis da Groq (GROQ_LLM_MODEL, padrão llama-3.3-70b-versatile)
 //   GROQ_API_KEY       – transcrição (Whisper na Groq, tem plano grátis)  …ou OPENAI_API_KEY (Whisper da OpenAI)
 //   CLAUDE_MODEL       – opcional, padrão claude-opus-5-5
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
@@ -118,8 +119,34 @@ Responda em português do Brasil, direto e prático, como um gerente de vendas e
 - alertas: riscos ou oportunidades importantes (cliente insatisfeito, comprando de concorrente, pedido grande à vista, reclamação). Lista vazia se não houver.
 Se o áudio não tiver conteúdo útil (silêncio, caixa postal, ruído), use tipo_audio "sem_conteudo", resultado "Não atendeu" se for o caso, e listas vazias.`;
 
+async function analisarGroq(msg: string) {
+  const key = Deno.env.get('GROQ_API_KEY')!;
+  const sis = SISTEMA + '\n\nResponda SOMENTE com um objeto JSON neste formato (todas as chaves, listas podem ser vazias): ' + JSON.stringify(ESQUEMA);
+  let ultimo = '';
+  for (let t = 0; t < 2; t++) {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: Deno.env.get('GROQ_LLM_MODEL') || 'llama-3.3-70b-versatile', response_format: { type: 'json_object' }, max_tokens: 4000,
+        messages: [{ role: 'system', content: sis }, { role: 'user', content: msg }] }),
+    });
+    const tx = await r.text();
+    if (r.status === 401) throw new Error('A chave da Groq não foi aceita. Confira o secret GROQ_API_KEY no Supabase.');
+    if (r.status === 429) throw new Error('Limite grátis da Groq atingido. Tente de novo em alguns minutos.');
+    if (!r.ok) { ultimo = tx; continue; }
+    try {
+      const o = JSON.parse(JSON.parse(tx).choices[0].message.content);
+      const arr = (x: unknown) => Array.isArray(x) ? x.map(String) : [];
+      const pc = o.proximo_contato || {}, fb = o.feedback || {};
+      return { tipo_audio: String(o.tipo_audio || 'conversa'), resumo: String(o.resumo || ''), pontos_chave: arr(o.pontos_chave), proximos_passos: arr(o.proximos_passos),
+        resultado: String(o.resultado || 'Outro'), proximo_contato: { data: String(pc.data || ''), hora: String(pc.hora || ''), motivo: String(pc.motivo || '') },
+        feedback: { pontos_fortes: arr(fb.pontos_fortes), melhorar: arr(fb.melhorar), frase_sugerida: String(fb.frase_sugerida || '') }, alertas: arr(o.alertas),
+        modelo: JSON.parse(tx).model };
+    } catch (_) { ultimo = 'resposta fora do formato'; }
+  }
+  throw new Error('Falha na IA grátis: ' + ultimo.slice(0, 200));
+}
+
 async function analisar(lig: any, transcricao: string) {
-  const client = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! });
   const hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
   const ctx = await contexto(lig.cnpj);
@@ -133,6 +160,8 @@ ${ctx}
 <transcricao>
 ${transcricao}
 </transcricao>`;
+  if (!Deno.env.get('ANTHROPIC_API_KEY')) return analisarGroq(msg);
+  const client = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! });
   const r = await client.beta.messages.create({
     model: MODELO,
     max_tokens: 16000,
@@ -191,8 +220,8 @@ Deno.serve(async (req) => {
   if (!lig.audio_path && !lig.transcricao) return json({ erro: 'Essa ligação não tem áudio.' }, 400);
 
   const faltam: string[] = [];
-  if (!lig.transcricao && !chaveTranscricao()) faltam.push('GROQ_API_KEY (transcrição)');
-  if (!Deno.env.get('ANTHROPIC_API_KEY')) faltam.push('ANTHROPIC_API_KEY (IA)');
+  if (!lig.transcricao && !chaveTranscricao() && Deno.env.get('ANTHROPIC_API_KEY')) faltam.push('GROQ_API_KEY (transcrição)');
+  if (!Deno.env.get('ANTHROPIC_API_KEY') && !Deno.env.get('GROQ_API_KEY')) faltam.push('GROQ_API_KEY (grátis, faz a transcrição e o resumo)');
   if (faltam.length) {
     const m = 'A análise de ligações ainda não foi configurada. Falta no Supabase: ' + faltam.join(' e ') + '.';
     await marcar(id, { status: 'erro', erro: m });

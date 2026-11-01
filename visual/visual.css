@@ -1,0 +1,137 @@
+/* Visual novo (prévia) — só aparência. Estrutura, campos e fluxos são os mesmos do Sistema. */
+:root{--bg:#0f1322;--surface:#171c2f;--surface2:#1f2540;--ink:#eef1f8;--muted:#a3abc2;--line:#2a3150;--accent:#f2b632;--accent-ink:#1c1600;
+ --brand:#f2b632;--field:#121729;--ring:rgba(242,182,50,.35);--shadow:0 1px 2px rgba(0,0,0,.25),0 4px 16px rgba(0,0,0,.18);--r:16px}
+:root[data-theme=light]{--bg:#f3f5f9;--surface:#ffffff;--surface2:#f5f7fb;--ink:#18213a;--muted:#5b6580;--line:#e3e8f0;--accent:#1c2340;--accent-ink:#fff;
+ --brand:#e0a21a;--field:#ffffff;--ring:rgba(28,35,64,.18);--shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.05)}
+
+body{background:var(--bg)!important;font-size:15px}
+:root[data-theme=light] body{background:var(--bg)!important}
+
+/* topo */
+header{background:var(--surface)!important;backdrop-filter:none;box-shadow:0 1px 0 var(--line);border-bottom:0;padding:12px 20px}
+h1{font-family:var(--body);text-transform:none;font-size:18px;font-weight:700;letter-spacing:0}
+h1 span{color:var(--brand)} h1 small{background:var(--surface2);border-radius:99px;padding:2px 8px;font-weight:600}
+header .chip{height:40px;padding:0 14px;border-radius:10px}
+
+/* menu */
+nav{background:var(--surface)!important;backdrop-filter:none}
+nav button{color:var(--muted);font-weight:600;border-radius:12px}
+nav button.on{color:var(--ink)}
+nav button.on svg{color:var(--brand)}
+@media(min-width:1000px){
+ body{padding-left:104px}
+ nav{width:104px;padding:76px 10px 0;gap:4px;box-shadow:1px 0 0 var(--line);border-right:0}
+ nav button{padding:12px 4px;gap:6px;position:relative}
+ nav button:hover{background:var(--surface2)}
+ nav button.on{background:var(--surface2)}
+ nav button.on::before{content:'';position:absolute;left:-10px;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--brand)}
+}
+@media(max-width:999px){nav button.on{background:none}nav button.on::after{content:'';display:block;width:20px;height:3px;border-radius:3px;background:var(--brand);margin-top:2px}}
+
+main{padding:24px 24px 40px}
+@media(max-width:600px){main{padding:16px 12px 32px}}
+
+/* títulos de tela e seções */
+.sec{font-family:var(--body);text-transform:none;letter-spacing:0;font-weight:700;font-size:24px;margin:8px 0 16px;color:var(--ink)}
+
+/* cartões e passos */
+.card{background:var(--surface)!important;border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+.card.grid{gap:16px}
+.card .card{box-shadow:none;padding:14px 16px;border-radius:12px}
+.card.grid>b:first-child,.card.grid>.row:first-child>b:first-child{font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
+.card.grid>b:first-child{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.card.grid>.row:first-child{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.card.grid>b:first-child::before,.card.grid>.row:first-child>b:first-child::before{content:'';width:4px;height:20px;border-radius:4px;background:var(--brand);flex:0 0 auto}
+
+/* campos */
+label.f{gap:7px;font-size:13px;font-weight:600;color:var(--ink)}
+label.f .hint,label.f small{font-weight:400}
+input,select,textarea{font-size:15px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--field)!important;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+input,select{min-height:48px}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 4px var(--ring)}
+input[readonly]{background:var(--surface2)!important}
+input[type=checkbox],input[type=radio]{min-height:0}
+.r2{gap:16px}
+.hint{font-size:13px;line-height:1.45}
+
+/* botões */
+.btn{border-radius:10px;padding:12px 20px;font-weight:700;min-height:46px;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+.btn.ghost{background:var(--surface2);border:1px solid var(--line)}
+.chip{border-radius:10px;padding:8px 14px;min-height:38px;background:var(--surface);font-weight:500;transition:border-color .15s,background .15s}
+.chip:hover{border-color:var(--accent)}
+.chip.on{font-weight:600}
+
+/* representadas: cartão branco com a cor da fábrica no topo */
+.reps{gap:14px}
+.rep{background:var(--surface)!important;border:1px solid var(--line);border-top:5px solid var(--c,#2a3157);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;transition:transform .15s,box-shadow .15s}
+.rep:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(16,24,40,.10)}
+.rep b{font-family:var(--body);text-transform:none;font-size:18px;font-weight:700;letter-spacing:0}
+:root[data-lay=classico] .rep{border-left:1px solid var(--line)}
+
+/* produtos: foto maior e cartão limpo */
+.pl{gap:16px}
+.pc{gap:14px}
+.card.pc,.pl>.card{padding:16px}
+.pc img{border-radius:12px;border:1px solid var(--line);padding:3px}
+/* catálogo: foto grande em cima, informações embaixo */
+.pl>.card.pc,.pl>.pc{grid-template-columns:1fr!important;align-content:start}
+.pl>.card.pc>img,.pl>.pc>img{width:100%;height:180px;object-fit:contain;background:#fff;border-radius:12px;padding:10px}
+.pc .cod{font-family:var(--body);font-weight:700;font-size:17px}
+.pc .d{font-size:13.5px}
+.pc .pr{font-size:21px;font-weight:800;color:var(--ink)}
+:root[data-theme=dark] .pc .pr{color:var(--brand)}
+
+/* itens dentro do orçamento: cada item é um bloco separado, com foto */
+.card.grid>.pc[style]{grid-template-columns:96px 1fr!important;border:1px solid var(--line)!important;border-radius:14px;padding:14px!important;background:var(--surface2)}
+.card.grid>.pc[style]>img{width:96px!important;height:96px!important;background:#fff}
+
+/* etiquetas */
+.tag{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--surface2);border:1px solid var(--line)}
+.tag.rt{border-width:1px;padding:3px 8px;font-weight:700}
+:root[data-theme=light] .tag{background:#f1f4f9}
+
+/* quantidade */
+.qty button{width:40px;height:40px;border-radius:10px;background:var(--surface);font-weight:600}
+.qty input{width:74px;min-height:40px;padding:6px;font-weight:700}
+
+/* total destacado */
+#opane .tot{background:var(--accent);color:var(--accent-ink);padding:16px 20px;border-radius:14px;font-family:var(--body);font-weight:700;font-size:18px;align-items:center;margin-top:4px}
+#opane .tot b{color:inherit;font-size:28px;font-family:var(--display)}
+:root[data-theme=dark] #opane .tot{background:var(--surface2);color:var(--ink)} :root[data-theme=dark] #opane .tot b{color:var(--brand)}
+
+/* tabelas */
+table.t{font-size:14px} table.t th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+table.t th,table.t td{padding:10px 8px}
+
+/* números do painel */
+.kpis{gap:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.kpi b{font-family:var(--body);font-weight:800;font-size:24px}
+.mbar{height:8px;background:var(--surface2)}
+.mbar i{background:var(--brand)}
+
+/* listas da carteira e pedidos */
+.cr{padding:12px 6px;font-size:14px}
+.ptab .pr{border-radius:14px;box-shadow:var(--shadow);border-left-width:5px}
+.kcard,.khead{border-radius:12px}
+.pasta{border-radius:12px}
+
+/* janelas */
+.ov{background:rgba(10,14,28,.55)}
+.ov .sh{border-radius:20px;padding:22px}
+.toast{border-radius:12px;font-weight:600}
+
+/* preço unitário negociável continua em destaque */
+input[data-opu]{background:#fff6dc!important;border:2px solid var(--brand)!important;color:#18213a!important}
+
+/* celular: nada sai da tela */
+.card.grid>*,.pc>div{min-width:0}
+@media(max-width:600px){
+ h1{font-size:16px} h1 small{display:none}
+ .card{padding:16px}
+ .card.grid>.pc[style]{grid-template-columns:64px minmax(0,1fr)!important;padding:12px!important}
+ .card.grid>.pc[style]>img{width:64px!important;height:64px!important}
+ #opane .row{flex-wrap:wrap!important}
+ #opane .row>input{flex:1 1 140px}
+ .pl>.card.pc>img,.pl>.pc>img{height:150px}
+}

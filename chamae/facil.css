@@ -82,3 +82,14 @@ details.pdet>summary{font-size:13px;color:var(--muted);font-weight:500}
 .tut-b b{font-size:17px}
 .tut-go{color:var(--brand,var(--accent));font-weight:700;font-size:14px;margin-top:4px}
 details.faq>summary{cursor:pointer}
+
+/* Início em abas (Hoje, Fábricas, Minha semana, Equipe) */
+.itabs{display:flex;gap:4px;margin:22px 0 14px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.itabs::-webkit-scrollbar{display:none}
+.itabs button{border:0;background:none;color:var(--muted);font:inherit;font-size:15px;font-weight:600;padding:10px 14px;border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
+.itabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--brand,var(--accent))}
+.itabs button:hover{color:var(--ink)}
+.ipane>#semana>.row:first-child{margin-top:0!important}
+@media(max-width:760px){.itabs{margin-top:16px}.itabs button{padding:10px 10px;font-size:14.5px}}
+.ipane>#semana>.row:first-child{justify-content:flex-end!important}
+.ipane>#semana>.row:first-child>.sec,.ipane [data-semab]{display:none}

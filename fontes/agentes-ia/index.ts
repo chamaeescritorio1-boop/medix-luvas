@@ -12,6 +12,14 @@ const CORS = {
 const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
+const SB = Deno.env.get('SUPABASE_URL')!;
+const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
+// só a equipe aprovada (gestor/vendedor, fora do portal B2B) usa a IA — protege a cota da GROQ_API_KEY
+async function ehEquipe(auth: string) {
+  const r = await fetch(SB + '/rest/v1/rpc/eh_equipe', { method: 'POST', headers: { apikey: ANON, Authorization: auth, 'Content-Type': 'application/json' }, body: '{}' });
+  return r.ok && (await r.json()) === true;
+}
+
 const PREF_GROQ = ['openai/gpt-oss-120b', 'moonshotai/kimi-k2-instruct-0905', 'moonshotai/kimi-k2-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'qwen/qwen3-32b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'];
 let modeloGroq: string | null = null;
 async function escolherModelo(key: string, ruim?: string) {
@@ -61,6 +69,7 @@ async function groqJson(key: string, sistema: string, msg: string, max = 6000) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   try {
+    if (!(await ehEquipe(req.headers.get('Authorization') || ''))) return json({ erro: 'Sem acesso.' }, 403);
     const key = Deno.env.get('GROQ_API_KEY');
     if (!key) return json({ erro: 'Falta o secret GROQ_API_KEY no Supabase.' }, 500);
     const body = await req.json();

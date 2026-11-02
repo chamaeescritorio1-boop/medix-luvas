@@ -130,16 +130,17 @@ table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[typ
 #tpAc button:disabled{opacity:.45;cursor:default}
 </style>
 <link rel="stylesheet" href="visual.css?v=202611012340">
+<link rel="stylesheet" href="facil.css?v=202611021905">
 </head>
 <body>
-<header><div class="hrow"><a href="#" id="homeLnk" style="display:flex;align-items:center;gap:10px;flex:1;color:inherit;text-decoration:none" aria-label="Ir para o início"><img src="icon-192.png" alt=""><h1>Chamae <span>·</span> Sistema<small>teste</small></h1></a><button class="chip" id="srchBtn" type="button" aria-label="Buscar">🔍<span class="lbl"> Buscar</span></button><button class="chip" id="homeBtn" type="button" aria-label="Início">⌂<span class="lbl"> Início</span></button><button class="chip" id="who" hidden></button></div></header>
+<header><div class="hrow"><a href="#" id="homeLnk" style="display:flex;align-items:center;gap:10px;flex:1;color:inherit;text-decoration:none" aria-label="Ir para o início"><img src="icon-192.png" alt=""><h1>Chamae <span>·</span> Sistema<small>teste</small></h1></a><button class="chip" id="srchBtn" type="button" aria-label="Buscar">🔍<span class="lbl"> Buscar</span></button><button class="chip" id="homeBtn" type="button" aria-label="Início" hidden>⌂<span class="lbl"> Início</span></button><button class="chip" id="ajudaBtn" type="button" aria-label="Ajuda desta tela" title="Ajuda desta tela">?<span class="lbl"> Ajuda</span></button><button class="chip" id="who" hidden></button></div></header>
 <main id="main"></main>
 <nav id="nav" hidden>
  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H5v-9"/></svg>Início</button>
  <button data-go="cli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/></svg>Clientes</button>
  <button data-go="tar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/></svg><span>Tarefas <span class="badge" id="tn" hidden>0</span></span></button>
  <button data-go="orc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/></svg><span>Orçamento <span class="badge" id="qn" hidden>0</span></span></button>
- <button data-go="ped"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Pedidos</button>
+ <button data-go="ped"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Pedidos</button>
  <button data-go="prod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Produtos</button>
  <button data-go="mais"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Mais</button><span id="navAdm" hidden></span>
 </nav>
@@ -147,7 +148,7 @@ table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[typ
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202611021901"></script>
+<script src="app.js?v=202611021905"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

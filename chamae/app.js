@@ -11,7 +11,19 @@ const L=k=>{if(TEMPF.test(k)) return MEMF[k]===undefined?null:JSON.parse(MEMF[k]
 try{Object.keys(localStorage).filter(k=>k.startsWith('chs_')&&TEMPF.test(k.slice(4))).forEach(k=>localStorage.removeItem(k))}catch(e){}
 const FILTROS_DA_TELA={prod:['prodF'],ped:['pedF'],cli:['cliF','cartF'],tar:['tarF'],metas:['metasF'],rel:['relS'],rep:['grp_']};
 const limparFiltros=r=>(FILTROS_DA_TELA[r]||[]).forEach(px=>Object.keys(MEMF).forEach(k=>{if(k.startsWith(px)) delete MEMF[k]}));
-function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+/* avisos: os comuns somem em 4 s; erro vira frase simples, fica até tocar em ✕ e guarda o detalhe técnico para quem precisar */
+const ERRO_RX=/^(Erro|Sem permissão ou erro|Não consegui)\b[^:]*:\s*/;
+function erroSimples(det){const s=String(det||'');
+  if(/failed to fetch|networkerror|load failed|network|internet|offline|timeout|aborted/i.test(s)) return 'Sem internet ou o servidor não respondeu. Confira a conexão e tente de novo.';
+  if(/entre novamente|jwt|token|401|sess[aã]o/i.test(s)) return 'Seu acesso expirou. Entre de novo com seu e-mail e senha.';
+  if(/permission|permiss|42501|403|row-level|rls|policy/i.test(s)) return 'Você não tem permissão para isso. Fale com o gestor.';
+  if(/duplicate|23505|já existe/i.test(s)) return 'Isso já está cadastrado.';
+  return ''}
+function toast(t){t=String(t??''); const m=t.match(ERRO_RX); const d=document.createElement('div'); d.className='toast';
+  if(m&&/:/.test(t)){const det=t.slice(m[0].length), base=m[0].replace(/:\s*$/,'').trim(), es=erroSimples(det); const simples=/^Não consegui/.test(base)?base+'. '+(es||'Tente de novo; se repetir, avise o gestor.'):(es||'Não consegui concluir. Tente de novo; se repetir, avise o gestor.');
+    d.classList.add('toast-erro'); d.innerHTML=`<div class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:10px"><span>⚠️ ${esc(simples)}</span><button class="chip" aria-label="Fechar" style="padding:2px 9px;flex:none">✕</button></div><details style="margin-top:6px"><summary class="hint" style="cursor:pointer">Detalhe técnico</summary><small style="word-break:break-word">${esc(det)}</small></details>`;
+    d.querySelector('button').onclick=()=>d.remove(); document.body.appendChild(d); setTimeout(()=>d.remove(),20000); return}
+  d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),4000)}
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
 /* time de vendas atual: só estes aparecem em seletores, metas e filtros; clientes e pedidos de quem saiu contam para quem herdou a carteira (out/2026) */
 const TIME=['CLAYTON','DRAUZIO','VICTOR'], EXV={RENATO:'VICTOR',JOAOP:'VICTOR',JOAO:'VICTOR',CAE:'CLAYTON',ALESSANDRO:'CLAYTON'};
@@ -41,8 +53,21 @@ $('#lcria').onclick=async()=>{const em=$('#le').value.trim().toLowerCase(), pw=$
 async function afterLogin(){try{let p; try{p=await api('perfis?select=*&id=eq.'+sess.uid)}catch(_){p=await api('perfis?select=id,nome,email,papel&id=eq.'+sess.uid)} perfil=p[0]||null; S('perfil',perfil)}catch(e){}
   if(perfil&&perfil.aprovado===false){sess=null; S('sess',null); return showLock('Seu acesso está aguardando aprovação de um gestor (Mais › Equipe).')}
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
-  $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email;
-  w.onclick=()=>go('aj'); if(!window._bootCedo) go(L('route')||'home'); window._bootCedo=false; contaTarefas(); iniciarLembretes()}
+  $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent='👤 '+(meuNome()||sess.email);
+  w.onclick=menuUsuario; if(!window._bootCedo) go(L('route')||'home'); window._bootCedo=false; contaTarefas(); iniciarLembretes();
+  if(!L('tourVisto')){LS('tourVisto',1); setTimeout(()=>tutorial('inicio'),1200)}}
+
+/* formulário curto em janela própria (no lugar das janelinhas do navegador): resolve com os valores ou null */
+function formulario(titulo,campos,ok){return new Promise(res=>{const ov=document.createElement('div'); ov.className='ov';
+  ov.innerHTML=`<form class="sh grid" style="max-width:480px"><div class="sec" style="font-size:20px;margin:0">${esc(titulo)}</div>${campos.map((c,i)=>`<label class="f">${esc(c.l)}<input name="${c.k}" type="${c.type||'text'}"${c.mode?` inputmode="${c.mode}"`:''} value="${esc(c.val||'')}" placeholder="${esc(c.ph||'')}"${c.req?' required':''}${i?'':' autofocus'}></label>`).join('')}
+   <div class="row" style="justify-content:flex-end;margin-top:6px"><button type="button" class="btn ghost" data-fx>Cancelar</button><button class="btn">${esc(ok||'OK')}</button></div></form>`;
+  document.body.appendChild(ov); const f=ov.querySelector('form'); const fim=v=>{ov.remove(); res(v)}; setTimeout(()=>{const i=f.querySelector('input'); i&&i.focus()},50);
+  ov.onclick=e=>{if(e.target===ov||e.target.closest('[data-fx]')) fim(null)}; f.onsubmit=e=>{e.preventDefault(); const v={}; campos.forEach(c=>v[c.k]=f.elements[c.k].value.trim()); fim(v)}})}
+function sairDaConta(){if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}}
+function menuUsuario(e){if(e) e.stopPropagation(); const old=$('#umenu'); if(old) return old.remove(); const d=document.createElement('div'); d.id='umenu'; d.className='umenu';
+  d.innerHTML=`<div class="hint" style="padding:6px 10px">${esc(sess&&sess.email||'')}</div><button data-um="aj">⚙️ Meus dados e ajustes</button><button data-um="ajuda">❓ Ajuda e tutoriais</button><button data-um="sair">🚪 Sair da conta</button>`;
+  document.body.appendChild(d); const fecha=ev=>{if(!d.contains(ev.target)){d.remove(); document.removeEventListener('click',fecha,true)}}; setTimeout(()=>document.addEventListener('click',fecha,true),0);
+  d.onclick=ev=>{const b=ev.target.closest('[data-um]'); if(!b) return; d.remove(); document.removeEventListener('click',fecha,true); const k=b.dataset.um; if(k==='sair') return sairDaConta(); go(k)}}
 
 /* ---------- dados ---------- */
 let REPS=null; const CAT={}, TABS={}, PRICES={};
@@ -81,7 +106,7 @@ async function clientes(force){if(CLIS&&!force) return CLIS; CLIS=await swr('cli
     try{const r=await apiAll('cliente_rep?select=cnpj,cliente,cidade,representada,ultimo,ultimo_prazo,vendedor'); vAtL(r).forEach(x=>{const c=add(x.cnpj,{n:x.cliente,cid:x.cidade,v:x.vendedor}); if(c) c.reps[x.representada]=x})}catch(e){}
     if(Object.keys(m).length<300){try{const d=await lerApp('marluvas'); (d.CLI||[]).forEach(x=>add(x.cnpj,{n:x.n,fa:x.fa,cid:x.cid,em:x.em,tel:x.tel,v:x.v,t:x.t,pz:x.pz}))}catch(e){}}
     return Object.values(m).filter(c=>c.n).sort((a,b)=>String(a.n).localeCompare(String(b.n)))},force); return CLIS}
-const repName=id=>((REPS||[]).find(r=>r.id===id)||{}).nome||id;
+const repName=id=>((REPS||[]).find(r=>r.id===id)||{}).nome||HIST_REP[id]||id;
 const HIST_REP={marcon:'Marcon',marluvas:'Marluvas',medix:'Medix',sigma:'Sigma Tools',camper:'Camper',zm:'ZM Bombas',terra:'Terra',fortlev:'Fortlev',pegorari:'Pegorari',valcan:'Valcan',cid:'CID',chemicals:'Chemicals 4U'};
 const TRANSP={marcon:[{n:'Cliente retira (FOB)',p:0},{n:'Alfa Transportes FOB (~5%)',p:5},{n:'Transportadora Floresta FOB (~5%)',p:5},{n:'Transportadora a ser indicada (FOB)',p:0}]};
 const EXTERNAL={marluvas:'/conversor-ca/teste/',medix:'/medix-luvas/teste/'};
@@ -122,8 +147,8 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView}[r]||home)()}
-$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
+function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView,ajuda:ajudaView}[r]||home)()}
+$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; {const ab=$('#ajudaBtn'); if(ab) ab.onclick=ajudaDaTela} $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
 /* ---------- barra de baixo: cada um escolhe os atalhos (Início e Mais ficam fixos) ---------- */
@@ -131,7 +156,7 @@ const NAVSVG=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const NAVOPC=[['estr','Estratégia','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M3 3l3 3M21 3l-3 3"/>'],['cli','Clientes','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/>'],
   ['tar','Tarefas','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/>','tn'],
   ['orc','Orçamento','<path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/>','qn'],
-  ['ped','Pedidos','<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'],
+  ['ped','Pedidos','<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'],
   ['prod','Produtos','<path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/>'],
   ['fin','Financeiro','<rect x="2.5" y="6" width="19" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.8"/><path d="M6 9.5v.01M18 15.5v.01"/>'],
   ['trans','Transmitir','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'],
@@ -163,11 +188,12 @@ function navEditar(){let sel=navSel(); const ov=document.createElement('div'); o
 
 /* ---------- início ---------- */
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
-  const q=Q(); m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
+  const q=Q(); m.innerHTML=`<div class="faz" id="faz"><button class="faz-b" data-go2="orc" data-orcnovo><span class="faz-i">＋</span><span><b>Novo orçamento</b><small>Escolha a fábrica e monte</small></span></button><button class="faz-b" data-go2="cli"><span class="faz-i">📞</span><span><b>Bater carteira</b><small>Quem ligar hoje</small></span></button><button class="faz-b" data-go2="tar"><span class="faz-i">✔️</span><span><b>Tarefas para hoje <span class="badge" id="tnHome" hidden>0</span></b><small>Retornos, visitas e ligações</small></span></button></div>
+   <div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps reps-c" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
      return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
    <button class="card" data-go2="estr" style="display:block;width:100%;text-align:left;margin-top:20px;color:inherit;font:inherit;cursor:pointer;border-left:5px solid #ffd166">🎯 <b>Estratégia do dia</b> <span class="hint">· quem abordar hoje, com e-mail e arte prontos para você aprovar ›</span></button><div id="agHoje" style="margin-top:12px"></div><div id="agRes" style="margin-top:12px"></div><div id="semana"></div>
-   <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><button class="btn ghost" data-go2="orc">＋ Novo orçamento</button><button class="btn ghost" data-go2="cli">📞 Bater carteira</button><button class="btn ghost" data-go2="tar">✔️ Tarefas</button><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
+   <div class="sec" style="margin-top:20px">Outros atalhos</div><div class="row"><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:undefined)}; contaTarefas(); agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -262,7 +288,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   const render=()=>{const all=buscaProd(C.filter(noG),qtxt,rep); const list=all.filter(p=>!o.tabela||P[p.id]); const semPreco=all.length-list.length; if(pg*POR_PAG>=list.length) pg=Math.max(0,Math.ceil(list.length/POR_PAG)-1);
     $('#pl').innerHTML=pagina(list,pg).map(p=>{const inQ=o.itens.find(i=>i.pid===p.id); const nvS=NVc.length?nvSel(p.id,inQ):null; const pr=nvS?{...(nvS.P[p.id]||{}),liq:nvS.P[p.id]&&nvS.P[p.id].liq!=null?rHU(nvS.P[p.id].liq*fz):null}:P[p.id]||{}; const es=enc.sel.includes(p.id);
       return `<div class="card pc"${enc.on&&es?' style="border-color:var(--accent);border-width:2px"':''}><img src="${esc(p.img||'')}" alt="Ampliar foto" data-zoom="${esc(p.img||'')}" data-cap="${esc(p.cod)}" style="cursor:zoom-in" loading="lazy" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:5px;min-width:0"><div class="cod">${esc(p.cod)}</div><div class="d">${esc(p.descricao)}</div>
-       ${CP[p.id]?`<div class="pr">${brl(CP[p.id].pu)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small> <s class="hint" style="font-size:13px">${brl(pr.liq)}</s></div><div class="tags"><span class="tag" style="${CAMP_ST}">${esc(campTxt(CP[p.id]))}</span></div>`:`<div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div>`}${NVc.length?`<div class="row" role="group" aria-label="Nível de preço" style="gap:4px;flex-wrap:wrap">${NVc.map(v=>{const l=v.P[p.id]&&v.P[p.id].liq, on=nvS&&v.t.id==nvS.t.id; return `<button class="${on?'btn':'btn ghost'}" style="min-width:34px;width:34px;height:38px;padding:0;font-weight:700;font-size:16px" data-cniv="${p.id}" data-tid="${v.t.id}" aria-pressed="${on}"${l?'':' disabled'} title="${esc(v.t.nome)}${l?' · '+brl(rHU(l*fz)):''}">${v.n}</button>`}).join('')}</div>`:''}<div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span><span class="tag">EAN ${esc(p.attrs&&p.attrs.ean||'—')}</span><span class="tag">NCM ${esc(p.ncm||'—')}</span>${pr.icms!=null?`<span class="tag">ICMS ${pct(pr.icms)}</span>`:''}${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
+       ${CP[p.id]?`<div class="pr">${brl(CP[p.id].pu)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small> <s class="hint" style="font-size:13px">${brl(pr.liq)}</s></div><div class="tags"><span class="tag" style="${CAMP_ST}">${esc(campTxt(CP[p.id]))}</span></div>`:`<div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div>`}${NVc.length?`<div class="row" role="group" aria-label="Nível de preço" style="gap:4px;flex-wrap:wrap">${NVc.map(v=>{const l=v.P[p.id]&&v.P[p.id].liq, on=nvS&&v.t.id==nvS.t.id; return `<button class="${on?'btn':'btn ghost'}" style="min-width:34px;width:34px;height:38px;padding:0;font-weight:700;font-size:16px" data-cniv="${p.id}" data-tid="${v.t.id}" aria-pressed="${on}"${l?'':' disabled'} title="${esc(v.t.nome)}${l?' · '+brl(rHU(l*fz)):''}">${v.n}</button>`}).join('')}</div>`:''}${p.ca||(p.attrs&&p.attrs.tam)?`<div class="tags">${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}</div>`:''}<details class="pdet"><summary>Detalhes</summary><div class="tags" style="margin-top:6px"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span><span class="tag">EAN ${esc(p.attrs&&p.attrs.ean||'—')}</span><span class="tag">NCM ${esc(p.ncm||'—')}</span>${pr.icms!=null?`<span class="tag">ICMS ${pct(pr.icms)}</span>`:''}${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div></details>
        ${rep==='sigma'?`<div class="row" data-stkbox="${esc(p.cod)}">${stkHtml(p.cod)}</div>`:''}${rep==='medix'&&EQ[p.cod]?`<div class="hint" style="font-size:13px">${estTxt(rep,p.cod,EQ)}</div>`:''}
        ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:GRc[p.cod]?`<div class="row">${inQ&&gradeTxt(inQ.gq)?`<span class="hint" style="font-size:12px;width:100%">${esc(gradeTxt(inQ.gq))} · <b>${inQ.qt}</b> pares</span>`:''}<button class="btn sm${inQ?' ghost':''}" data-cgr="${p.id}">${inQ?'✎ Editar grade':'+ Orçamento'}</button></div>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
     $('#cnt').textContent=`${list.length} produtos${list.length>POR_PAG?` · ${pg*POR_PAG+1}–${Math.min(list.length,(pg+1)*POR_PAG)}`:''}${semPreco?` · ${semPreco} sem preço nesta tabela`:''}`; $('#pgr').innerHTML=pager(list.length,pg); $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
@@ -444,19 +470,20 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
   const rg=regra(rep), uf=o.cli?ufOf(o.cli.cid):'', ic=icmsUF(uf,rep); const V=await vendedores(); const un=rows.reduce((s,r)=>s+r.i.qt,0); if(!p.isConnected) return;
   p.innerHTML=`${ab.length>1?`<div class="row" style="margin-bottom:10px">${ab.map(r=>`<button class="chip${r===rep?' on':''}" data-r="${r}">${repIcon(r,18)} ${esc(repName(r))} (${Q()[r].itens.length})</button>`).join('')}</div>`:''}
    <div class="row" style="justify-content:space-between;align-items:center"><div class="sec" style="font-size:20px;margin:0">${repIcon(rep,32)} Orçamento ${esc(repName(rep))}${o.num?` <span class="hint" style="font-size:15px">Nº ${esc(o.num)}</span>`:''}</div>${rows.length||o.cli?'<button class="chip" id="oclrT">🧹 Zerar orçamento</button>':''}</div>
-   <div class="card grid"><b>1. Cliente, tabela, prazo e vendedor</b>
+   <div class="card grid"><b>1. Cliente, tabela e prazo</b>
     <label class="f">Cliente${o.cli?'':' <span class="warn">(obrigatório para enviar)</span>'}</label>
     ${o.cli?`<div class="card row" style="justify-content:space-between;background:var(--surface2)"><div><b>${esc(o.cli.n)}</b>${o.cli.fa?` <span class="hint">(${esc(o.cli.fa)})</span>`:''}<div class="hint">${o.cli.cnpj?'CNPJ '+esc(fmtCnpj(o.cli.cnpj))+' · ':''}${esc(o.cli.cid||'')}${o.cli.ult?` · último pedido ${esc(repName(rep))}: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))}`:''}</div>${o.cli.cnpj?`<div class="hint" style="margin-top:4px">Contato no PDF: <button class="chip" id="octp" title="Escolher quem aparece no PDF deste orçamento">${(o.cli.ct||[]).length?esc(o.cli.ct.map(x=>x.n).join(', ')):'nenhum'} ✎</button></div>`:''}</div><button class="chip" id="trocaCli">Trocar</button></div>`
       :`<input id="cq" type="search" autocomplete="off" placeholder="Buscar por nome, fantasia, CNPJ ou cidade"><div id="cres"></div><button class="chip" id="cliNovo" style="justify-self:start">+ Cliente novo (sem cadastro)</button>`}
     ${o.cli&&o.sug&&(o.sug.prazo||o.sug.tabela)?`<div class="card row" style="justify-content:space-between;background:var(--surface2);border-color:var(--accent)"><span>💡 Último pedido ${esc(repName(rep))}${o.sug.data?' ('+esc(o.sug.data.split('-').reverse().join('/'))+')':''}: ${o.sug.prazo?'prazo <b>'+esc(o.sug.prazo)+'</b>':''}${o.sug.tabela?' · tabela <b>'+esc(o.sug.tabela)+'</b>':''}</span><button class="chip on" id="osug">Usar</button></div>`:''}
     <div class="r2"><label class="f">${NIV_REP(rep)?'Nível de comissão (padrão dos itens)':'Tabela de preço'}<select id="otab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option>Nenhuma tabela</option>'}</select></label>
      <label class="f">Prazo médio · prazo de pagamento<div class="row" style="gap:6px;flex-wrap:nowrap"><input id="opzm" readonly tabindex="-1" value="${esc(pzmTxt(o.prazo))}" title="Prazo médio" style="width:96px;flex:none;text-align:center;font-weight:700;background:var(--surface2)"><input id="opz" list="pzl" value="${esc(o.prazo||'')}" placeholder="ex.: 28/42/56" style="flex:1;min-width:0"></div><datalist id="pzl">${[...new Set([...((((REPS||[]).find(x=>x.id===rep)||{}).regras||{}).prazos||[]).map(p=>p.n),'A VISTA','28','28/35','28/42','28/35/42','28/42/56','30/45/60','30/60/90'])].map(x=>`<option value="${x}">`).join('')}</datalist>${cpz&&(cpz.enc||cpz.min)?`<small style="font-weight:700;color:${cpz.enc<0?'#2fb46e':cpz.enc>0?'var(--warn)':'inherit'}">${[cpz.enc?encTxt(cpz.enc)+' neste prazo':'',cpz.min?'mínimo '+brl(cpz.min):''].filter(Boolean).join(' · ')}</small>`:''}</label></div>
+    <details class="mopc"${o.oc||o.programado||o.obs||o.transpN||(o.status&&o.status!=='orcamento')||L('orcMais')?' open':''}><summary>Mais opções <span class="hint">· vendedor, frete, situação, OC, data de faturamento e observações</span></summary><div class="grid" style="margin-top:10px">
     <div class="r2"><label class="f">Vendedor<select id="ovend"><option value="">—</option>${[...new Set([meuNome()||'',...V].filter(Boolean))].map(v=>`<option${v===vendNome(o)?' selected':''}>${esc(v)}</option>`).join('')}</select></label>
      ${tr.length?`<label class="f">Transportadora / frete<select id="otr">${tr.map((t,k)=>`<option value="${k}"${k==o.transp?' selected':''}>${esc(t.n)}</option>`).join('')}</select></label>`:`<label class="f">Transportadora<input id="otrn" value="${esc(o.transpN||'')}" placeholder="Nome da transportadora"></label>`}</div>
     <div class="hint">${esc(ehGurO(o,(TABS[rep]||[]).find(t=>t.id==o.tabela))?gurFrete:rg.frete)}${ic!=null?` · ICMS ${ic}% (${uf})`:''}</div>
     <div class="r2"><label class="f">Situação<select id="ostat">${STATUS.map(([k,l])=>`<option value="${k}"${k===(o.status||'orcamento')?' selected':''}>${l}</option>`).join('')}</select></label><label class="f">Ordem de compra (OC)<input id="ooc2" value="${esc(o.oc||'')}" placeholder="opcional"></label></div>
     <label class="f">Data programada de faturamento <span class="hint">(deixe vazio se for faturar já; o pedido conta no mês desta data)</span><input id="oprog" type="date" value="${esc(o.programado||'')}"></label>
-    <label class="f">Observações (frete, entrega…)<textarea id="oobs" rows="2">${esc(o.obs||'')}</textarea></label></div>
+    <label class="f">Observações (frete, entrega…)<textarea id="oobs" rows="2">${esc(o.obs||'')}</textarea></label></div></details></div>
    <div class="card grid" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>2. Itens</b><div class="row"><button class="chip" id="otec" title="Cole a descrição técnica que o cliente mandou e o sistema acha os produtos mais próximos">🔎 Colar pedido do cliente</button><button class="chip" id="oimp">📄 Importar OC (PDF/Excel)</button>${rows.length?'<button class="chip" id="oclr2">🧹 Zerar</button>':''}${EXTERNAL[rep]&&!CONV_PASTA?'<button class="chip" id="oca">⇄ Converter CA</button>':''}${o.cli&&o.cli.cnpj?'<button class="chip" id="oiqc" title="Produtos que este cliente já comprou desta representada">🛒 Itens que já comprou</button>':''}<button class="chip on" data-go3="${rep}">+ Adicionar do catálogo</button></div></div>
     ${EXTERNAL[rep]&&CONV_PASTA?caCampo('ocaQ','oca',true):''}
     ${rows.length?rows.map(r=>`<div class="pc" style="grid-template-columns:64px 1fr;border-bottom:1px solid var(--line);padding-bottom:10px"><img src="${esc(r.p.img||'')}" alt="Ampliar foto" data-zoom="${esc(r.p.img||'')}" data-cap="${esc(r.p.cod)}" loading="lazy" style="width:64px;height:64px;cursor:zoom-in" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:4px;min-width:0">
@@ -475,6 +502,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
   const gerar=async(mode,b)=>{if(!rows.length) return toast('Adicione itens antes'); if(!o.cli&&!confirm('Gerar sem cliente?')) return; b.disabled=true; let ww=null; if(mode==='wa'&&(MOVEL||!waDesk())) ww=window.open('','_blank'); if(!(await confDivergencias(o,rows))){b.disabled=false; if(ww) ww.close(); return} try{await garantirNumero(o); if((await pdf(o,rows,{...tt,tab:rows.some(r=>r.tabN&&r.tabN!==(tab||{}).nome)?null:tab,tr:tr[o.transp],mode,ww}))===false){b.disabled=false; return posSalvar(o._env)} o._env=true; await save('enviado'); setTimeout(()=>{if(route==='orc'&&p.isConnected) posSalvar(true)},900)}catch(err){toast('Erro no PDF: '+err.message); if(ww) ww.close()} b.disabled=false};
   anxMontar(p.querySelector('#oanx'),{id:()=>o.sid||null,garantir:async()=>{if(!rows.length){toast('Adicione itens antes de anexar'); return null} await save('rascunho'); return o.sid}});
   if(!o.cli){const ci=p.querySelector('#cq'); if(ci) cliBusca(ci,p.querySelector('#cres'),rep)}
+  {const mo=p.querySelector('details.mopc'); if(mo) mo.ontoggle=()=>LS('orcMais',mo.open)}
   p.onclick=async e=>{const t=e.target; const sk=t.closest('[data-stk]'); if(sk){const pr=sigmaStk(sk.dataset.stk,true); stkPinta(p); await pr; return stkPinta(p)} const r=t.closest('[data-r]'); if(r){ctx.rep=r.dataset.r; return orc()}
     const d=t.closest('[data-del]'); if(d){o.itens=o.itens.filter(i=>i.pid!=d.dataset.del); saveQ(o); return orc()}
     const nv=t.closest('[data-oniv]'); if(nv){const it=o.itens.find(i=>i.pid==nv.dataset.oniv); if(it){if(it.pu!=null&&(it.tab||o.tabela)!=+nv.dataset.tid&&!confirm('Este item tem preço negociado. Trocar o nível volta ao preço do nível escolhido. Continuar?')) return; if((it.tab||o.tabela)!=+nv.dataset.tid) delete it.pu; it.tab=+nv.dataset.tid; saveQ(o)} return orc()}
@@ -490,7 +518,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
     if(t.id==='osug'){if(o.sug.prazo) o.prazo=o.sug.prazo; const tt2=T.find(x=>norm(x.nome).replace(/^TABELA\s+/,'')===norm(o.sug.tabela||'').replace(/^TABELA\s+/,'')); if(tt2) o.tabela=tt2.id; saveQ(o); toast('Prazo e tabela do último pedido aplicados'); return orc()}
     if(t.id==='trocaCli'){o.cli=null; saveQ(o); return orc()}
     if(t.id==='octp'){const r_=await escolherCtPdf(o.cli); if(r_){o.cli.ct=r_; saveQ(o)} return orc()}
-    if(t.id==='cliNovo'){const n=prompt('Nome / razão social do cliente:'); if(!n) return; const cn=(prompt('CNPJ (opcional):')||'').replace(/\D/g,''); const cid=prompt('Cidade/UF (ex.: Ribeirão Preto/SP):')||''; o.cli={cnpj:cn,n:n.toUpperCase(),cid,novo:true}; saveQ(o); return orc()}
+    if(t.id==='cliNovo'){const v=await formulario('Cliente novo (sem cadastro)',[{k:'n',l:'Nome ou razão social',req:true},{k:'cn',l:'CNPJ (opcional)',mode:'numeric'},{k:'cid',l:'Cidade/UF (opcional)',ph:'ex.: Ribeirão Preto/SP'}],'Usar no orçamento'); if(!v) return; o.cli={cnpj:(v.cn||'').replace(/\D/g,''),n:v.n.toUpperCase(),cid:v.cid||'',novo:true}; saveQ(o); return orc()}
     if(t.id==='oclr'||t.id==='oclr2'||t.id==='oclrT'){if(confirm('Zerar o carrinho desta representada? Se tiver itens, o orçamento fica guardado em Salvos como rascunho.')){await limparCarrinho(rep); ctx.ot=null; ctx.rep=null; orc()} return}
     if(t.id==='osave'){if(!(await confDivergencias(o,rows))) return; if(rep==='sigma'&&!(await conferirSigma(linS(),'Salvar'))) return stkPinta(p); await save('rascunho'); stkPinta(p); return posSalvar()}
   };
@@ -682,22 +710,24 @@ const RSTAT={rascunho:'orcamento',em_digitacao:'orcamento',aprovado:'aprovado_tr
 const REPID=Object.fromEntries(Object.entries(HIST_REP).map(([k,v])=>[v,k]));
 async function reprioOrcs(de,ate){try{const q=c=>apiAll(`pedidos?select=id,num,oc,representada,cnpj,cliente,data,valor,vendedor,status,itens${c}&origem=eq.reprio&data=gte.${de}&data=lte.${ate}&order=data.desc`); const r=await q(',num_fabrica,situacao_fabrica').catch(()=>q(''));
   return r.map(x=>({id:'rp:'+x.id,origem:'reprio',app:REPID[x.representada]||x.representada,cliente:x.cliente,cnpj:x.cnpj,total:x.valor,itens:x.itens,status:RSTAT[x.status]||'orcamento',atualizado_em:x.data+'T12:00:00',vend:x.vendedor,num_fabrica:x.num_fabrica,situacao_fabrica:x.situacao_fabrica,dados:{oc:x.oc,num_fabrica:x.num_fabrica,rep:REPID[x.representada]}}))}catch(e){return []}}
-async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:'orc',y:now.getFullYear(),mo:now.getMonth(),st:'',view:L('pedView')||undefined},L('pedF')||{}); const V=await vendedores();
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div><button class="chip" id="psync">↻ Sincronizar Reprio</button>
-    <div class="row"><select id="py">${[0,1,2,3,4].map(i=>now.getFullYear()-i).map(y=>`<option${y==f.y?' selected':''}>${y}</option>`).join('')}</select><select id="pmo"><option value="-1"${f.mo==-1?' selected':''}>Ano todo</option>${MESES.map((n,i)=>`<option value="${i}"${i==f.mo?' selected':''}>${n}</option>`).join('')}</select></div></div>
+async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:L('pedAba')||'orc',y:now.getFullYear(),mo:now.getMonth(),st:'',view:L('pedView')||undefined},L('pedF')||{}); const V=await vendedores();
+  const nF=(f.q?1:0)+(f.rep?1:0)+(f.vend?1:0), perTxt=f.de||f.ate?`${f.de?f.de.split('-').reverse().join('/'):'…'} a ${f.ate?f.ate.split('-').reverse().join('/'):'hoje'}`:f.mo==-1?`Ano ${f.y}`:`${MESES[f.mo]} ${f.y}`;
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div><button class="chip" id="psync">↻ Sincronizar Reprio</button></div>
    <div class="row" style="margin:10px 0"><button class="chip${f.tipo==='orc'?' on':''}" data-tp="orc">Orçamentos</button><button class="chip${f.tipo==='ped'?' on':''}" data-tp="ped">Pedidos faturados (histórico + Reprio)</button></div>
    <div id="balls"></div>
-   <div class="card grid" style="margin-top:10px"><input id="pq" type="search" placeholder="Ordem de compra, nº do pedido, cliente, CNPJ ou código de produto" value="${esc(f.q)}">
+   <details class="card pfil" style="margin-top:10px"${!CEL()||nF?' open':''}><summary><b>🔎 Buscar e filtrar</b> <span class="hint">· ${esc(perTxt)}${nF?` · ${nF} filtro${nF>1?'s':''}`:''}</span></summary><div class="grid" style="margin-top:10px"><input id="pq" type="search" placeholder="Ordem de compra, nº do pedido, cliente, CNPJ ou código de produto" value="${esc(f.q)}">
     <div class="r2"><select id="prep"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===f.rep?' selected':''}>${r}</option>`).join('')}</select>
     <select id="pvend"><option value="">Todos os vendedores</option>${V.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('')}</select></div>
+    <div class="row"><span class="hint">Período:</span><select id="py" aria-label="Ano">${[0,1,2,3,4].map(i=>now.getFullYear()-i).map(y=>`<option${y==f.y?' selected':''}>${y}</option>`).join('')}</select><select id="pmo" aria-label="Mês"><option value="-1"${f.mo==-1?' selected':''}>Ano todo</option>${MESES.map((n,i)=>`<option value="${i}"${i==f.mo?' selected':''}>${n}</option>`).join('')}</select></div>
     <div class="row"><button class="chip" data-per="mes">Este mês</button><button class="chip" data-per="ant">Mês anterior</button><button class="chip" data-per="30">30 dias</button><button class="chip" data-per="90">90 dias</button><button class="chip" data-per="365">12 meses</button><button class="chip" data-per="0">Tudo</button></div>
     <details${f.de||f.ate?' open':''}><summary class="hint" style="cursor:pointer">Período personalizado</summary><div class="r2" style="margin-top:6px"><label class="f">De<input id="pde" type="date" value="${f.de}"></label><label class="f">Até<input id="pate" type="date" value="${f.ate}"></label></div></details>
-    <button class="btn" id="pgo">Buscar</button></div>
+    <button class="btn" id="pgo">Buscar</button></div></details>
    <div id="pres" style="margin-top:12px"></div>`;
+  ['#prep','#pvend'].forEach(s=>{const el=$(s); if(el) el.onchange=()=>{read(); buscar()}});
   const range=()=>{if(f.de||f.ate) return [f.de,f.ate]; return f.mo==-1?[`${f.y}-01-01`,`${f.y}-12-31`]:[mesIni(f.y,+f.mo),mesFim(f.y,+f.mo)]};
   const read=()=>{f.q=$('#pq').value.trim(); f.rep=$('#prep').value; f.vend=$('#pvend').value; f.de=$('#pde').value; f.ate=$('#pate').value; LS('pedF',f)};
   $('#py').onchange=e=>{read(); f.y=+e.target.value; f.de=f.ate=''; LS('pedF',f); ped()}; $('#pmo').onchange=e=>{read(); f.mo=+e.target.value; f.de=f.ate=''; LS('pedF',f); ped()};
-  m.onclick=async e=>{const t=e.target; const tp=t.closest('[data-tp]'); if(tp){read(); f.tipo=tp.dataset.tp; f.st=''; LS('pedF',f); return ped()}
+  m.onclick=async e=>{const t=e.target; const tp=t.closest('[data-tp]'); if(tp){read(); f.tipo=tp.dataset.tp; f.st=''; LS('pedF',f); LS('pedAba',f.tipo); return ped()}
     const pr=t.closest('[data-per]'); if(pr){const v=pr.dataset.per; const d=new Date(); if(v==='mes'){f.y=d.getFullYear(); f.mo=d.getMonth(); f.de=f.ate=''} else if(v==='ant'){const a=new Date(d.getFullYear(),d.getMonth()-1,1); f.y=a.getFullYear(); f.mo=a.getMonth(); f.de=f.ate=''} else {f.de=+v?ymd(new Date(Date.now()-v*864e5)):'2020-01-01'; f.ate=ymd(d)} f.q=$('#pq').value.trim(); f.rep=$('#prep').value; f.vend=$('#pvend').value; LS('pedF',f); return ped()}
     const vw=t.closest('[data-vw]'); if(vw){read(); f.view=vw.dataset.vw; LS('pedF',f); LS('pedView',f.view); return ped()}
     if(t.id==='psync'){await sincronizarReprio(t); return buscar()}
@@ -1217,7 +1247,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   $('#ajFup').onchange=e=>{LS('fupDias',Math.max(0,+e.target.value||0)); toast('Follow-up: '+(+e.target.value?e.target.value+' dias':'desligado'))};
   $('#ajNomeS').onclick=async()=>{const v=$('#ajNome').value.trim(); if(!v) return; LS('meuNome',v); try{await api(`perfis?id=eq.${sess.uid}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome:v})}); if(perfil) perfil.nome=v; S('perfil',perfil)}catch(e){} $('#who').textContent=v; toast('Nome salvo')};
   const ad=$('#ajAdm'); if(ad) ad.onclick=()=>go('admin'); const ar=$('#ajReps'); if(ar) ar.onclick=()=>go('reps');
-  $('#ajSair').onclick=()=>{if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}};
+  $('#ajSair').onclick=sairDaConta;
   try{const [u]=await api('pedidos?select=data,num&origem=eq.reprio&order=data.desc&limit=1'); $('#ajSync').innerHTML=u?`Pedidos do Reprio sincronizados automaticamente a cada 2 horas. Último pedido recebido: <b>${esc(u.data.split('-').reverse().join('/'))}</b> (nº ${esc(u.num)}).`:'Nenhum pedido do Reprio sincronizado ainda.'}catch(e){$('#ajSync').textContent='Não consegui verificar agora.'}}
 
 /* ---------- minha semana: meta da semana + na hora de comprar ---------- */
@@ -1238,6 +1268,7 @@ function naHoraDeComprar(P,C,mine){const G={}, hoje=ymdL(new Date());
 function vaiInativar(C,R,mine){const PZ={}; R.forEach(r=>{const n=+(r.regras||{}).inativa_dias; if(n>0) PZ[HIST_REP[r.id]||r.nome]=n}); const out=[];
   C.forEach(c=>Object.values(c.reps).forEach(x=>{const pz=PZ[x.representada]; if(!pz||!x.ultimo||!mine(x.vendedor)) return; const d=dias(x.ultimo), f=pz-d; if(f>=0&&f<=20) out.push({cnpj:c.cnpj,n:c.n,rep:x.representada,d,f})}));
   return {temPz:Object.keys(PZ).length>0,L:out.sort((a,b)=>a.f-b.f)}}
+const CEL=()=>innerWidth<760, semAb=()=>{const v=L('semAb'); return v==null?!CEL():!!v};
 async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===true; const eu=meuVend(); let todos=false, viR='', viT=false;
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
@@ -1264,11 +1295,11 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
     const par=O.filter(o=>(!so||o.user_id===sess.uid)&&['orcamento','aguardando_aprovacao','aguardando_atg'].includes(stOf(o))&&dias(o.atualizado_em.slice(0,10))>=5).slice(0,6);
     const stl=k=>(STATUS.find(s=>s[0]===k)||[,k])[1];
     const nhHtml=()=>`<b>🛒 Na hora de comprar</b><p class="hint" style="margin:0">Clientes chegando no tempo em que costumam comprar de cada fábrica.</p>${(todos?NH:NH.slice(0,6)).map(x=>`<button class="chip" style="text-align:left" data-pc="${esc(x.cnpj)}"><b>${esc(x.n)}</b> · ${esc(x.rep)}<br><span class="hint">compra a cada ${x.ciclo} dias ·</span> <span class="${x.d>x.ciclo?'warn':'ok'}">${x.d>x.ciclo?`passou ${x.d-x.ciclo} ${x.d-x.ciclo>1?'dias':'dia'}`:`está com ${x.d}`}</span></button>`).join('')||'<p class="hint" style="margin:0">Ninguém no ponto de compra agora.</p>'}${NH.length>6?`<button class="chip" data-nhm style="justify-self:start">${todos?'Mostrar menos':`Ver todos (${NH.length})`}</button>`:''}`;
-    box.innerHTML=`<div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Minha semana</div><div class="row"><button class="chip${so?' on':''}" data-sm="1">Só meus</button><button class="chip${so?'':' on'}" data-sm="0">Equipe toda</button></div></div>
-    <div class="sem">${metaHtml}<div class="card grid" data-nh>${nhHtml()}</div><div class="card grid" data-vi>${viHtml()}</div>
+    box.innerHTML=`<div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Minha semana</div><div class="row"><button class="chip${so?' on':''}" data-sm="1">Só meus</button><button class="chip${so?'':' on'}" data-sm="0">Equipe toda</button><button class="chip" data-semab>${semAb()?'Recolher ▴':'Abrir ▾'}</button></div></div>
+    <div class="sem"${semAb()?'':' hidden'}>${metaHtml}<div class="card grid" data-nh>${nhHtml()}</div><div class="card grid" data-vi>${viHtml()}</div>
      <div class="card grid" id="sgAl" hidden></div><div class="card grid"><b>Orçamentos parados</b>${par.map(o=>`<button class="chip" style="text-align:left" data-bo="${esc(o.cliente||'')}"><b>${esc(o.cliente||'Sem cliente')}</b> · ${esc(repName(o.app))}${priv?'':' · '+brl(o.total)} · ${esc(stl(stOf(o)))} · ${dias(o.atualizado_em.slice(0,10))} dias</button>`).join('')||'<p class="hint">Nada parado há mais de 5 dias. 👏</p>'}</div></div>`;
     alertaSigma(box.querySelector('#sgAl'),so); sigmaPendentes();
-    box.onclick=e=>{const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box,priv)} if(e.target.closest('[data-gometas]')){e.preventDefault(); e.stopPropagation(); return go('metas')}
+    box.onclick=e=>{if(e.target.closest('[data-semab]')){LS('semAb',!semAb()); return minhaSemana(box,priv)} const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box,priv)} if(e.target.closest('[data-gometas]')){e.preventDefault(); e.stopPropagation(); return go('metas')}
       if(e.target.closest('[data-nhm]')){todos=!todos; box.querySelector('[data-nh]').innerHTML=nhHtml(); return} const vb=e.target.closest('[data-vir],[data-vim]'); if(vb){if(vb.dataset.vir!=null){viR=vb.dataset.vir; viT=false} else viT=!viT; box.querySelector('[data-vi]').innerHTML=viHtml(); return}
       if(e.target.closest('[data-gorep]')){e.preventDefault(); e.stopPropagation(); return go('reps')}
       const c=e.target.closest('[data-pc]'); if(c){e.stopPropagation(); return painelCliente(c.dataset.pc,(c.dataset.pl?VI.L.filter(x=>!viR||x.rep===viR):NH).map(x=>x.cnpj))}
@@ -1482,7 +1513,7 @@ function agNovoCli(P,X,mine,ult){const G={}; P.forEach(x=>{const cn=String(x.cnp
    Na segunda-feira abre ampliado na primeira vez. */
 async function agResumo(box){if(!box||!AG_ON||!ehGestor()) return; const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7);
   const s1=new Date(seg); s1.setDate(seg.getDate()-7); const s2=new Date(seg); s2.setDate(seg.getDate()-14); const A=ymdL(s1), B=ymdL(seg), Z=ymdL(s2), wk=A;
-  const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:(hj.getDay()===1); const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
+  const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:(hj.getDay()===1&&!CEL()); const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
   try{const [P,O,OP,LG,PF]=await Promise.all([agPedidos(),apiAll(`orcamentos?select=app,status,situacao,total,criado_em,atualizado_em,user_id,vend:dados->>vend,mot:dados->>motivo_perda,auto:dados->ciclo_auto->>num&atualizado_em=gte.${agMais(-30)}`).catch(()=>[]),
       api(`oportunidades?select=usuario_nome,agente,status,valor,atualizado_em&atualizado_em=gte.${A}`).catch(()=>[]),api(`ligacoes?select=usuario_nome,cliente,analise,criado_em&criado_em=gte.${A}&status=eq.pronto`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
     const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=v=>String(vAt(String(v||'Sem vendedor').split(/\s+/)[0])||'Sem vendedor');
@@ -1504,7 +1535,7 @@ Ligações analisadas pela IA: ${LG.slice(0,25).map(l=>{const a=l.analise||{}, f
       box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b>📋 Resumo da semana · gestor</b><button class="chip" data-rsab>${ab?'Recolher ▴':'Ampliar ▾'}</button></div>
        <div class="hint" style="font-size:13px">${dbr(A)} a ${dbr(ymdL(new Date(seg.getTime()-864e5)))} · vendas <b>${brl(tot)}</b> <span class="${dl>=0?'ok':'bad'}">${seta} ${Math.abs(dl).toFixed(0)}%</span> vs semana anterior${nota?' · '+esc(nota):''}</div>
        ${ab?`${IA&&IA.resumo?`<div style="font-size:14px">${esc(IA.resumo)}</div>`:''}${IA&&IA.acoes&&IA.acoes.length?`<div><b style="font-size:14px">3 ações para esta semana</b><ol style="margin:4px 0 0 18px;padding:0;font-size:14px">${IA.acoes.map(a=>`<li>${esc(a)}</li>`).join('')}</ol></div>`:''}
-        <div style="overflow-x:auto"><table class="t"><tr><th>Vendedor</th><th class="n">Vendas</th><th class="n">Orçamentos</th><th class="n">Ganhos / perdidos</th><th class="n">Agentes</th><th class="n">Ligações</th></tr>${linhas.map(([k,x])=>`<tr><td>${esc(k)}</td><td class="n">${brl(x.v)}<br><small class="${x.v>=x.v0?'ok':'bad'}">${x.v0?((x.v/x.v0-1)*100).toFixed(0)+'%':'—'}</small></td><td class="n">${x.oc}<br><small class="hint">${brl(x.ov)}</small></td><td class="n"><span class="ok">${x.g}</span> / <span class="bad">${x.p}</span></td><td class="n">${x.opg}/${x.op}</td><td class="n">${x.lg}</td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem movimento na semana.</td></tr>'}</table></div>
+        <div style="overflow-x:auto"><table class="t tcards"><tr><th>Vendedor</th><th class="n">Vendas</th><th class="n">Orçamentos</th><th class="n">Ganhos / perdidos</th><th class="n">Agentes</th><th class="n">Ligações</th></tr>${linhas.map(([k,x])=>`<tr><td>${esc(k)}</td><td class="n" data-l="Vendas">${brl(x.v)}<br><small class="${x.v>=x.v0?'ok':'bad'}">${x.v0?((x.v/x.v0-1)*100).toFixed(0)+'%':'—'}</small></td><td class="n" data-l="Orçamentos">${x.oc}<br><small class="hint">${brl(x.ov)}</small></td><td class="n" data-l="Ganhos / perdidos"><span class="ok">${x.g}</span> / <span class="bad">${x.p}</span></td><td class="n" data-l="Agentes">${x.opg}/${x.op}</td><td class="n" data-l="Ligações">${x.lg}</td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem movimento na semana.</td></tr>'}</table></div>
         ${motL.length?`<div class="hint" style="font-size:13px"><b>Motivos de perda (30 dias):</b> ${motL.slice(0,5).map(([m,n])=>`${esc(m)} (${n})`).join(' · ')}</div>`:''}
         <div><b style="font-size:14px">🎙 Coach das ligações</b>${IA&&IA.coach&&IA.coach.length?IA.coach.map(c=>`<div style="font-size:13px"><b>${esc(c.vendedor||'')}</b>: ${esc(c.ponto||'')}</div>`).join(''):`<div class="hint" style="font-size:13px">${LG.length?'Aguardando a IA…':'Nenhuma ligação analisada na semana passada. Use o botão 🎙 na ficha do cliente.'}</div>`}</div>
         <div class="hint" style="font-size:12px">"Agentes" = oportunidades do "Hoje para você" feitas ou ganhas / tratadas.</div>`:''}</div>`};
@@ -2199,7 +2230,7 @@ const SQL6='Para ativar tarefas e agenda, rode no Supabase o arquivo <b>6_veloci
 const hoje=()=>ymd(new Date(Date.now()-new Date().getTimezoneOffset()*6e4)); const maisDias=n=>ymd(new Date(Date.now()-new Date().getTimezoneOffset()*6e4+n*864e5));
 const TT={ligacao:'📞 Ligação',whatsapp:'💬 WhatsApp',visita:'🚗 Visita',email:'✉️ E-mail',followup:'🔁 Retorno de orçamento',reuniao:'👥 Reunião',tarefa:'✔️ Tarefa'};
 async function novaTarefa(t){return api('tarefas',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({responsavel:sess.uid,responsavel_nome:meuNome(),feita:false,...t})})}
-async function contaTarefas(){try{const r=await api(`tarefas?select=id&feita=eq.false&vence=lte.${hoje()}&or=(responsavel.eq.${sess.uid},responsavel.is.null)`); const b=$('#tn'); if(b){b.hidden=!r.length; b.textContent=r.length}}catch(e){}}
+async function contaTarefas(){try{const r=await api(`tarefas?select=id&feita=eq.false&vence=lte.${hoje()}&or=(responsavel.eq.${sess.uid},responsavel.is.null)`); ['#tn','#tnHome'].forEach(s=>{const b=$(s); if(b){b.hidden=!r.length; b.textContent=r.length}})}catch(e){}}
 /* agenda (estilo Pipedrive): horários com duração, visão dia/semana e aviso de conflito no mesmo horário */
 const p2=n=>String(n).padStart(2,'0'), isoD=x=>x.getFullYear()+'-'+p2(x.getMonth()+1)+'-'+p2(x.getDate());
 const addD=(d,n)=>{const x=new Date(d+'T12:00'); x.setDate(x.getDate()+n); return isoD(x)};
@@ -2226,7 +2257,7 @@ async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje
     const nv=t.closest('[data-nav]'); if(nv){AG.dia=+nv.dataset.nav?addD(AG.dia,+nv.dataset.nav*passo):hoje(); return tarefasView()}
     const gd=t.closest('[data-agdia]'); if(gd){AG.dia=gd.dataset.agdia; f.modo='dia'; LS('tarF',f); return tarefasView()}
     if(t.id==='tnova') return formTarefa(ag?{vence:AG.dia<hoje()?hoje():AG.dia}:{});
-    const ck=t.closest('[data-tok]'); if(ck){const res=prompt('Resultado (opcional):','')??''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
+    const ck=t.closest('[data-tok]'); if(ck){const fr=await formulario('Concluir tarefa',[{k:'r',l:'Como foi? (opcional)',ph:'ex.: pediu orçamento, ligar semana que vem'}],'Concluir'); if(!fr) return; const res=fr.r||''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
     const ad=t.closest('[data-tadia]'); if(ad){await api(`tarefas?id=eq.${ad.dataset.tadia}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+ad.dataset.d)})}); toast('Reagendada'); contaTarefas(); return tarefasView()}
     const cl=t.closest('[data-tcli]'); if(cl) return go('cli',{cnpj:cl.dataset.tcli});
     const oo=t.closest('[data-torc]'); if(oo){const tt=(rows||[]).find(x=>x.id==oo.closest('[data-tid]').dataset.tid); return detOrc(tt.orcamento_id)}
@@ -2303,9 +2334,11 @@ async function fecharFollowUps(sid,res){try{await api(`tarefas?orcamento_id=eq.$
 /* ================= Bater carteira: painel rápido do cliente ================= */
 /* etiquetas de fábrica: nome curto + dias desde a última compra (verde até 30, amarelo até 90, vermelho acima) */
 const RCURTO={'Sigma Tools':'Sigma','ZM Bombas':'ZM','Chemicals 4U':'Chemicals'};
+const diasTxt=d=>d===0?'hoje':d===1?'1 dia':d+' dias';
+const LEG_DIAS='<p class="hint leg-dias" style="margin:0">Última compra em cada fábrica: <span class="tag rt ok">até 30 dias</span> <span class="tag rt warn">31 a 90 dias</span> <span class="tag rt bad">mais de 90 dias</span></p>';
 const corDias=d=>d==null?'':d<=30?'ok':d<=90?'warn':'bad';
 function repTags(c,max){const rs=Object.entries(c.reps||{}).map(([r,x])=>({r,d:x&&x.ultimo?dias(x.ultimo):null})).sort((a,b)=>(a.d??1e9)-(b.d??1e9)); const v=max?rs.slice(0,max):rs;
-  return v.map(x=>`<span class="tag rt ${corDias(x.d)}" title="${esc(x.r)}${x.d!=null?' · última compra há '+x.d+' dias':''}">${esc(RCURTO[x.r]||x.r)} ${x.d!=null?x.d+'d':'—'}</span>`).join('')+(max&&rs.length>max?`<span class="tag">+${rs.length-max}</span>`:'')}
+  return v.map(x=>`<span class="tag rt ${corDias(x.d)}" title="${esc(x.r)}${x.d!=null?' · última compra há '+x.d+' dias':''}">${esc(RCURTO[x.r]||x.r)} · ${x.d!=null?diasTxt(x.d):'nunca'}</span>`).join('')+(max&&rs.length>max?`<span class="tag">+${rs.length-max}</span>`:'')}
 const descCurta=i=>String(i.desc||'').replace(String(i.cod)+' - ','').split(' | ').slice(0,2).join(' · ');
 /* itens (repetir pedido / mais comprados) viram orçamento: catálogo do sistema com preço atual; Marluvas/Medix viram rascunho no conversor */
 async function itensParaOrc(repNome,c,lin,ex){ex=ex||{}; const rep=REPID[repNome]; if(!rep){toast(repNome+' não tem orçamento no sistema'); return false}
@@ -2482,16 +2515,19 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     <select id="cfc"><option value="">Todas as cidades</option>${cids.map(c=>`<option${c===f.cid?' selected':''}>${esc(c)}</option>`).join('')}</select>
     <select id="cfo"><option value="ret"${f.ord==='ret'?' selected':''}>Ordem: retornos e mais tempo sem comprar</option><option value="val"${f.ord==='val'?' selected':''}>Ordem: quem mais comprou (12 meses)</option><option value="az"${f.ord==='az'?' selected':''}>Ordem: A–Z</option></select></div>
    <div class="row">${[['','Todos'],['30','30–59 dias'],['60','60–89'],['90','90–179'],['180','180+'],['n','Nunca comprou'+(f.rep?' '+f.rep:'')]].map(([k,l])=>`<button class="chip${f.fx===k?' on':''}" data-fx="${k}">${l}</button>`).join('')}</div>
-   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>
-   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${repTags(c,4)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}">${u?dias(u)+'d':'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
+   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>${LEG_DIAS}
+   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${repTags(c,4)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}" style="white-space:nowrap">${u?'há '+diasTxt(dias(u)):'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
   const sv=(pg)=>{f.pg=pg||0; LS('cartF',f); carteira(box)};
   box.onchange=e=>{const id=e.target.id; if(id==='cfv') f.vend=e.target.value; else if(id==='cfr') f.rep=e.target.value; else if(id==='cfc') f.cid=e.target.value; else if(id==='cfo') f.ord=e.target.value; else return; sv()};
   let tt; const qi=box.querySelector('#cfq'); qi.oninput=e=>{clearTimeout(tt); tt=setTimeout(()=>{f.q=e.target.value; f.pg=0; LS('cartF',f); carteira(box).then(()=>{const n=box.querySelector('#cfq'); n.focus(); n.setSelectionRange(n.value.length,n.value.length)})},350)};
   box.onclick=e=>{const pgb=e.target.closest('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=e.target.closest('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=e.target.closest('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
 
 /* ================= Mais ================= */
-function mais(){const m=$('#main'); const it=[['estr','🎯','Estratégia do dia (e-mails de reativação)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🎯','Metas do mês'],['reps','🏭','Representadas'],['busca','🔍','Buscar'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['aj','⚙️','Ajustes'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos']]:[])];
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div><div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
+function mais(){const m=$('#main'); const dia=[['estr','📬','Estratégia do dia (e-mails de reativação)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
+  const adm=[['reps','🏭','Representadas'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos']]:[])];
+  const grade=it=>`<div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div>
+   <div class="sec" style="font-size:17px;margin-top:14px">Dia a dia</div>${grade(dia)}<div class="sec" style="font-size:17px;margin-top:22px">Cadastros e administração</div>${grade(adm)}`;
   m.onclick=e=>{if(e.target.closest('[data-navedit]')) return navEditar(); const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
 
 /* ================= botão Sincronizar Reprio ================= */
@@ -2836,6 +2872,81 @@ async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?
       const a=x.closest('[data-ad]'); if(a){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+a.dataset.ad)})}); toast('Reagendada'); return fim()}
       if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); if(h){const c=await conflitos(d||t.vence,h,+t.duracao||30,t.responsavel,t.id); if(c.bate.length&&!confirm(`Esse horário já tem: ${c.bate.map(x=>x.hora+' '+x.titulo).join('; ')}. Reagendar mesmo assim?`)) return} await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}
 
+/* ================= ajuda: tutoriais passo a passo, botão ? de cada tela e central de ajuda (nov/2026) ================= */
+const TUT={
+ inicio:{t:'Primeiros passos',d:'Um passeio rápido pelo Início e pela barra de baixo.',r:'home',p:[
+  ['#faz','Aqui começa o seu dia: faça um orçamento novo, bata a carteira ou veja as tarefas para hoje.'],
+  ['.reps-c','Cada cartão é uma fábrica (representada). Toque nele para ver o catálogo com preços e montar o orçamento.'],
+  ['#agHoje','"Hoje para você" mostra quem merece atenção hoje: orçamento sem resposta, cliente na hora de comprar e outros.'],
+  ['#nav','Esta barra leva às telas principais. Em Mais › Escolher atalhos você decide quais aparecem.'],
+  ['#srchBtn','Buscar acha cliente, pedido ou produto de qualquer tela.'],
+  ['#ajudaBtn','Ficou com dúvida? Toque no ? em qualquer tela e aparece o passo a passo dela.']]},
+ orc:{t:'Fazer um orçamento',d:'Da escolha da fábrica até mandar o PDF pelo WhatsApp.',r:'orc',c:{ot:'novo'},p:[
+  ['.otabs','"Novo" começa um orçamento. "Continuar" volta para o que ficou pela metade. "Salvos" guarda os que você já salvou.'],
+  ['#opane .reps','Passo 1: toque na fábrica do orçamento.'],
+  [null,'Passo 2: busque o cliente pelo nome, CNPJ ou cidade. A tabela de preço e o prazo do cliente entram sozinhos.'],
+  [null,'Passo 3: em "2. Itens", toque em "+ Adicionar do catálogo". Se o cliente mandou a lista por escrito, use "Colar pedido do cliente".'],
+  [null,'Passo 4: confira o total e toque em "Salvar orçamento". Depois de salvar aparecem PDF, WhatsApp, e-mail e follow-up.'],
+  [null,'Dica: vendedor, situação, OC e observações ficam em "Mais opções", logo abaixo do prazo.']]},
+ cli:{t:'Bater carteira',d:'Quem ligar hoje e como registrar o contato.',r:'cli',p:[
+  ['[data-cm]','"Bater carteira" mostra quem ligar. "Lista e filtros" mostra todos os clientes.'],
+  ['.leg-dias','As cores mostram há quanto tempo o cliente não compra de cada fábrica: verde até 30 dias, amarelo até 90, vermelho mais que isso.'],
+  ['[data-fx]','Filtre por tempo sem comprar para achar quem está esfriando.'],
+  ['[data-pc]','Toque no cliente para abrir a ficha: Ligar, WhatsApp, último contato e último pedido. Registre como foi e passe para o próximo.']]},
+ ficha:{t:'Ficha do cliente',d:'Tudo o que você precisa antes de ligar.',r:'cli',p:[
+  [null,'Abra a ficha tocando no nome do cliente em Clientes ou no resultado de Buscar.'],
+  [null,'No topo ficam Ligar, WhatsApp, E-mail e "Enviar ligação" (para a gravação virar resumo).'],
+  [null,'"Último contato" e "Último pedido por fábrica" mostram onde a conversa parou.'],
+  [null,'"Mais comprados" vira orçamento com um toque. Em Contatos você escolhe quem aparece no PDF.']]},
+ tar:{t:'Tarefas e agenda',d:'Retornos, visitas e ligações do dia.',r:'tar',p:[
+  ['[data-modo]','Veja o Dia, a Semana ou a Lista de tarefas.'],
+  ['#tnova','"+ Nova atividade" marca uma ligação, visita ou retorno. No Dia, tocar num horário vazio também marca.'],
+  ['[data-ab="atr"]','Atrasadas aparecem em vermelho. Abra para concluir ou adiar.'],
+  ['[data-quem]','"Minhas" mostra só as suas; "Equipe" mostra as de todos.']]},
+ ped:{t:'Pedidos e situação',d:'Achar um pedido e entender cada situação.',r:'ped',p:[
+  ['[data-tp]','"Orçamentos" são os feitos no Sistema e no Reprio. "Pedidos faturados" é o histórico que a fábrica faturou.'],
+  ['#balls','Cada cartão é uma situação: toque para ver só aquela. Orçamento → aguardando aprovação → aprovado para transmissão → transmitido na fábrica.'],
+  ['.pfil','Busque pelo nº do pedido, OC, cliente, CNPJ ou código de produto, e escolha o período.'],
+  ['#pres','Toque num pedido para ver os itens, mudar a situação ou gerar o PDF.']]},
+ tec:{t:'Busca técnica',d:'Achar o produto pela descrição que o cliente mandou.',r:'tec',p:[
+  ['#tq','Cole aqui o pedido do cliente (WhatsApp, e-mail, edital) ou escreva o que ele quer: material, cor, tamanho, CA.'],
+  ['#trep','Se quiser, escolha uma fábrica só.'],
+  ['#tgo','Toque em "Encontrar produtos". Confira as sugestões e mande para o orçamento.']]},
+ conv:{t:'Marluvas e Medix',d:'Converter CA, refinar e nível de comissão.',r:'home',p:[
+  [null,'Toque no cartão Marluvas ou Medix no Início. Eles funcionam como as outras fábricas, com catálogo e orçamento.'],
+  [null,'"Converter CA" acha o produto equivalente a partir do CA de outra marca. "Refinar" ajusta a busca.'],
+  [null,'Na Medix, cada item tem o nível de comissão (botões 1 a 5) no próprio cartão.']]},
+ gestor:{t:'Para o gestor',d:'Acessos, metas e tabelas de preço.',r:'mais',p:[
+  [null,'Mais › Equipe e acessos: aprove quem criou acesso e defina quem é gestor.'],
+  [null,'Mais › Metas do mês: meta por vendedor e por fábrica. Ela aparece no Início e no Painel do mês.'],
+  [null,'Mais › Tabelas de preço e produtos: importe as planilhas de preço de cada fábrica.'],
+  [null,'No Início, o "Resumo da semana" compara vendas, orçamentos e ligações de cada vendedor.']]}};
+const TUT_ROTA={home:'inicio',orc:'orc',rep:'orc',cli:'cli',tar:'tar',ped:'ped',tec:'tec'};
+const visivel=el=>{if(!el) return false; const r=el.getBoundingClientRect(); return r.width>0&&r.height>0};
+async function tutorial(k){const T=TUT[k]; if(!T) return; $('#umenu')&&$('#umenu').remove(); if(route!==T.r||T.c) go(T.r,T.c); await new Promise(r=>setTimeout(r,900));
+  document.querySelectorAll('.tour-ov').forEach(x=>x.remove()); let i=0; const ov=document.createElement('div'); ov.className='tour-ov'; ov.innerHTML='<div class="tour-spot" hidden></div><div class="tour-card" role="dialog" aria-live="polite"></div>'; document.body.appendChild(ov);
+  const spot=ov.querySelector('.tour-spot'), card=ov.querySelector('.tour-card');
+  const passo=()=>{const [sel,txt]=T.p[i]; const el=sel?[...document.querySelectorAll(sel)].find(visivel):null;
+    if(el){el.scrollIntoView({block:'center',behavior:'instant'}); const r=el.getBoundingClientRect(), pd=6; Object.assign(spot.style,{top:(r.top-pd)+'px',left:(r.left-pd)+'px',width:(r.width+pd*2)+'px',height:Math.min(r.height+pd*2,innerHeight*.6)+'px'}); spot.hidden=false; card.classList.toggle('topo',r.top>innerHeight*.5)} else {spot.hidden=true; card.classList.remove('topo')}
+    ov.classList.toggle('escuro',!el);
+    card.innerHTML=`<div class="hint">${esc(T.t)} · passo ${i+1} de ${T.p.length}</div><p style="margin:8px 0 12px;font-size:16px;line-height:1.4">${esc(txt)}</p><div class="row" style="justify-content:space-between"><button class="chip" data-tx>Fechar</button><div class="row">${i?'<button class="btn ghost sm" data-tv>‹ Voltar</button>':''}<button class="btn sm" data-tn>${i===T.p.length-1?'Concluir ✓':'Próximo ›'}</button></div></div>`};
+  ov.onclick=e=>{if(e.target.closest('[data-tx]')) return ov.remove(); if(e.target.closest('[data-tv]')){i--; return passo()} if(e.target.closest('[data-tn]')){if(i===T.p.length-1){ov.remove(); return toast('Pronto! O ? no topo mostra o passo a passo de cada tela.')} i++; return passo()}};
+  passo()}
+function ajudaDaTela(){const k=TUT_ROTA[route]; if(k) return tutorial(k); go('ajuda')}
+function ajudaView(){const m=$('#main');
+  const FAQ=[['Esqueci a senha. E agora?','Fale com o gestor. Ele confere seu acesso em Mais › Equipe e acessos.'],
+   ['Fiz um orçamento e sumiu.','Veja em Orçamento › Continuar (os que estão pela metade) ou Orçamento › Salvos. Pedidos também lista todos os orçamentos do mês.'],
+   ['O preço não apareceu no produto.','O produto não está na tabela escolhida. Troque a tabela no passo 1 do orçamento ou avise o gestor.'],
+   ['Como mando o orçamento pelo WhatsApp?','Depois de "Salvar orçamento" aparece a janela com PDF, WhatsApp, e-mail e copiar texto.'],
+   ['O que são as cores nos clientes?','Tempo desde a última compra em cada fábrica: verde até 30 dias, amarelo de 31 a 90, vermelho mais de 90.'],
+   ['Apareceu uma mensagem de erro.','Leia a frase e tente de novo. Se repetir, toque em "Detalhe técnico", tire um print e mande para o gestor.'],
+   ['Como escolho os botões da barra de baixo?','Mais › Escolher atalhos da barra. Vale só para o seu usuário.']];
+  m.innerHTML=`<div class="sec">❓ Ajuda e tutoriais</div><p class="hint">Cada tutorial abre a tela certa e mostra, passo a passo, onde tocar. O botão <b>?</b> no topo mostra o tutorial da tela em que você está.</p>
+   <div class="grid tut-lista">${Object.entries(TUT).filter(([k])=>k!=='gestor'||ehGestor()).map(([k,t])=>`<button class="card tut-b" data-tut="${k}"><b>${esc(t.t)}</b><span class="hint">${esc(t.d)}</span><span class="tut-go">▶ Ver passo a passo</span></button>`).join('')}</div>
+   <div class="sec" style="margin-top:22px;font-size:18px">Perguntas frequentes</div><div class="grid">${FAQ.map(([q,a])=>`<details class="card faq"><summary><b>${esc(q)}</b></summary><p style="margin:8px 0 0">${esc(a)}</p></details>`).join('')}</div>
+   <p class="hint" style="margin-top:16px">Ainda com dúvida? Fale com o gestor.</p>`;
+  m.onclick=e=>{const b=e.target.closest('[data-tut]'); if(b) tutorial(b.dataset.tut)}}
+
 /* ================= lembretes de tarefas (pop-up no canto da tela) ================= */
 const AVISADAS=new Set(L('avisadas')||[]);
 async function verificarLembretes(){if(!sess||!navigator.onLine) return; let T=[]; try{T=await api(`tarefas?select=*&feita=eq.false&vence=eq.${hoje()}&or=(responsavel.eq.${sess.uid},responsavel.is.null)&order=hora`)}catch(e){return}
@@ -2939,8 +3050,7 @@ async function finLista(box){const tp=FST.ab, de=mesIni(FST.y,FST.mo), ate=mesFi
       try{for(const l of P) await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'pago',valor_pago:l.valor,pago_em:hoje()})}); toast('Baixas registradas'); return finLista(box)}catch(err){return toast('Erro: '+err.message)}}
     const b=t.closest('[data-fbx]'); if(b){const l=L1.find(x=>x.id==b.dataset.fbx); return finBaixa(l)}
     const r=t.closest('[data-fl]'); if(r) return finForm(L1.find(x=>x.id==r.dataset.fl))}}
-async function finBaixa(l){const v=prompt(`Valor ${l.tipo==='R'?'recebido':'pago'} (R$):`,String(l.valor).replace('.',',')); if(v===null) return; const vp=lerNumBR(v); if(!(vp>=0)) return toast('Valor inválido');
-  const dt=prompt('Data (dd/mm/aaaa):',dbr(hoje())); if(dt===null) return; const [d,mo,y]=dt.split('/'); const pe=y&&mo&&d?`${y.length===2?'20'+y:y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`:hoje();
+async function finBaixa(l){const fv=await formulario('Registrar baixa',[{k:'v',l:`Valor ${l.tipo==='R'?'recebido':'pago'} (R$)`,val:String(l.valor).replace('.',','),mode:'decimal',req:true},{k:'d',l:'Data',type:'date',val:hoje(),req:true}],'Registrar'); if(!fv) return; const vp=lerNumBR(fv.v); if(!(vp>=0)) return toast('Valor inválido'); const pe=fv.d||hoje();
   const conta=FIN.contas.filter(c=>c.ativa); let cid=l.conta_id||null; if(!cid&&conta.length===1) cid=conta[0].id;
   try{await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'pago',valor_pago:vp,pago_em:pe,conta_id:cid})}); toast('Baixa registrada'); finView()}catch(err){toast('Erro: '+err.message)}}
 async function finForm(l0){if(!l0) return; const l={tipo:'P',status:'aberto',vencimento:hoje(),...l0}, novo=!l.id, tp=l.tipo;
@@ -3353,5 +3463,5 @@ async function caCard(ca,box){if(!box) return; box.innerHTML='<div class="card">
 /* ---------- início ---------- */
 badge();
 /* já tem login salvo: abre direto e confere em segundo plano (a tela de login só aparece se o acesso tiver expirado de verdade) */
-if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email; w.onclick=()=>go('aj'); window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
+if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent='👤 '+(meuNome()||sess.email); w.onclick=menuUsuario; window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
 })();

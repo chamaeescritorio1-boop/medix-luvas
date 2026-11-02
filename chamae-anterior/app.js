@@ -122,13 +122,13 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView}[r]||home)()}
+function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView}[r]||home)()}
 $('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
 /* ---------- barra de baixo: cada um escolhe os atalhos (Início e Mais ficam fixos) ---------- */
 const NAVSVG=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${d}</svg>`;
-const NAVOPC=[['cli','Clientes','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/>'],
+const NAVOPC=[['estr','Estratégia','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M3 3l3 3M21 3l-3 3"/>'],['cli','Clientes','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/>'],
   ['tar','Tarefas','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/>','tn'],
   ['orc','Orçamento','<path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/>','qn'],
   ['ped','Pedidos','<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'],
@@ -165,7 +165,7 @@ function navEditar(){let sel=navSel(); const ov=document.createElement('div'); o
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
   const q=Q(); m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
      return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
-   <div id="agHoje" style="margin-top:20px"></div><div id="agRes" style="margin-top:12px"></div><div id="semana"></div>
+   <button class="card" data-go2="estr" style="display:block;width:100%;text-align:left;margin-top:20px;color:inherit;font:inherit;cursor:pointer;border-left:5px solid #ffd166">🎯 <b>Estratégia do dia</b> <span class="hint">· quem abordar hoje, com e-mail e arte prontos para você aprovar ›</span></button><div id="agHoje" style="margin-top:12px"></div><div id="agRes" style="margin-top:12px"></div><div id="semana"></div>
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><button class="btn ghost" data-go2="orc">＋ Novo orçamento</button><button class="btn ghost" data-go2="cli">📞 Bater carteira</button><button class="btn ghost" data-go2="tar">✔️ Tarefas</button><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
   m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
 
@@ -646,7 +646,7 @@ function anxMontar(box,op){if(!box) return; const T=window.anxToast||(m=>alert(m
 }
 /*ANEXOS-FIM*/
 window.anxToken=token; window.anxToast=toast;
-async function salvar(o,total,sit,rows){await garantirNumero(o); const linhas=(rows||[]).map(r=>({cod:r.p.cod,desc:r.p.descricao,qt:r.i.qt,pu:r.pu,cm:r.niv!=null?String(r.niv):undefined,tabn:r.tabN||undefined,ipi:r.p.ipi,ean:r.p.attrs&&r.p.attrs.ean,ncm:r.p.ncm,ptab:r.ptab,neg:r.i.neg||undefined,plista:r.db?r.plista:undefined,descs:r.db&&(r.i.dc||r.i.dp)?[r.i.dc?'comercial '+r.db.com+'%':'',r.i.dp?'pagamento '+r.db.pag+'%':''].filter(Boolean).join(' + '):undefined,lt:r.lt||undefined,camp:r.camp?{nome:r.camp.nome,fim:r.camp.fim,de:r.ptab0}:undefined,gq:gradeTxt(r.i.gq)?r.i.gq:undefined,sd:o.rep==='sigma'&&SGS[r.p.cod]&&SGS[r.p.cod].it?SGS[r.p.cod].it.disp:undefined})); const body={id:o.sid||(o.sid=sess.uid.slice(0,8)+'-'+o.rep+'-'+o.id),app:o.rep,cliente:o.cli&&o.cli.n,cnpj:o.cli&&o.cli.cnpj,total:Math.round(total*100)/100,itens:o.itens.length,situacao:sit,dados:{...o,linhas},atualizado_em:new Date().toISOString()}; if(o.status) body.status=o.status; saveQ(o); try{await api('orcamentos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}catch(e){toast('Salvo no aparelho; sincroniza depois')} if(sit==='enviado') followUpOrc(o,total); if(sit==='enviado'&&o.rep==='sigma'&&SIGMA_AUTO){if(!(o.sigma&&o.sigma.orv)) enviarSigma({id:body.id,dados:body.dados},false,true,o); else if(o.sigma.ass&&o.sigma.ass!==sgAss(linhas)) toast(`Atenção: o orçamento mudou depois de ir para a Sigma (${o.sigma.orv}). Use Reenviar em Pedidos.`)} if(o.status==='cancelado'||o.status==='transmitido') fecharFollowUps(o.sid,stLbl(o.status))}
+async function salvar(o,total,sit,rows){await garantirNumero(o); const linhas=(rows||[]).map(r=>({cod:r.p.cod,desc:r.p.descricao,qt:r.i.qt,pu:r.pu,cm:r.niv!=null?String(r.niv):undefined,tabn:r.tabN||undefined,ipi:r.p.ipi,ean:r.p.attrs&&r.p.attrs.ean,ncm:r.p.ncm,ptab:r.ptab,neg:r.i.neg||undefined,plista:r.db?r.plista:undefined,descs:r.db&&(r.i.dc||r.i.dp)?[r.i.dc?'comercial '+r.db.com+'%':'',r.i.dp?'pagamento '+r.db.pag+'%':''].filter(Boolean).join(' + '):undefined,lt:r.lt||undefined,camp:r.camp?{nome:r.camp.nome,fim:r.camp.fim,de:r.ptab0}:undefined,gq:gradeTxt(r.i.gq)?r.i.gq:undefined,sd:o.rep==='sigma'&&SGS[r.p.cod]&&SGS[r.p.cod].it?SGS[r.p.cod].it.disp:undefined})); await estOrigem(o); const body={id:o.sid||(o.sid=sess.uid.slice(0,8)+'-'+o.rep+'-'+o.id),app:o.rep,cliente:o.cli&&o.cli.n,cnpj:o.cli&&o.cli.cnpj,total:Math.round(total*100)/100,itens:o.itens.length,situacao:sit,dados:{...o,linhas},atualizado_em:new Date().toISOString()}; if(o.status) body.status=o.status; saveQ(o); try{await api('orcamentos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}catch(e){toast('Salvo no aparelho; sincroniza depois')} estLigarOrc(o,body.id,total); if(sit==='enviado') followUpOrc(o,total); if(sit==='enviado'&&o.rep==='sigma'&&SIGMA_AUTO){if(!(o.sigma&&o.sigma.orv)) enviarSigma({id:body.id,dados:body.dados},false,true,o); else if(o.sigma.ass&&o.sigma.ass!==sgAss(linhas)) toast(`Atenção: o orçamento mudou depois de ir para a Sigma (${o.sigma.orv}). Use Reenviar em Pedidos.`)} if(o.status==='cancelado'||o.status==='transmitido') fecharFollowUps(o.sid,stLbl(o.status))}
 
 /* ---------- consulta de pedidos e orçamentos ---------- */
 const fmtDt=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'';
@@ -711,7 +711,7 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
         const O=O1.filter(o=>!f.st||stOf(o)===f.st); r._O=O;
         
         await mapaFotos(O.map(o=>(o.dados&&o.dados.rep)||o.app));
-        const ORIG=o=>o.origem==='reprio'?'<span class="tg tg-r">Reprio</span>':o.dados&&o.dados.origem==='b2b'?'<span class="tg tg-b">Portal</span>':'<span class="tg tg-s">Sistema</span>';
+        const ORIG=o=>o.origem==='reprio'?'<span class="tg tg-r">Reprio</span>':o.dados&&o.dados.origem==='b2b'?'<span class="tg tg-b">Portal</span>':'<span class="tg tg-s">Sistema</span>'+estSelo(o.dados);
         r.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><p class="hint" style="margin:0">${O.length} registro(s) · <b>${brl(O.reduce((s,o)=>s+(+o.total||0),0))}</b></p></div>
          <div class="ptab"><div class="ph"><span>Nº / Data</span><span>Representada</span><span>Cliente</span><span>Vendedor</span><span class="n">Valor</span><span>Situação</span></div>
          ${O.map(o=>{const d=o.dados||{}; const rep=d.rep||o.app; const nf=d.num_fabrica||o.num_fabrica; const c=d.cli||{};
@@ -1514,6 +1514,217 @@ Ligações analisadas pela IA: ${LG.slice(0,25).map(l=>{const a=l.analise||{}, f
         const j=await r.json().catch(()=>({})); if(r.ok&&!j.erro){IA=j; LS('agRes',{w:wk,r:j}); nota=''} else nota='resumo da IA indisponível agora'}catch(e){nota='resumo da IA indisponível agora'} draw()}}
   catch(e){box.innerHTML=''}}
 /*AGENTES-FIM*/
+/*ESTRATEGIA-INICIO*/
+/* Estratégia do dia (02/11): cada vendedor vê, numa aba própria, quem abordar hoje, por quê, como e com qual mensagem — aprova, muda ou pula.
+   Réguas de reativação por e-mail (saem da caixa do vendedor pela função enviar-email), cadência multicanal:
+   toque 1 e-mail → toque 2 ligação/WhatsApp (3 dias úteis depois) → toque 3 e-mail "o que as lojas da região levam" (10 dias) → toque 4 e-mail de despedida com resposta por número (21 dias).
+   A régua para quando o cliente responde, faz orçamento/pedido, ou o vendedor marca. Grandes contas (grupo ≥ EST_GC em 12 meses) ficam fora.
+   Base: rpc estrategia_base / radar_regiao; registros: tabelas reativacao e reativacao_bloqueio (sem elas, guarda neste aparelho). */
+const EST_LIM=30, EST_GC=150000, EST_CAD=[0,0,3,10,21], EST_PAUSA=7, EST_JANELA=45;
+const EST_NOME={esfr:'Esfriando',inat:'Inativo',fab:'Fábrica parada',perd:'Perdido',nunca:'Nunca comprou'}, EST_COR={esfr:'#f2b632',inat:'#f08a24',fab:'#5aa9ff',perd:'#ff7a70',nunca:'#9aa1b8'};
+const EST_TEMA=[null,{s:'esfr',t:'Segunda da reposição',d:'Foco em quem está esfriando (91 a 180 dias): lembrar antes de perder, com os itens que ele sempre leva.'},
+  {s:'inat',t:'Terça da reativação',d:'Foco nos inativos (6 a 12 meses): abrir conversa perguntando o que mudou e mostrar o que gira na região.'},
+  {s:'fab',t:'Quarta da venda cruzada',d:'Foco em quem ainda compra com a gente mas parou uma fábrica: descobrir o motivo e recuperar a linha.'},
+  {s:'perd',t:'Quinta da reconquista',d:'Foco nos perdidos (mais de 1 ano) e em quem nunca comprou: reapresentar a Chamaê e achar o comprador certo.'},
+  {s:'esfr',t:'Sexta de fechar a semana',d:'Menos e-mails novos, mais ligações: retorne quem recebeu e-mail na semana e transforme resposta em orçamento.'}];
+let ESTB=null, ESTTAB=null;
+const estCn=s=>String(s||'').replace(/\D/g,'');
+const estPrim=s=>{const w=String(s||'').replace(/^(prezad[oa]s?|sr\.?|sra\.?|dr\.?|dra\.?)\s+/i,'').trim().split(/\s+/)[0]||''; return w.length>1&&!/@|\d/.test(w)?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():''};
+const estTit=s=>String(s||'').toLowerCase().replace(/(^|\s)(\S)/g,(a,b,c)=>b+c.toUpperCase()).replace(/\b(Ltda|Me|Epp|Eireli|S\/?a)\b\.?/gi,'').replace(/\s+-\s*$/,'').trim();
+const estMes=d=>{if(!d) return ''; const [y,m]=String(d).split('-'); return ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][+m-1]+(y!=String(new Date().getFullYear())?' de '+y:'')};
+const estCurto=s=>String(s||'').replace(/\s+/g,' ').trim().slice(0,46);
+async function estCfg(){const d={lim:EST_LIM,gc:EST_GC}; try{const r=await api('reativacao_bloqueio?select=obs&cnpj=eq._cfg'); if(r[0]&&r[0].obs) return {...d,...JSON.parse(r[0].obs)}}catch(e){} return {...d,...(L('estCfg')||{})}}
+async function estBase(force){if(ESTB&&!force&&Date.now()-ESTB.t<10*6e4) return ESTB.d; const a180=agMais(-180);
+  const [B,R,H,BL,CT,TG,cfg]=await Promise.all([api('rpc/estrategia_base',{method:'POST',body:'{}'}).catch(()=>null),api('rpc/radar_regiao',{method:'POST',body:'{}'}).catch(()=>[]),
+    api(`reativacao?select=*&criado_em=gte.${a180}&order=criado_em.desc&limit=5000`).then(r=>{ESTTAB=true; return r}).catch(()=>{ESTTAB=false; return null}),
+    api('reativacao_bloqueio?select=*').catch(()=>null),apiAll(`contatos?select=cnpj,criado_em,tipo&criado_em=gte.${agMais(-30)}`).catch(()=>[]),
+    apiAll('clientes?select=cnpj,tags,uf&tags=not.is.null').catch(()=>[]),estCfg()]);
+  const loc=L('estLoc')||{h:[],b:[]}; const d={B:B||[],semBase:!B,R:R||[],H:H||loc.h,BL:(BL||[]).concat(BL?[]:loc.b),CT,TG,cfg}; ESTB={t:Date.now(),d}; return d}
+async function estGravar(reg){reg={...reg,atualizado_em:new Date().toISOString()};
+  if(ESTTAB!==false){try{if(reg.id){const id=reg.id; delete reg.id; await api(`reativacao?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(reg)}); return id}
+    const [r]=await api('reativacao',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(reg)}); ESTTAB=true; return r.id}catch(e){ESTTAB=false}}
+  const loc=L('estLoc')||{h:[],b:[]}; if(reg.id){const i=loc.h.findIndex(x=>x.id===reg.id); if(i>=0) loc.h[i]={...loc.h[i],...reg}} else {reg.id='L'+Date.now()+Math.random().toString(36).slice(2,5); reg.criado_em=reg.criado_em||new Date().toISOString(); reg.dia=reg.dia||ymdL(new Date()); loc.h.unshift(reg); loc.h=loc.h.slice(0,600)} LS('estLoc',loc); return reg.id}
+async function estBloquear(cnpj,motivo,obs){const b={cnpj,motivo,obs:obs||null,por:meuNome()}; try{await api('reativacao_bloqueio?on_conflict=cnpj',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(b)})}catch(e){const loc=L('estLoc')||{h:[],b:[]}; loc.b=loc.b.filter(x=>x.cnpj!==cnpj).concat([b]); LS('estLoc',loc)} if(ESTB) ESTB.d.BL=ESTB.d.BL.filter(x=>x.cnpj!==cnpj).concat([b])}
+/* monta a estratégia de um vendedor para hoje */
+async function estPlano(vend){const [C,D,R0]=await Promise.all([clientes(),estBase(),reps().catch(()=>[])]); const hoje=ymdL(new Date()), dw=new Date().getDay(), tema=EST_TEMA[dw]||null, cfg=D.cfg;
+  const byB={}; D.B.forEach(b=>byB[estCn(b.cnpj)]=b); const bl={}; D.BL.forEach(b=>bl[b.cnpj]=b.motivo); const tg={}; D.TG.forEach(t=>tg[estCn(t.cnpj)]=t);
+  const ult={}; D.CT.forEach(c=>{const k=estCn(c.cnpj); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
+  const hist={}; D.H.forEach(h=>(hist[h.cnpj]=hist[h.cnpj]||[]).push(h)); Object.values(hist).forEach(a=>a.sort((x,y)=>String(y.criado_em).localeCompare(String(x.criado_em))));
+  const radar={}; D.R.forEach(r=>(radar[r.uf+'|'+r.rep]=radar[r.uf+'|'+r.rep]||[]).push(r));
+  const ativas=(R0||[]).filter(r=>r.ativa).map(r=>r.nome);
+  const mine=v=>!vend||norm(v||'').startsWith(vend);
+  const out={novos:[],toques:[],ligar:[],fora:{gc:0,sem:0,blq:0,rec:0,ina:0},tema,hoje};
+  if(D.semBase){out.emails=[]; out.restam=0; out.lim=0; out.jaHoje=0; return out} /* sem a consulta do banco não dá para saber quem parou: não sugere nada */
+  C.forEach(c=>{if(!mine(c.v)) return; const cn=estCn(c.cnpj); if(!cn) return; const b=byB[cn]||{reps:[],top:[],emails:[]}, t=tg[cn]||{}, tags=(t.tags||[]).map(x=>norm(x));
+    if(bl[cn]==='grande_conta'||(bl[cn]!=='liberado'&&(+b.vgrupo12||0)>=cfg.gc)){out.fora.gc++; return}
+    if(bl[cn]&&bl[cn]!=='liberado'){out.fora.blq++; return} if(tags.includes('INATIVO')||tags.includes('NAO ENVIAR')){out.fora.ina++; return}
+    const em=(b.emails||[]).filter(e=>e&&e.e); if(!em.length&&c.em&&/@/.test(c.em)) String(c.em).split(/[;,\s]+/).filter(e=>/@.+\./.test(e)&&!/@chamae\.com\.br$/i.test(e)).forEach(e=>em.push({e:e.toLowerCase(),n:''}));
+    const uf=String(t.uf||(c.cid||'').split('/')[1]||'').toUpperCase().trim()||'?';
+    const H=hist[cn]||[]; const env=H.filter(h=>h.canal==='email'&&h.status==='enviado'); const ue=env[0];
+    const base={cnpj:cn,c,b,n:estTit(c.fa||c.n),razao:c.n,cid:c.cid||'',uf,em,tel:c.tel||'',H};
+    /* régua em andamento */
+    const ab=H.find(h=>h.etapa===1&&h.status==='enviado'&&dias(String(h.enviado_em||h.criado_em).slice(0,10))<=60);
+    if(ab){const d0=String(ab.enviado_em||ab.criado_em).slice(0,10), dep=H.filter(h=>h.criado_em>=ab.criado_em);
+      if(dep.some(h=>['respondeu','sem_interesse','orcamento','pedido','fim'].includes(h.status))) return;
+      const feitos=new Set(dep.filter(h=>['enviado','feito'].includes(h.status)).map(h=>h.etapa)); const prox=[2,3,4].find(e=>!feitos.has(e)); if(!prox) return;
+      const quando=agUtilMais(d0,EST_CAD[prox]); if(quando>hoje) {out.fora.rec++; return}
+      if(H.some(h=>h.etapa===prox&&['adiado','pulado'].includes(h.status)&&String(h.motivo||'')>=hoje)) return;
+      const x={...base,seg:ab.gatilho,rep:ab.rep,etapa:prox,ref:ab.id,d0,v:+b.v12||+b.vtot/3||0}; x.sc=1e9+x.v; estMontar(x,radar,ativas); if(prox===2) out.ligar.push(x); else if(em.length) out.toques.push(x); else out.ligar.push(x); return}
+    if(H.some(h=>['respondeu','sem_interesse','orcamento','pedido'].includes(h.status)&&dias(String(h.criado_em).slice(0,10))<30)) return;
+    if(!em.length){out.fora.sem++; return}
+    if(ue&&dias(String(ue.enviado_em||ue.criado_em).slice(0,10))<90&&ue.etapa===4) {out.fora.rec++; return} /* acabou uma régua há pouco: descansa 90 dias */
+    if(ue&&dias(String(ue.enviado_em||ue.criado_em).slice(0,10))<EST_PAUSA){out.fora.rec++; return}
+    if(ult[cn]&&dias(ult[cn].slice(0,10))<EST_PAUSA){out.fora.rec++; return}
+    if(H.some(h=>h.etapa===1&&['adiado','pulado'].includes(h.status)&&String(h.motivo||'')>=hoje)) return;
+    const du=b.ultimo?dias(b.ultimo):null; let seg, rep=(b.reps[0]||{}).rep||'';
+    if(du==null) seg='nunca'; else if(du<=90){const par=(b.reps||[]).filter(r=>r.n>=2&&dias(r.ultimo)>150&&dias(r.ultimo)<=540&&ativas.includes(r.rep)).sort((a,b2)=>b2.v-a.v)[0]; if(!par) return; seg='fab'; rep=par.rep}
+    else if(du<=180) seg='esfr'; else if(du<=365) seg='inat'; else seg='perd';
+    const v=Math.max(+b.v12||0,(+b.vtot||0)/Math.max(1,Math.min(3,(du||365)/365)),seg==='nunca'?300:500);
+    const w={esfr:1,inat:.85,fab:.8,perd:.5,nunca:.25}[seg]*(tema&&tema.s===seg?1.6:1)*(tema&&dw===4&&seg==='nunca'?2:1)*(em.some(e=>e.p)?1.1:1);
+    const x={...base,seg,rep,etapa:1,du,v,sc:v*w}; estMontar(x,radar,ativas); out.novos.push(x)});
+  /* cota do dia: toques da régua primeiro, depois os novos (máx. por segmento para variar a carteira) */
+  const lim=Math.max(0,(cfg.lim||EST_LIM)-(dw===5?10:0)), jaHoje=D.H.filter(h=>h.canal==='email'&&h.status==='enviado'&&String(h.enviado_em||'').slice(0,10)===hoje&&mine(h.vendedor)).length;
+  const cab=Math.max(0,lim-jaHoje); out.toques.sort((a,b)=>b.v-a.v); const T=out.toques.slice(0,cab);
+  const cap={esfr:12,inat:9,fab:6,perd:6,nunca:4}; if(tema) cap[tema.s]+=8; if(dw===4) cap.nunca+=6; const n={}; out.novos.sort((a,b)=>b.sc-a.sc);
+  const N=[]; out.novos.forEach(x=>{if(T.length+N.length>=cab) return; n[x.seg]=(n[x.seg]||0)+1; if(n[x.seg]<=cap[x.seg]) N.push(x)});
+  out.novos.forEach(x=>{if(T.length+N.length<cab&&!N.includes(x)) N.push(x)});
+  out.emails=[...T,...N]; out.restam=out.novos.length-N.length; out.lim=lim; out.jaHoje=jaHoje; out.ligar.sort((a,b)=>b.v-a.v); return out}
+/* conteúdo: por quê, abordagem, itens, e-mail e WhatsApp — escrito pensando em como o comprador gostaria de receber */
+function estMontar(x,radar,ativas){const b=x.b, nome=estPrim((x.em[0]||{}).n), oi=nome?`Olá ${nome}, tudo bem?`:'Olá, tudo bem?', loja=x.n, rep=x.rep||'', vend=estTit(meuNome());
+  const its=(b.top||[]).filter(i=>!rep||i.rep===rep).slice(0,3), itsT=its.map(i=>`• ${estCurto(i.ds)} (cód. ${i.cod})`).join('\n');
+  const tem=new Set((b.top||[]).map(i=>i.cod)), rad=(radar[x.uf+'|'+rep]||[]).filter(r=>!tem.has(r.cod)).slice(0,3), radT=rad.map(r=>`• ${estCurto(r.ds)} (${r.nclientes} lojas de ${x.uf} compraram)`).join('\n');
+  const outras=ativas.filter(r=>r!==rep).slice(0,5).join(', '), up=(b.reps||[]).find(r=>r.rep===rep)||{}, outraAtiva=(b.reps||[]).find(r=>r.rep!==rep&&dias(r.ultimo)<=90);
+  const ass=(perfil&&perfil.assinatura)||`${vend}\nChamaê Representações`, rod=`\n\n${ass}\n\n—\nSe preferir não receber mais estes e-mails, é só responder SAIR.`;
+  x.rad=rad; x.its=its; x.vend=vend; let A=[], txt='', porque='', como='';
+  const fato=x.seg==='nunca'?'Não tem pedido registrado no Sistema.':`Último pedido${rep?' '+rep:''} em ${dbr(up.ultimo||b.ultimo)} (há ${dias(up.ultimo||b.ultimo)} dias)${+b.v12?` · comprou ${brl(b.v12)} nos últimos 12 meses`:+b.vtot?` · já comprou ${brl(b.vtot)} com a gente`:''}.`;
+  if(x.etapa===1){
+    if(x.seg==='esfr'){porque=`Está passando do ritmo normal de compra. ${fato}`; como='Lembrete útil, não cobrança: entregue a reposição pronta e peça só um "sim".';
+      A=[`${nome||loja}, reposição de ${estCurto((its[0]||{}).ds||rep).toLowerCase()}?`,`${loja}: separei seus itens ${rep}`];
+      txt=`${oi}\n\nSeu último pedido ${rep} foi em ${estMes(up.ultimo||b.ultimo)}. Para te poupar tempo, já separei os itens que vocês mais levam:\n\n${itsT||'• os mesmos itens do último pedido'}\n\nQuer que eu monte o orçamento com as quantidades de sempre? Responda com "sim" que eu te mando ainda hoje.`}
+    else if(x.seg==='inat'){porque=`Parou de comprar há mais de 6 meses. ${fato}`; como='Pergunte antes de oferecer: o que mudou (preço, prazo, giro, outro fornecedor)? Use o que gira na região como prova.';
+      A=[`${nome||loja}, o que mudou por aí?`,`Novidades ${rep} para a ${loja}`];
+      txt=`${oi}\n\nFaz alguns meses que não conversamos e queria entender como estão as vendas de ${rep||'nossas linhas'} aí na ${loja}.${radT?`\n\nPor aqui, as lojas de ${x.uf} estão girando bem:\n\n${radT}`:''}\n\nSe fizer sentido, preparo uma proposta de retorno com condição especial. Prefere que eu te ligue ou mando por aqui?`}
+    else if(x.seg==='fab'){porque=`Ainda compra ${outraAtiva?outraAtiva.rep:'outras fábricas'} com a gente, mas parou ${rep}. ${fato}`; como='Cliente ativo: a confiança já existe. Pergunte o motivo da linha parada e ofereça resolver.';
+      A=[`${nome||loja}, e a linha ${rep}?`,`${loja}: posso ajudar com ${rep}?`];
+      txt=`${oi}\n\nObrigado por seguir com a gente${outraAtiva?' na '+outraAtiva.rep:''}. Notei que a ${rep} parou desde ${estMes(up.ultimo)} e fiquei com a dúvida: aconteceu algo com preço, prazo ou giro?\n\n${itsT?`O que vocês costumavam levar:\n\n${itsT}\n\n`:''}Me conta que eu tento ajustar. Se quiser, já incluo no seu próximo pedido.`}
+    else if(x.seg==='perd'){porque=`Mais de 1 ano sem comprar. ${fato}`; como='Reapresente sem pressão e confirme quem é o comprador hoje. Meta: uma resposta, não uma venda.';
+      A=[`${loja} e Chamaê: ainda faz sentido?`,`${nome||loja}, você ainda cuida das compras?`];
+      txt=`${oi}\n\nJá trabalhamos juntos${rep?' com '+rep:''} e quero entender se ainda posso ajudar a ${loja}. Hoje representamos ${[rep,outras].filter(Boolean).join(', ')}.\n\nVocê ainda cuida das compras aí? Se não for você, me indica a pessoa certa? Assim eu não te incomodo à toa.`}
+    else {porque='Cadastrado, mas sem nenhum pedido no Sistema (a maioria veio do sistema antigo).'; como='Primeiro contato: apresente-se em 3 linhas, ofereça uma escolha simples (qual marca interessa).';
+      A=[`${nome||loja}, fornecedores para a ${loja}`,`Tabela de preços para a ${loja}?`];
+      txt=`${oi}\n\nSou ${vend}, da Chamaê Representações. Atendemos lojas${x.cid?' de '+x.cid:''} com ${ativas.slice(0,6).join(', ')}.\n\nPosso te mandar a tabela de alguma dessas marcas? É só responder com o nome da marca.`}}
+  else if(x.etapa===3){porque=`3º toque da régua "${EST_NOME[x.seg]||x.seg}" (1º e-mail em ${dbr(x.d0)}, sem resposta). ${fato}`; como='Prova social: mostre o que lojas parecidas estão comprando. Uma pergunta só.';
+    A=[`O que as lojas de ${x.uf} mais estão levando`,`${nome||loja}, uma ideia para o seu mix`];
+    txt=`${oi}\n\nTe escrevi há alguns dias e imagino que a rotina esteja corrida. Separei o que mais saiu${rep?' da '+rep:''} nas lojas de ${x.uf} nos últimos meses:\n\n${radT||itsT||'• itens de maior giro da região'}\n\nQuer que eu inclua algum desses no seu próximo pedido?`}
+  else if(x.etapa===4){porque=`Último toque da régua (1º e-mail em ${dbr(x.d0)}). ${fato}`; como='E-mail de despedida: respeita o tempo do cliente e costuma ter a maior taxa de resposta. Resposta por número.';
+    A=[`Posso encerrar por aqui, ${nome||loja}?`,`${nome||loja}, último recado`];
+    txt=`${oi}\n\nNão quero lotar sua caixa de e-mails. Me responde só com um número que eu sigo do jeito que for melhor para você:\n\n1 - Tenho interesse, me liga\n2 - Agora não, me procura daqui a 3 meses\n3 - Já compro de outro fornecedor\n4 - Não sou eu que compro (me indica quem?)`}
+  else {porque=`2º toque: e-mail enviado em ${dbr(x.d0)} sem resposta. ${fato}`; como='Ligue ou mande WhatsApp curto citando o e-mail. Objetivo: ouvir o cliente.';}
+  x.porque=porque; x.como=como; x.assuntos=A; x.assunto=A[(+x.cnpj.slice(-1))%2]||A[0]||''; x.texto=txt?txt+rod:'';
+  x.zap=`${oi.replace('Olá','Oi')} Aqui é o ${vend}, da Chamaê. ${x.etapa===2?`Te mandei um e-mail na ${['domingo','segunda','terça','quarta','quinta','sexta','sábado'][new Date(x.d0+'T12:00:00').getDay()]} sobre ${rep||'nossas linhas'}. Conseguiu ver?`:`Separei umas sugestões ${rep} para a ${loja}.`} Posso te mandar por aqui?`;
+  x.roteiro=x.etapa===2?`"${oi.replace('Olá','Oi')} Aqui é o ${vend}, da Chamaê. Te mandei um e-mail sobre ${rep||'nossas linhas'} e quis ligar para ouvir você: como estão as vendas${rep?' de '+rep:''} aí?" → escute → "O que faria você voltar a comprar com a gente?" → ofereça montar o orçamento na hora.`:'';
+  x.para=x.em.slice(0,1).map(e=>e.e); return x}
+/* arte 1080×1080 para e-mail e WhatsApp, com a cor e o logo da fábrica */
+async function estArte(x,o){o=o||{}; const R=(REPS||[]).find(r=>r.nome===x.rep)||{}, cor=R.cor||'#2a3157', cv=document.createElement('canvas'); cv.width=cv.height=1080; const g=cv.getContext('2d');
+  const gr=g.createLinearGradient(0,0,1080,1080); gr.addColorStop(0,cor); gr.addColorStop(1,'#111522'); g.fillStyle=gr; g.fillRect(0,0,1080,1080);
+  g.globalAlpha=.08; g.fillStyle='#fff'; g.beginPath(); g.arc(980,120,260,0,7); g.fill(); g.beginPath(); g.arc(80,1000,200,0,7); g.fill(); g.globalAlpha=1;
+  const rr=(X,Y,W,H,r)=>{g.beginPath(); g.moveTo(X+r,Y); g.arcTo(X+W,Y,X+W,Y+H,r); g.arcTo(X+W,Y+H,X,Y+H,r); g.arcTo(X,Y+H,X,Y,r); g.arcTo(X,Y,X+W,Y,r); g.closePath()};
+  const lg=R.regras&&R.regras.logo; if(lg){try{const im=await new Promise((ok,er)=>{const i=new Image(); i.onload=()=>ok(i); i.onerror=er; i.src=lg}); const h=120, w=Math.min(420,im.width*h/im.height); g.fillStyle='#fff'; rr(70,70,w+40,h+30,22); g.fill(); g.drawImage(im,90,85,w,h)}catch(e){}}
+  else {g.fillStyle='#fff'; g.font='bold 64px system-ui,sans-serif'; g.fillText(x.rep||'Chamaê Representações',80,150)}
+  const wrap=(t,X,Y,W,lh,max)=>{const ls=[]; let l=''; String(t).split(' ').forEach(w=>{const tt=l?l+' '+w:w; if(g.measureText(tt).width>W&&l){ls.push(l); l=w} else l=tt}); if(l) ls.push(l); if(ls.length>max){ls.length=max; ls[max-1]+='…'} ls.forEach((s,i)=>g.fillText(s,X,Y+i*lh)); return ls.length};
+  const tit=o.titulo||{esfr:`Sua reposição ${x.rep} está pronta`,inat:`O que está girando em ${x.uf}`,fab:`Vamos retomar a linha ${x.rep}?`,perd:'Vamos voltar a trabalhar juntos?',nunca:'Marcas que sua loja pode vender'}[x.seg]||'Separamos para você';
+  g.fillStyle='#fff'; g.font=`bold ${tit.length>34?64:76}px system-ui,sans-serif`; const nl=wrap(tit,80,330,920,tit.length>34?76:88,3);
+  g.font='36px system-ui,sans-serif'; g.globalAlpha=.85; g.fillText(`Para ${String(x.n).slice(0,40)}`,80,330+nl*88+10); g.globalAlpha=1;
+  const lis=(o.itens||(x.etapa===3||x.seg==='inat'?(x.rad.length?x.rad:x.its):(x.its.length?x.its:x.rad))).slice(0,4); let y=330+nl*88+70;
+  if(x.seg==='nunca'&&!lis.length){const at=(REPS||[]).filter(r=>r.ativa).slice(0,8); g.font='bold 40px system-ui,sans-serif'; at.forEach((r,i)=>{const X=80+(i%2)*470, Y=y+Math.floor(i/2)*110; g.fillStyle='rgba(255,255,255,.95)'; rr(X,Y,440,90,18); g.fill(); g.fillStyle=r.cor||'#222'; g.fillText(r.nome,X+28,Y+60)}); y+=Math.ceil(at.length/2)*110}
+  lis.forEach(i=>{g.fillStyle='rgba(255,255,255,.95)'; rr(80,y,920,110,20); g.fill(); g.fillStyle='#14182a'; g.font='bold 36px system-ui,sans-serif'; g.fillText(estCurto(i.ds).slice(0,40),110,y+50); g.font='28px system-ui,sans-serif'; g.fillStyle='#555'; g.fillText(i.nclientes?`${i.nclientes} lojas de ${x.uf} compraram`:`cód. ${i.cod}${i.n?` · vocês já levaram ${i.n}×`:''}`,110,y+88); y+=128});
+  if(o.oferta){g.fillStyle='#ffd166'; rr(80,Math.min(y+10,850),920,80,40); g.fill(); g.fillStyle='#111'; g.font='bold 38px system-ui,sans-serif'; g.fillText(String(o.oferta).slice(0,44),115,Math.min(y+10,850)+53)}
+  g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(0,950,1080,130); g.fillStyle='#fff'; g.font='bold 36px system-ui,sans-serif'; g.fillText(`${x.vend} · Chamaê Representações`,80,1005); g.font='30px system-ui,sans-serif'; g.globalAlpha=.85; g.fillText('Responda este e-mail ou chame no WhatsApp',80,1050); g.globalAlpha=1;
+  return cv.toDataURL('image/png')}
+function estHtml(texto,cid){const p=String(texto).split(/\n{2,}/).map(b=>`<p style="margin:0 0 14px">${esc(b).replace(/\n/g,'<br>')}</p>`); if(cid) p.splice(Math.min(2,p.length-1),0,`<p style="margin:0 0 14px"><img src="cid:${cid}" alt="" width="480" style="max-width:100%;border-radius:12px;display:block"></p>`);
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#222;max-width:560px">${p.join('')}</div>`}
+async function estEnviar(x){const tk=await token(); const body={para:x.para,cc:[],assunto:x.assunto,texto:x.texto,anexo:null,ref:{tipo:'reativacao',id:null,cnpj:x.cnpj}};
+  if(x.arteOn){try{const png=x.arteUrl||await estArte(x,x.arteOpt); body.html=estHtml(x.texto,'arte'); body.imagens=[{nome:'chamae.png',cid:'arte',base64:png.split(',')[1]}]}catch(e){}}
+  const reg={dia:ymdL(new Date()),cnpj:x.cnpj,cliente:x.razao||x.n,vendedor:x.c.v||meuNome(),gatilho:x.seg,etapa:x.etapa,canal:'email',assunto:x.assunto,texto:x.texto,para:x.para,rep:x.rep||null};
+  try{const r=await fetch(SB+'/functions/v1/enviar-email',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.erro||('HTTP '+r.status));
+    await estGravar({...reg,status:'enviado',enviado_em:new Date().toISOString()});
+    api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj:x.cnpj,tipo:'email',texto:`📧 E-mail de reativação (${EST_NOME[x.seg]||x.seg}, toque ${x.etapa}): ${x.assunto}`,usuario_nome:meuNome()})}).catch(()=>{}); return true}
+  catch(e){await estGravar({...reg,status:'erro',motivo:String(e.message||e).slice(0,200)}); throw e}}
+/* origem do orçamento: e-mail de reativação enviado até EST_JANELA dias antes */
+async function estOrigem(o){if(o.orig_chk||!o.cli||!o.cli.cnpj) return; o.orig_chk=1; try{const r=await api(`reativacao?select=id,gatilho,etapa,enviado_em,canal&cnpj=eq.${estCn(o.cli.cnpj)}&status=in.(enviado,feito,respondeu)&criado_em=gte.${agMais(-EST_JANELA)}&order=criado_em.desc&limit=1`);
+  if(r[0]&&!o.orig_camp) o.orig_camp={id:r[0].id,gatilho:r[0].gatilho,etapa:r[0].etapa,canal:r[0].canal,data:String(r[0].enviado_em||'').slice(0,10)}}catch(e){}}
+async function estLigarOrc(o,id,total){const oc=o.orig_camp; if(!oc||!oc.id||oc.lig===id||String(oc.id).startsWith('L')) return; oc.lig=id; try{await api(`reativacao?id=eq.${oc.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({orc_id:id,orc_valor:Math.round(total*100)/100,atualizado_em:new Date().toISOString()})})}catch(e){}}
+const estSelo=d=>d&&d.orig_camp?`<span class="tg" style="background:#ffd166;color:#111" title="Cliente veio do e-mail de reativação de ${fmtDt(d.orig_camp.data)}">📧 Reativação</span>`:'';
+/* resultados: enviados → respondidos → orçamentos → pedidos (até 45 dias depois do 1º e-mail) */
+async function estResultados(vend){const D=await estBase(), P=await agPedidos().catch(()=>[]), a30=agMais(-30); const mine=v=>!vend||norm(v||'').startsWith(vend);
+  const H=D.H.filter(h=>mine(h.vendedor)&&String(h.criado_em).slice(0,10)>=a30); const env=H.filter(h=>h.status==='enviado'&&h.canal==='email'); const cl=new Set(env.map(h=>h.cnpj));
+  const resp=new Set(H.filter(h=>['respondeu','orcamento','pedido'].includes(h.status)).map(h=>h.cnpj)); const orc=H.filter(h=>h.orc_id); const pr1={}; env.forEach(h=>{const d=String(h.enviado_em||h.criado_em).slice(0,10); if(!pr1[h.cnpj]||d<pr1[h.cnpj]) pr1[h.cnpj]=d});
+  const ped=P.filter(p=>{const d0=pr1[estCn(p.cnpj)]; return d0&&p.data>=d0&&dias(d0)-dias(p.data)<=EST_JANELA}); const vp=ped.reduce((s,p)=>s+(+p.valor||0),0);
+  const porG={}; env.forEach(h=>{const g=porG[h.gatilho]=porG[h.gatilho]||{e:0,p:new Set()}; g.e++}); ped.forEach(p=>{const h=env.find(x=>x.cnpj===estCn(p.cnpj)); if(h) porG[h.gatilho].p.add(h.cnpj)});
+  return {env:env.length,cl:cl.size,resp:resp.size,orc:orc.length,vo:orc.reduce((s,h)=>s+(+h.orc_valor||0),0),ped:new Set(ped.map(p=>estCn(p.cnpj))).size,vp,porG}}
+async function estrategiaView(){const m=$('#main'); const ges=ehGestor(); let vend=ges?(L('estV')??meuVend()):meuVend(); m.innerHTML='<p class="hint">Montando a estratégia do dia…</p>';
+  let P, RS, aberto=null, maisAb=null, sel=new Set();
+  const carregar=async f=>{if(f) ESTB=null; [P,RS]=await Promise.all([estPlano(vend),estResultados(vend)]); sel=new Set(P.emails.map((x,i)=>i)); desenha()};
+  const chip=x=>`<span class="tag" style="background:${EST_COR[x.seg]||'#999'};color:#111">${EST_NOME[x.seg]||x.seg}</span> <span class="tag" style="background:var(--line)">${x.etapa===1?'1º contato':x.etapa+'º toque'}</span>`;
+  const card=(x,i,k)=>`<div class="card grid" data-ek="${k}" data-ei="${i}" style="border-left:5px solid ${EST_COR[x.seg]||'#999'};gap:6px">
+     <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><div>${chip(x)}<br><b>${esc(x.n)}</b> <span class="hint">· ${esc(x.cid)}${x.rep?' · '+esc(x.rep):''}</span></div>${k==='e'?`<label style="display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" data-esel ${sel.has(i)?'checked':''}> Enviar</label>`:''}</div>
+     <div style="font-size:14px"><b>Por que hoje:</b> ${esc(x.porque)}</div><div class="hint" style="font-size:13px">💡 ${esc(x.como)}</div>
+     ${k==='e'?`<div style="font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px"><div><b>Para:</b> ${esc(x.para.join(', ')||'—')}</div><div><b>Assunto:</b> ${esc(x.assunto)}</div>${aberto===k+i?`<div style="white-space:pre-wrap;margin-top:6px">${esc(x.texto)}</div>`:`<div class="hint" style="margin-top:4px">${esc(x.texto.split('\n').slice(2,4).join(' ').slice(0,150))}…</div>`}${x.arteOn?'<div class="hint">🖼 com arte no e-mail</div>':''}</div>`
+       :`<div style="font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px;white-space:pre-wrap">${x.roteiro?'📞 '+esc(x.roteiro)+'\n\n':''}💬 ${esc(x.zap)}</div>`}
+     <div class="row" style="gap:6px">${k==='e'?`<button class="chip" data-ever>${aberto===k+i?'Ocultar':'Ver'} e-mail</button><button class="chip" data-emud>✎ Mudar</button>`:`${String(x.tel).replace(/\D/g,'').length>=10?`<a class="btn sm" href="tel:+55${String(x.tel).replace(/\D/g,'')}">📞 Ligar</a>`:''}<a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/${String(x.tel).replace(/\D/g,'').length>=10?'55'+String(x.tel).replace(/\D/g,''):''}?text=${encodeURIComponent(x.zap)}">💬 WhatsApp</a><button class="chip" data-efeito>✓ Feito</button>`}
+       <button class="chip" data-earte>🖼 Arte</button><button class="chip" data-eorc>🧾 Orçamento</button><button class="chip" data-emais>${maisAb===k+i?'✕':'⋯ Mais'}</button></div>
+     ${maisAb===k+i?`<div class="row" style="gap:6px"><button class="chip" data-eresp>💬 Respondeu</button><button class="chip" data-eamanha>🕓 Amanhã</button><button class="chip" data-epula>⏭ Pular</button><button class="chip" data-ecli>👤 Ver cliente</button><button class="chip" data-enao>🚫 Não enviar mais</button></div>`:''}</div>`;
+  const desenha=()=>{const t=P.tema, fo=P.fora, nS=[...sel].length;
+    m.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center"><div class="sec" style="margin:0">🎯 Estratégia do dia</div>${ges?`<select id="estV" class="chip">${[['','Equipe toda'],...TIME.map(v=>[v,estTit(v)])].map(([v,l])=>`<option value="${v}" ${v===vend?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
+     <div class="card grid" style="gap:6px"><b>${t?esc(t.t):'Fim de semana'} · ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'})}</b><div class="hint" style="font-size:14px">${t?esc(t.d):'Sem envios no fim de semana: os e-mails saem só em dias úteis.'}</div>
+      <div class="row" style="gap:14px;font-size:14px"><span>📧 <b>${P.emails.length}</b> e-mails para aprovar${P.jaHoje?` (${P.jaHoje} já enviados hoje)`:''}</span><span>📞 <b>${P.ligar.length}</b> ligações/WhatsApp</span><span class="hint">Fora: ${fo.gc} grandes contas · ${fo.sem} sem e-mail · ${fo.rec} contato recente · ${fo.blq+fo.ina} bloqueados</span></div>
+      ${ESTTAB===false?'<div class="hint" style="color:var(--warn)">⚠️ As tabelas da estratégia ainda não existem no banco: o histórico fica só neste aparelho.</div>':''}${ESTB&&ESTB.d.semBase?'<div class="hint" style="color:var(--warn)">⚠️ Falta a consulta estrategia_base no banco (SQL da reativação).</div>':''}</div>
+     <div class="card grid" style="gap:4px"><b>📈 Últimos 30 dias</b><div class="row" style="gap:14px;font-size:14px"><span>${RS.env} e-mails · ${RS.cl} clientes</span><span>💬 ${RS.resp} responderam</span><span>🧾 ${RS.orc} orçamentos (${brl(RS.vo)})</span><span>✅ ${RS.ped} voltaram a comprar · <b>${brl(RS.vp)}</b></span></div></div>
+     ${P.ligar.length?`<div class="sec">📞 Ligar ou mandar WhatsApp hoje</div><div class="hint">Quem recebeu o 1º e-mail há 3 dias úteis e não respondeu. Ligação curta, citando o e-mail.</div>${P.ligar.map((x,i)=>card(x,i,'l')).join('')}`:''}
+     <div class="sec">📧 E-mails para aprovar</div><div class="hint">Confira, mude o que quiser e aprove. Saem da sua caixa de e-mail, um por vez; as respostas chegam para você. ${P.restam>0?`Mais ${P.restam} clientes aguardam os próximos dias.`:''}</div>
+     ${P.emails.length?P.emails.map((x,i)=>card(x,i,'e')).join(''):'<div class="card hint">Nenhum e-mail para hoje. 👏</div>'}
+     ${P.emails.length?(vend===meuVend()?`<div style="position:sticky;bottom:72px;z-index:5;margin-top:10px"><button class="btn" id="estGo" style="width:100%">✓ Aprovar e enviar ${nS} e-mail${nS===1?'':'s'}</button></div>`:'<div class="hint" style="margin-top:10px">👀 Você está vendo a estratégia de outro vendedor. O envio é feito pelo próprio vendedor, da caixa dele.</div>'):''}
+     ${ges?`<details class="card" style="margin-top:14px"><summary><b>⚙️ Regras (gestor)</b></summary><div class="grid" style="gap:8px;margin-top:8px"><label class="f">E-mails por vendedor por dia<input id="estLim" type="number" min="0" max="200" value="${ESTB.d.cfg.lim}"></label><label class="f">Grande conta: grupo (raiz do CNPJ) que comprou nos últimos 12 meses a partir de R$<input id="estGc" type="number" min="0" step="10000" value="${ESTB.d.cfg.gc}"></label><button class="btn sm" id="estCfgS">Salvar regras</button><p class="hint" style="margin:0">Para liberar uma grande conta específica ou bloquear um cliente, use os botões dos cartões ou a ficha do cliente.</p></div></details>`:''}`;
+    const dv=$('#estV'); if(dv) dv.onchange=()=>{vend=dv.value; LS('estV',vend); m.innerHTML='<p class="hint">Montando…</p>'; carregar()}};
+  const pega=e=>{const c=e.target.closest('[data-ek]'); if(!c) return null; const i=+c.dataset.ei; return {i,k:c.dataset.ek,x:(c.dataset.ek==='e'?P.emails:P.ligar)[i]}};
+  const marcar=async(x,status,motivo)=>estGravar({dia:ymdL(new Date()),cnpj:x.cnpj,cliente:x.razao||x.n,vendedor:x.c.v||meuNome(),gatilho:x.seg,etapa:x.etapa,canal:x.etapa===2?'ligacao':'email',status,motivo:motivo||null,rep:x.rep||null});
+  const tira=(k,i)=>{if(k==='e'){P.emails.splice(i,1); sel=new Set(P.emails.map((x,j)=>j))} else P.ligar.splice(i,1); desenha()};
+  m.onchange=e=>{const s=e.target.closest('[data-esel]'); if(s){const p=pega(e); if(s.checked) sel.add(p.i); else sel.delete(p.i); const b=$('#estGo'); if(b) b.textContent=`✓ Aprovar e enviar ${sel.size} e-mail${sel.size===1?'':'s'}`}};
+  m.onclick=async e=>{const t=e.target; if(t.id==='estGo') return enviarTodos(t);
+    if(t.id==='estCfgS'){const c={lim:+$('#estLim').value||0,gc:+$('#estGc').value||0}; LS('estCfg',c); try{await api('reativacao_bloqueio?on_conflict=cnpj',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({cnpj:'_cfg',motivo:'cfg',obs:JSON.stringify(c),por:meuNome()})})}catch(_){} toast('Regras salvas'); return carregar(true)}
+    const p=pega(e); if(!p) return; const {x,i,k}=p;
+    if(t.closest('[data-ever]')){aberto=aberto===k+i?null:k+i; return desenha()}
+    if(t.closest('[data-emais]')){maisAb=maisAb===k+i?null:k+i; return desenha()}
+    if(t.closest('[data-emud]')) return estEditar(x,()=>desenha());
+    if(t.closest('[data-earte]')) return estArteOv(x,()=>desenha());
+    if(t.closest('[data-ecli]')) return painelCliente(x.cnpj,(k==='e'?P.emails:P.ligar).map(y=>y.cnpj));
+    if(t.closest('[data-eorc]')){const lin=(x.its.length?x.its:x.rad).map(i2=>({cod:i2.cod,desc:i2.ds,qt:1})); const rep=x.rep||((x.b.reps||[])[0]||{}).rep; if(!rep||!lin.length) return painelCliente(x.cnpj);
+      const oq=Q()[REPID[rep]]; const ok=await itensParaOrc(rep,{cnpj:x.cnpj,n:x.razao||x.n,fa:x.n,cid:x.cid,tel:x.tel,em:x.para[0]||''},lin,{}); if(ok){const o=Q()[REPID[rep]]; if(o&&!o.orig_camp){const h=(x.H||[]).find(h2=>h2.status==='enviado'); o.orig_camp={id:h?h.id:null,gatilho:x.seg,etapa:x.etapa,canal:h?'email':'estrategia',data:ymdL(new Date())}; o.orig_chk=1; saveQ(o)}} return}
+    if(t.closest('[data-eresp]')){await marcar(x,'respondeu'); toast('Régua parada para este cliente. Bom trabalho! Crie o orçamento a partir da resposta.'); return tira(k,i)}
+    if(t.closest('[data-efeito]')){await marcar(x,'feito'); api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj:x.cnpj,tipo:'ligacao',texto:`📞 2º toque da régua de reativação (${EST_NOME[x.seg]||x.seg})`,usuario_nome:meuNome()})}).catch(()=>{}); toast('Registrado'); return tira(k,i)}
+    if(t.closest('[data-eamanha]')){await marcar(x,'adiado',agMais(1)); toast('Volta amanhã'); return tira(k,i)}
+    if(t.closest('[data-epula]')){const mo=prompt('Por que pular? (opcional: ajuda a melhorar as sugestões)','')??null; if(mo===null) return; await marcar(x,'pulado',agMais(30)); if(mo) estGravar({dia:ymdL(new Date()),cnpj:x.cnpj,cliente:x.n,vendedor:x.c.v,gatilho:x.seg,etapa:x.etapa,canal:'nota',status:'nota',motivo:mo.slice(0,200)}); toast('Pulado por 30 dias'); return tira(k,i)}
+    if(t.closest('[data-enao]')){const gc=confirm('É uma grande conta? (OK = grande conta, Cancelar = não enviar por outro motivo)'); await estBloquear(x.cnpj,gc?'grande_conta':'nao_enviar'); toast('Não recebe mais e-mails automáticos'); return tira(k,i)}};
+  const enviarTodos=async btn=>{const L2=[...sel].sort((a,b)=>a-b).map(i=>P.emails[i]).filter(x=>x&&x.para.length); if(!L2.length) return toast('Nenhum e-mail marcado');
+    if(!confirm(`Enviar ${L2.length} e-mail(s) agora pela sua caixa?`)) return; btn.disabled=true; let ok=0, er=0, ult='';
+    for(const [j,x] of L2.entries()){btn.textContent=`Enviando ${j+1} de ${L2.length}… (${x.n})`; try{await estEnviar(x); ok++}catch(e){er++; ult=e.message} if(j<L2.length-1) await new Promise(r=>setTimeout(r,6000+Math.random()*4000))}
+    toast(`${ok} enviado(s)${er?` · ${er} com erro: ${ult}`:''}`); carregar(true)};
+  await carregar()}
+function estEditar(x,fim){const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="card grid" style="max-width:640px;width:100%;max-height:92vh;overflow:auto;gap:8px"><b>✎ Mudar e-mail · ${esc(x.n)}</b>
+   <label class="f">Para<select id="eeP" multiple size="${Math.min(4,Math.max(2,x.em.length))}">${x.em.map(e=>`<option value="${esc(e.e)}" ${x.para.includes(e.e)?'selected':''}>${esc(e.e)}${e.n?' · '+esc(e.n):''}</option>`).join('')}</select></label>
+   <label class="f">Assunto<input id="eeA" value="${esc(x.assunto)}"></label>${x.assuntos.length>1?`<div class="row" style="gap:6px">${x.assuntos.map((a,j)=>`<button class="chip" data-eea="${j}">Usar: ${esc(a)}</button>`).join('')}</div>`:''}
+   <label class="f">Texto<textarea id="eeT" rows="14">${esc(x.texto)}</textarea></label><label class="row" style="gap:6px"><input type="checkbox" id="eeR" ${x.arteOn?'checked':''}> Incluir a arte no corpo do e-mail</label>
+   <div class="row" style="gap:6px;justify-content:flex-end"><button class="btn sm ghost" id="eeX">Cancelar</button><button class="btn sm" id="eeS">Salvar mudanças</button></div></div>`; document.body.appendChild(ov);
+  ov.onclick=e=>{const t=e.target; if(t===ov||t.id==='eeX') return ov.remove(); const a=t.closest('[data-eea]'); if(a) ov.querySelector('#eeA').value=x.assuntos[+a.dataset.eea];
+    if(t.id==='eeS'){x.para=[...ov.querySelector('#eeP').selectedOptions].map(o=>o.value); x.assunto=ov.querySelector('#eeA').value.trim(); x.texto=ov.querySelector('#eeT').value; x.arteOn=ov.querySelector('#eeR').checked; x.mudou=true; ov.remove(); fim&&fim()}}}
+async function estArteOv(x,fim){const ov=document.createElement('div'); ov.className='ov'; const o=x.arteOpt=x.arteOpt||{}; const draw=async()=>{x.arteUrl=await estArte(x,o); ov.querySelector('#arI').src=x.arteUrl};
+  ov.innerHTML=`<div class="card grid" style="max-width:520px;width:100%;max-height:94vh;overflow:auto;gap:8px"><b>🖼 Arte para ${esc(x.n)}</b><img id="arI" style="width:100%;border-radius:12px;background:#222;aspect-ratio:1">
+    <label class="f">Título<input id="arT" placeholder="(automático)" value="${esc(o.titulo||'')}"></label><label class="f">Faixa de oferta (opcional)<input id="arO" placeholder="Ex.: 5% extra até sexta · frete grátis acima de R$ 1.500" value="${esc(o.oferta||'')}"></label>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip" id="arU">↻ Atualizar</button><a class="btn sm ghost" id="arD" download="arte-${esc(x.cnpj)}.png">⬇ Baixar (WhatsApp)</a><button class="btn sm" id="arE">📧 Usar no e-mail</button><button class="btn sm ghost" id="arX">Fechar</button></div>
+    <p class="hint" style="margin:0">Baixe para mandar no WhatsApp junto com a mensagem, ou inclua no corpo do e-mail.</p></div>`; document.body.appendChild(ov); await draw(); ov.querySelector('#arD').href=x.arteUrl;
+  ov.onclick=async e=>{const t=e.target; if(t===ov||t.id==='arX'){ov.remove(); return fim&&fim()} if(t.id==='arU'){o.titulo=ov.querySelector('#arT').value.trim(); o.oferta=ov.querySelector('#arO').value.trim(); await draw(); ov.querySelector('#arD').href=x.arteUrl}
+    if(t.id==='arE'){o.titulo=ov.querySelector('#arT').value.trim(); o.oferta=ov.querySelector('#arO').value.trim(); await draw(); x.arteOn=true; toast('A arte vai no corpo do e-mail'); ov.remove(); fim&&fim()}}}
+/*ESTRATEGIA-FIM*/
 
 /* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo, agrupados por orçamento */
 let SGAL=null;
@@ -2279,7 +2490,7 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
   box.onclick=e=>{const pgb=e.target.closest('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=e.target.closest('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=e.target.closest('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
 
 /* ================= Mais ================= */
-function mais(){const m=$('#main'); const it=[['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🎯','Metas do mês'],['reps','🏭','Representadas'],['busca','🔍','Buscar'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['aj','⚙️','Ajustes'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos']]:[])];
+function mais(){const m=$('#main'); const it=[['estr','🎯','Estratégia do dia (e-mails de reativação)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🎯','Metas do mês'],['reps','🏭','Representadas'],['busca','🔍','Buscar'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['aj','⚙️','Ajustes'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos']]:[])];
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div><div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
   m.onclick=e=>{if(e.target.closest('[data-navedit]')) return navEditar(); const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
 

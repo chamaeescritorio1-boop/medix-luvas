@@ -1337,13 +1337,18 @@ async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ge
         <div class="row" style="gap:6px">${ph?`<a class="btn sm" href="tel:+55${ph}" data-agl="${i}">📞 Ligar</a>`:''}<a class="btn sm ghost" target="_blank" rel="noopener" href="${wa}" data-agw="${i}">💬 WhatsApp</a><button class="chip" data-agv="${i}">${aberto===i?'Ocultar':'Ver'} mensagem</button>
          <button class="chip" data-agc="${i}">Ver cliente</button>${x.oid?`<button class="chip" data-ago="${i}">Abrir orçamento</button>`:''}<button class="chip" data-agt="${i}">＋ Tarefa</button>
          <button class="chip" data-agf="${i}" title="Já cuidei disso">✓ Feito</button><button class="chip" data-aga="${i}">Amanhã</button><button class="chip" data-agn="${i}">✕ Não faz sentido</button></div></div>`};
-    const draw=(nota)=>{if(!box.isConnected) return; const tot=L2.reduce((s,x)=>s+x.v,0);
-      box.innerHTML=`<div class="card grid ag"><div class="row" style="justify-content:space-between"><b>🤖 Hoje para você</b><div class="row" style="gap:6px">${ges?`<button class="chip${so?' on':''}" data-ags="1">Só meus</button><button class="chip${so?'':' on'}" data-ags="0">Equipe toda</button>`:''}</div></div>
-        ${metaHtml()}${L2.length?`<p class="hint" style="margin:0">${L2.length} ${L2.length>1?'oportunidades':'oportunidade'} · ${brl(tot)} em jogo${nota?' · '+esc(nota):''}</p>${L2.map(item).join('')}`:'<p class="hint" style="margin:0">Nada pendente na sua carteira hoje. 👏</p>'}</div>`};
+    /* recolhido (padrão): só o resumo e as 3 primeiras em uma linha; "Ampliar" mostra tudo (fica lembrado no aparelho) */
+    const metaCurta=()=>{if(!MT.L.length) return ''; const pc=MT.mT?MT.vT/MT.mT*100:0, at=MT.L.filter(x=>x.atr).map(x=>x.rep); return `<div class="hint" style="font-size:13px">🎯 Meta do mês <b class="${MT.vT>=MT.esp?'ok':'warn'}">${pc.toFixed(0)}%</b>${at.length?` · atrasada: ${esc(at.slice(0,3).join(', '))}${at.length>3?'…':''}`:' · no ritmo 👏'}</div>`};
+    const linha=(x,i)=>{const t=texto(x); return `<button class="chip" style="text-align:left;border-left:4px solid ${AG_COR[x.ag]}" data-agx="${i}">${t.prioridade===1?'🔥 ':''}<b>${esc(x.n)}</b> · ${esc(x.rep)} · ${brl(x.v)}<br><span class="hint" style="font-size:12px">${esc(AG_NOME[x.ag])} · ${esc(t.porque)}</span></button>`};
+    const draw=(nota)=>{if(!box.isConnected) return; const tot=L2.reduce((s,x)=>s+x.v,0), ab=L('agAb')===true;
+      box.innerHTML=`<div class="card grid ag"><div class="row" style="justify-content:space-between"><b>🤖 Hoje para você</b><div class="row" style="gap:6px">${ab&&ges?`<button class="chip${so?' on':''}" data-ags="1">Só meus</button><button class="chip${so?'':' on'}" data-ags="0">Equipe toda</button>`:''}${L2.length||MT.L.length?`<button class="chip" data-agab>${ab?'Recolher ▴':'Ampliar ▾'}</button>`:''}</div></div>
+        ${ab?metaHtml():metaCurta()}${L2.length?`<p class="hint" style="margin:0">${L2.length} ${L2.length>1?'oportunidades':'oportunidade'} · ${brl(tot)} em jogo${nota?' · '+esc(nota):''}</p>${ab?L2.map(item).join(''):L2.slice(0,3).map(linha).join('')+(L2.length>3?`<button class="chip" data-agab style="justify-self:start">Ver mais ${L2.length-3}</button>`:'')}`:'<p class="hint" style="margin:0">Nada pendente na sua carteira hoje. 👏</p>'}</div>`};
     draw(IA.pend(L2)?'a IA está escrevendo as mensagens…':'');
     if(IA.pend(L2)) agIA(L2,metaTx,IA,so).then(e=>draw(e||'')).catch(()=>draw(''));
     box.onclick=async e=>{const g=s=>e.target.closest(s), n=s=>{const b=g(s); return b?L2[+b.dataset[Object.keys(b.dataset)[0]]]:null}; let x;
       const s=g('[data-ags]'); if(s){LS('agSo',s.dataset.ags==='1'); return agHoje(box)}
+      if(g('[data-agab]')){LS('agAb',L('agAb')!==true); aberto=null; return draw('')}
+      if(x=n('[data-agx]')){LS('agAb',true); aberto=L2.indexOf(x); draw(''); const el=box.querySelector(`[data-agi="${aberto}"]`); if(el) el.scrollIntoView({block:'center'}); return}
       if(x=n('[data-agv]')){const i=L2.indexOf(x); aberto=aberto===i?null:i; return draw('')}
       if(x=n('[data-agc]')){e.stopPropagation(); return painelCliente(x.cnpj,L2.map(y=>y.cnpj))}
       if(x=n('[data-ago]')){e.stopPropagation(); return detOrc(x.oid)}

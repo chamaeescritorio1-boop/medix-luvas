@@ -165,9 +165,9 @@ function navEditar(){let sel=navSel(); const ov=document.createElement('div'); o
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
   const q=Q(); m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
      return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
-   <div id="agHoje" style="margin-top:20px"></div><div id="semana"></div>
+   <div id="agHoje" style="margin-top:20px"></div><div id="agRes" style="margin-top:12px"></div><div id="semana"></div>
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><button class="btn ghost" data-go2="orc">＋ Novo orçamento</button><button class="btn ghost" data-go2="cli">📞 Bater carteira</button><button class="btn ghost" data-go2="tar">✔️ Tarefas</button><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; agHoje($('#agHoje')); minhaSemana($('#semana'),true)}
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -1282,8 +1282,9 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
    4 Ritmo da meta: meta do mês × vendido até hoje por fábrica; fábrica atrasada pesa mais na prioridade.
    Os números saem das regras (grátis). A IA grátis (função agentes-ia, Groq) só escreve porquê / o que falar / WhatsApp, 1 vez por dia.
    Feito / Amanhã / Não faz sentido ficam na tabela `oportunidades` (se ela não existir, ficam só neste aparelho). */
-const AG_MAX=10, AG_ORC_DIAS=5, AG_ON=true;
-const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?'}, AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8'}, AG_CICLO_MAX=3;
+const AG_MAX=10, AG_ORC_DIAS=2, AG_ON=true; /* cadência de cobrança: 2º, 5º e 10º dia útil */
+const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?',sumiu:'Item que sumiu',epoca:'Comprou nesta época',cruz:'Venda cruzada',ticket:'Ticket caindo',estoque:'Voltou ao estoque',portal:'Entrou no portal',fat:'Pedido faturado',novo:'Cliente novo'},
+  AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8',sumiu:'#ff7a70',epoca:'#4fd18b',cruz:'#5aa9ff',ticket:'#e07bd8',estoque:'#2fd3c6',portal:'#ff5a36',fat:'#b37bff',novo:'#8bd14f'}, AG_CICLO_MAX=3;
 const agMais=n=>{const d=new Date(); d.setDate(d.getDate()+n); return ymdL(d)};
 const agUteis=(a,b)=>{let n=0; const d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<e){d.setDate(d.getDate()+1); if(diaUtil(d)) n++} return n};
 let AGP=null, AGTAB=null;
@@ -1307,12 +1308,13 @@ function agOrcs(O,P,C,so,ult){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const h
   O.forEach(o=>{if(so&&o.user_id!==sess.uid) return; const st=stOf(o); if(!['orcamento','aguardando_aprovacao','aguardando_atg'].includes(st)) return; const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn||!(+o.total>0)) return;
     const d0=String(o.atualizado_em||'').slice(0,10); if(!d0) return; const u=agUteis(d0,hoje), d=dias(d0); if(u<AG_ORC_DIAS||d>180) return; const ci=d>30;
     const rn=HIST_REP[o.app]||repName(o.app); if(P.some(x=>String(x.cnpj||'').replace(/\D/g,'')===cn&&x.representada===rn&&x.data>=d0)) return; /* virou pedido */
-    const uc=ult[cn]; if(uc&&uc>=String(o.atualizado_em)) return; /* teve contato depois */
+    const st3=u>=10?3:u>=5?2:1, sd=agUtilMais(d0,[2,5,10][st3-1]); const uc=ult[cn]; if(uc&&uc>=(ci?String(o.atualizado_em):sd)) return; /* teve contato depois (na cadência: depois desta etapa) */
     const c=byC[cn]||{}; if(ci){out.push({k:`ciclo|${o.id}`,ag:'ciclo',oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,sc:0,
       fatos:`Orçamento ${rn} de ${brl(o.total)} aberto há ${d} dias sem pedido nem desfecho registrado. Pergunte ao cliente se ainda está em negociação, e registre se ganhou ou perdeu.`}); return}
-    out.push({k:`orc|${o.id}`,ag:'orc',oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,
-      sc:(+o.total)*(u<=10?1.2:u<=20?1:.7),fatos:`Orçamento ${rn} de ${brl(o.total)} (${(STATUS.find(s=>s[0]===st)||[,st])[1]}), parado há ${u} dias úteis (${d} corridos), sem pedido e sem contato registrado depois.`})});
+    out.push({k:`orc|${o.id}|${st3}`,ag:'orc',etapa:st3,oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,
+      sc:(+o.total)*(u<=10?1.2:u<=20?1:.7),fatos:`Orçamento ${rn} de ${brl(o.total)} (${(STATUS.find(s=>s[0]===st)||[,st])[1]}), parado há ${u} dias úteis (${d} corridos), sem pedido e sem contato registrado depois. Esta é a ${st3}ª cobrança da cadência (2º, 5º e 10º dia útil): ${['','lembrete leve, pergunte se recebeu e se ficou alguma dúvida','ofereça ajustar quantidade, prazo ou condição','última tentativa, pergunte com franqueza se fechou com outro e por quê'][st3]}.`})});
   return out}
+const agUtilMais=(d0,n)=>{const d=new Date(d0+'T12:00:00'); let k=0; while(k<n){d.setDate(d.getDate()+1); if(diaUtil(d)) k++} return ymdL(d)};
 function agMeta(M,P,mine,so,eu){const hj=new Date(), y=hj.getFullYear(), mo=hj.getMonth(), ini=ymdL(new Date(y,mo,1)), hoje=ymdL(hj);
   const meta={}; (M||[]).filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; meta[r]=(meta[r]||0)+(+x.valor||0)});
   const vend={}; P.forEach(x=>{if(x.data>=ini&&x.data<=hoje&&mine(x.vendedor)) vend[x.representada]=(vend[x.representada]||0)+(+x.valor||0)});
@@ -1324,9 +1326,12 @@ async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ge
   cicloAuto().then(n=>{if(n) toast(`🤖 ${n} ${n>1?'orçamentos viraram pedido e foram marcados':'orçamento virou pedido e foi marcado'} como ganho`)});
   try{const hj=new Date(); const [C,P,O,CT,M,ST]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
       apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-75)}`).catch(()=>[]),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[]),agEstados()]);
+    const [RI,R0]=await Promise.all([agItensDB(),reps().catch(()=>[])]);
     const ult={}; CT.forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
     const MT=agMeta(M,P,mine,so,eu), hoje=ymdL(hj);
-    const todos=[...agParadas(P,C,mine,ult),...agOrcs(O,P,C,so,ult)].filter(x=>{const s=ST[x.k]; return !(s&&s.ate>=hoje)});
+    const X=agCtx(P,C); const [ES,PO,FA]=await Promise.all([agEstoque(X,so,ult).catch(()=>[]),agPortal(X,mine).catch(()=>[]),agFat(X,mine,ult).catch(()=>[])]);
+    const capa=a=>{const n={}; return a.sort((x,y)=>y.sc-x.sc).filter(x=>{const c=AG_CAP[x.ag]; if(!c) return true; n[x.ag]=(n[x.ag]||0)+1; return n[x.ag]<=c})};
+    const todos=capa([...agParadas(P,C,mine,ult),...agOrcs(O,P,C,so,ult),...agItensSinais(RI,X,mine,ult),...agCruz(C,P,R0,X,mine,ult),...agTicket(P,X,mine,ult),...ES,...PO,...FA,...agNovoCli(P,X,mine,ult)].filter(x=>{const s=ST[x.k]; return !(s&&s.ate>=hoje)}));
     todos.forEach(x=>{if(MT.atr.has(x.rep)) {x.sc*=1.5; x.meta=true}});
     /* um cliente aparece uma vez só (fica a oportunidade de maior peso) */
     const vis=new Set(), L2=todos.filter(x=>x.ag!=='ciclo').sort((a,b)=>b.sc-a.sc).filter(x=>{if(vis.has(x.cnpj)) return false; vis.add(x.cnpj); return true}).slice(0,AG_MAX);
@@ -1365,8 +1370,18 @@ async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ge
       let st=null, d=0, obs=null; if(x=n('[data-agf]')){st='feita'; d=x.ag==='orc'?7:14} else if(x=n('[data-aga]')){st='adiada'; d=x.ag==='ciclo'?15:1} else if(x=n('[data-agn]')){obs=prompt('Por que não faz sentido? (opcional — ajuda os agentes a melhorar)',''); if(obs===null) return; st='nao_faz_sentido'; d=60}
       if(st){e.stopPropagation(); await agMarcar(x,st,d,obs); L2.splice(L2.indexOf(x),1); aberto=null; draw(''); toast(st==='feita'?'Boa! Marcado como feito':st==='adiada'?(d>1?`Volta em ${d} dias`:'Volta amanhã'):'Ok, não vou mostrar este por 60 dias')}}}
   catch(e){box.innerHTML=''}}
-function agPadrao(x){if(x.ag==='ciclo') return {prioridade:3,porque:`Orçamento de ${brl(x.v)} aberto há ${x.d} dias sem desfecho.`,falar:'Pergunte se ainda está em negociação. Se fechou com outro, registre o motivo em ✖ Perdemos.',whatsapp:`Olá! Tudo bem? Sobre o orçamento ${x.rep} que enviei há algum tempo: ainda está em avaliação ou posso ajudar com alguma alteração?`};
-  return x.ag==='orc'?{prioridade:x.u<=10?1:2,porque:`Orçamento de ${brl(x.v)} parado há ${x.u} dias úteis, sem retorno do cliente.`,falar:'Pergunte se conseguiu avaliar e o que falta para fechar: quantidade, prazo ou condição.',whatsapp:`Olá! Tudo bem? Conseguiu avaliar o orçamento ${x.rep} que enviei? Se precisar ajustar quantidades ou condições, me fala que eu preparo.`}
+function agPadrao(x){const T={
+  sumiu:{p:1,q:`Parou de levar ${x.its?x.its.map(i=>i.cod).join(', '):'itens que comprava'} de ${x.rep}.`,f:'Pergunte se ainda usa esses itens e se está comprando de outro fornecedor; ofereça cotar de novo.',w:`Olá! Tudo bem? Notei que faz um tempo que você não pede ${x.its&&x.its[0]?String(x.its[0].descr||x.its[0].cod).toLowerCase():'alguns itens'} conosco. Ainda usa? Posso te passar uma cotação atualizada.`},
+  epoca:{p:2,q:`Nesta época do ano passado comprou ${x.its?x.its.map(i=>i.cod).join(', '):'itens'} de ${x.rep}.`,f:'Lembre a compra do ano passado e pergunte se já precisa programar.',w:`Olá! Tudo bem? Nesta época do ano passado você comprou ${x.its&&x.its[0]?String(x.its[0].descr||x.its[0].cod).toLowerCase():'conosco'}. Quer que eu já prepare um orçamento para esta temporada?`},
+  cruz:{p:3,q:`Compra ${x.de||''} e ainda não compra ${x.rep}.`,f:`Apresente a ${x.rep} como complemento do que ele já compra.`,w:`Olá! Tudo bem? Além de ${x.de||'nossos produtos'}, também trabalhamos com a ${x.rep}. Posso te mandar uma apresentação ou uma cotação?`},
+  ticket:{p:2,q:`Está comprando bem menos ${x.rep} que nos meses anteriores.`,f:'Pergunte se mudou a demanda ou se parte das compras foi para outro fornecedor.',w:`Olá! Tudo bem? Passando para saber como estão as coisas por aí e se posso ajudar com algum item ${x.rep}.`},
+  estoque:{p:1,q:`Perdemos este orçamento por falta de estoque, e o item voltou.`,f:'Avise que chegou e ofereça reenviar o orçamento.',w:`Olá! Tudo bem? Boa notícia: os itens que estavam em falta no seu orçamento ${x.rep} voltaram ao estoque. Quer que eu atualize o orçamento?`},
+  portal:{p:1,q:'Entrou no portal B2B agora.',f:'Ligue e pergunte se está procurando algum item.',w:'Olá! Tudo bem? Vi que você acessou nosso portal. Está procurando algum item? Posso te ajudar com a cotação.'},
+  fat:{p:2,q:`Pedido ${x.rep} faturado (${brl(x.v)}).`,f:'Avise que o pedido saiu e pergunte se falta algo para repor.',w:`Olá! Tudo bem? Seu pedido ${x.rep} foi faturado e já está a caminho. Precisa de mais algum item para aproveitar o próximo envio?`},
+  novo:{p:1,q:`Cliente novo: fez a 1ª compra e ainda não fez a 2ª.`,f:'Pergunte como foi a experiência com o primeiro pedido e ofereça a reposição.',w:`Olá! Tudo bem? Como foi com o primeiro pedido ${x.rep}? Se precisar repor ou de outros itens, estou à disposição.`}}[x.ag];
+  if(T) return {prioridade:T.p,porque:T.q,falar:T.f,whatsapp:T.w};
+  if(x.ag==='ciclo') return {prioridade:3,porque:`Orçamento de ${brl(x.v)} aberto há ${x.d} dias sem desfecho.`,falar:'Pergunte se ainda está em negociação. Se fechou com outro, registre o motivo em ✖ Perdemos.',whatsapp:`Olá! Tudo bem? Sobre o orçamento ${x.rep} que enviei há algum tempo: ainda está em avaliação ou posso ajudar com alguma alteração?`};
+  return x.ag==='orc'?{prioridade:x.u<=10?1:2,porque:`${x.etapa||1}ª cobrança · orçamento de ${brl(x.v)} parado há ${x.u} dias úteis, sem retorno do cliente.`,falar:'Pergunte se conseguiu avaliar e o que falta para fechar: quantidade, prazo ou condição.',whatsapp:`Olá! Tudo bem? Conseguiu avaliar o orçamento ${x.rep} que enviei? Se precisar ajustar quantidades ou condições, me fala que eu preparo.`}
   :{prioridade:x.d/x.ciclo<=2?1:2,porque:`Compra ${x.rep} a cada ~${x.ciclo} dias e está há ${x.d} sem comprar.`,falar:'Pergunte como está o estoque e ofereça repetir o último pedido.',whatsapp:`Olá! Tudo bem? Passando para saber como está o estoque dos produtos ${x.rep}. Quer que eu prepare a reposição com base no último pedido?`}}
 function agCache(so){const hoje=ymdL(new Date()); let c=L('agIA'); if(!c||c.d!==hoje||c.u!==(sess&&sess.uid)) c={d:hoje,u:sess&&sess.uid,m:{},tent:{}};
   return {m:c.m,c,pend:L2=>L2.some(x=>!c.m[x.k]&&!c.tent[x.k])}}
@@ -1422,6 +1437,82 @@ async function convPorQuem(box,repF){box.innerHTML='<p class="hint">Calculando p
   const ab=L4.filter(o=>!['transmitido','cancelado'].includes(stOf(o))).length;
   box.innerHTML=tab('Últimos 90 dias por vendedor (orçamentos do Sistema)',agr(quem))+tab('Últimos 90 dias por fábrica',agr(o=>repName(o.app)))+
    `<p class="hint">Ganho = virou pedido (marcado no Sistema ou fechado sozinho pelo pedido do Reprio, "auto"). ${ab?`${ab} ainda em aberto: os agentes perguntam ao vendedor se ganhou ou perdeu.`:''}</p>`}
+/* ---- Leva 2 (02/11): mais 8 agentes na mesma lista + resumo do gestor ----
+   sumiu/epoca: função agentes_itens() no banco (itens dos pedidos); cruz: fábricas que clientes parecidos compram; ticket: 6 meses × 6 meses anteriores;
+   estoque: orçamento perdido por "Sem estoque" com item que voltou (Medix planilha, Sigma ao vivo); portal: acesso ao B2B nos últimos 2 dias;
+   fat: NF-e emitida nos últimos 5 dias (pós-venda); novo: 1ª compra (18 meses) há 25–120 dias sem a 2ª. */
+const AG_CAP={cruz:3,epoca:3,novo:3,fat:3};
+let AGI=null; async function agItensDB(){if(AGI&&Date.now()-AGI.t<30*6e4) return AGI.d; let d=[]; try{d=await api('rpc/agentes_itens',{method:'POST',body:'{}'})||[]}catch(e){d=[]} AGI={t:Date.now(),d}; return d}
+function agCtx(P,C){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const vend={}, last={}, tk={}; P.forEach(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''), k=cn+'|'+x.representada; if(!last[k]||x.data>=last[k]){last[k]=x.data; vend[k]=x.vendedor||''} const t=tk[x.representada]=tk[x.representada]||{s:0,n:0}; t.s+=+x.valor||0; t.n++});
+  return {byC,vend,tkRep:r=>tk[r]&&tk[r].n?tk[r].s/tk[r].n:0,dono:(cn,r)=>vend[cn+'|'+r]||(byC[cn]||{}).v||''}}
+const agNovo=(X,ag,cn,rep,v,sc,fatos,o)=>{const c=X.byC[cn]||{}; return {k:`${ag}|${cn}|${rep}${o&&o.kx?'|'+o.kx:''}`,ag,cnpj:cn,n:c.fa||c.n||cn,razao:c.n||'',tel:c.tel||'',rep,v:+v||0,sc:+sc||0,fatos,...(o||{})}};
+const agFalou=(ult,cn,dd)=>{const u=ult[cn]; return !!(u&&dias(u.slice(0,10))<dd)};
+function agItensSinais(R,X,mine,ult){const G={}; R.forEach(r=>{const cn=String(r.cnpj||'').replace(/\D/g,''); if(!cn||!mine(X.dono(cn,r.rep))||agFalou(ult,cn,7)) return; const k=r.tipo+'|'+cn+'|'+r.rep; (G[k]=G[k]||{t:r.tipo,cn,rep:r.rep,its:[]}).its.push(r)});
+  return Object.values(G).map(g=>{g.its.sort((a,b)=>(+b.valor||0)-(+a.valor||0)); const top=g.its.slice(0,3), v=top.reduce((s,x)=>s+(+x.valor||0),0), nm=top.map(x=>`${x.cod} ${String(x.descr||'').slice(0,40)}`).join('; ');
+    return g.t==='sumiu'?agNovo(X,'sumiu',g.cn,g.rep,v,v*.9,`Ainda compra ${g.rep}, mas parou de levar: ${top.map(x=>`${x.cod} ${String(x.descr||'').slice(0,40)} (comprou em ${x.n} pedidos, último em ${dbr(x.ultimo)})`).join('; ')}. Pode estar comprando de outro fornecedor.`,{its:top})
+     :agNovo(X,'epoca',g.cn,g.rep,v,v*.7,`Nesta mesma época do ano passado comprou ${g.rep}: ${nm}. Não comprou esses itens nos últimos 60 dias.`,{its:top})})}
+function agCruz(C,P,R0,X,mine,ult){const at=new Set((R0||[]).filter(r=>r.ativa).map(r=>HIST_REP[r.id]||r.nome)), nA={}, nAB={}, a365=agMais(-365);
+  C.forEach(c=>{const ks=Object.keys(c.reps).filter(r=>at.has(r)); ks.forEach(a=>{nA[a]=(nA[a]||0)+1; const m=nAB[a]=nAB[a]||{}; ks.forEach(b=>{if(b!==a) m[b]=(m[b]||0)+1})})});
+  const out=[]; C.forEach(c=>{if(!mine(c.v)||agFalou(ult,c.cnpj,14)) return; const ever=new Set(Object.keys(c.reps)), ativos=Object.values(c.reps).filter(x=>at.has(x.representada)&&x.ultimo>=a365).map(x=>x.representada); let best=null;
+    ativos.forEach(a=>Object.entries(nAB[a]||{}).forEach(([b,n])=>{if(ever.has(b)||n<8) return; const cf=n/nA[a]; if(cf>=.3&&(!best||cf>best.cf)) best={a,b,cf}}));
+    if(best){const v=X.tkRep(best.b); out.push(agNovo(X,'cruz',c.cnpj,best.b,v,v*best.cf*.6,`Compra ${best.a} e nunca comprou ${best.b}. ${Math.round(best.cf*100)}% dos clientes que compram ${best.a} também compram ${best.b} (pedido médio ${brl(v)}).`,{de:best.a}))}});
+  return out}
+function agTicket(P,X,mine,ult){const G={}, a=agMais(-180), b=agMais(-360); P.forEach(x=>{if(x.data<b) return; const cn=String(x.cnpj||'').replace(/\D/g,''), k=cn+'|'+x.representada, g=G[k]=G[k]||{cn,rep:x.representada,a:0,b:0}; if(x.data>=a) g.a+=+x.valor||0; else g.b+=+x.valor||0});
+  return Object.values(G).filter(g=>g.b>=3000&&g.a>0&&g.a<g.b*.6&&mine(X.dono(g.cn,g.rep))&&!agFalou(ult,g.cn,7)).map(g=>agNovo(X,'ticket',g.cn,g.rep,g.b-g.a,(g.b-g.a)*.5,`Nos últimos 6 meses comprou ${brl(g.a)} de ${g.rep}, contra ${brl(g.b)} nos 6 meses anteriores (queda de ${Math.round((1-g.a/g.b)*100)}%). Continua comprando, mas menos.`))}
+async function agEstoque(X,so,ult){let O=[]; try{O=await api(`orcamentos?select=id,app,cliente,cnpj,total,user_id,atualizado_em,dados&status=eq.cancelado&app=in.(medix,sigma)&atualizado_em=gte.${agMais(-120)}`)}catch(e){return []}
+  O=O.filter(o=>(!so||o.user_id===sess.uid)&&/^sem estoque/i.test((o.dados||{}).motivo_perda||'')); if(!O.length) return [];
+  const EQ=O.some(o=>o.app==='medix')?await estoqueMedix():{}, cs=O.filter(o=>o.app==='sigma').flatMap(o=>((o.dados||{}).linhas||[]).map(l=>String(l.cod||'').trim())).filter(Boolean);
+  const SR=cs.length?await sigmaStkMany(cs,false,30*6e4).catch(()=>({})):{}; const out=[];
+  O.forEach(o=>{const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn) return; const uc=ult[cn]; if(uc&&uc>=String(o.atualizado_em)) return;
+    const vol=((o.dados||{}).linhas||[]).filter(l=>{const c=String(l.cod||'').trim(); return o.app==='medix'?EQ[c]&&EQ[c][0]==='S':((SR[c]||{}).it||{}).disp>=(+l.qt||1)});
+    if(vol.length) out.push({...agNovo(X,'estoque',cn,HIST_REP[o.app]||repName(o.app),+o.total,(+o.total)*1.1,`Perdemos o orçamento de ${brl(o.total)} em ${dbr(String(o.atualizado_em).slice(0,10))} por falta de estoque. Voltou a ter: ${vol.slice(0,4).map(l=>`${l.cod} ${String(l.desc||'').slice(0,40)}`).join('; ')}.`,{kx:o.id}),oid:o.id})});
+  return out}
+async function agPortal(X,mine){let R=[]; try{R=await api(`b2b_acessos?select=cnpj,nome,ultimo_acesso&ultimo_acesso=gte.${agMais(-2)}`)}catch(e){return []}
+  return R.map(r=>{const cn=String(r.cnpj||'').replace(/\D/g,''), c=X.byC[cn]||{}; if(!cn||!mine(c.v)) return null; const rep=Object.keys(c.reps||{})[0]||'';
+    return agNovo(X,'portal',cn,rep,X.tkRep(rep),1e7,`${r.nome||'O cliente'} entrou no portal B2B em ${new Date(r.ultimo_acesso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Está olhando produtos agora: boa hora para ligar.`,{kx:String(r.ultimo_acesso).slice(0,10)})}).filter(Boolean)}
+async function agFat(X,mine,ult){let R=[]; try{R=await api(`fin_nfe?select=numero,emissao,rep,dest_cnpj,v_nf,cancelada&emissao=gte.${agMais(-5)}&order=emissao.desc`)}catch(e){return []}
+  return R.filter(r=>!r.cancelada).map(r=>{const cn=String(r.dest_cnpj||'').replace(/\D/g,''), rep=HIST_REP[r.rep]||repName(r.rep); if(!cn||!mine(X.dono(cn,rep))) return null; const uc=ult[cn]; if(uc&&uc.slice(0,10)>=r.emissao) return null;
+    return agNovo(X,'fat',cn,rep,+r.v_nf,(+r.v_nf)*.4,`A ${rep} faturou a NF ${r.numero} de ${brl(r.v_nf)} em ${dbr(r.emissao)}. Bom momento para avisar que o pedido saiu e perguntar o que mais precisa repor.`,{kx:r.numero})}).filter(Boolean)}
+function agNovoCli(P,X,mine,ult){const G={}; P.forEach(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''); if(!cn) return; const g=G[cn]=G[cn]||{ds:new Set(),p:null}; g.ds.add(x.data); if(!g.p||x.data<g.p.data) g.p=x});
+  const lim=agMais(-120); return Object.entries(G).filter(([cn,g])=>g.ds.size===1&&g.p.data>=lim&&dias(g.p.data)>=25&&mine(X.dono(cn,g.p.representada))&&!agFalou(ult,cn,7))
+    .map(([cn,g])=>agNovo(X,'novo',cn,g.p.representada,+g.p.valor,(+g.p.valor)*.8,`Cliente novo (ou que voltou): primeira compra dos últimos 18 meses em ${dbr(g.p.data)}, ${brl(g.p.valor)} de ${g.p.representada}. Há ${dias(g.p.data)} dias e ainda não fez a 2ª compra.`))}
+/* ---- Resumo do gestor + Coach das ligações (02/11): cartão só para gestor no Início, abaixo do "Hoje para você".
+   Semana passada (seg–dom) × retrasada, por vendedor; orçamentos da semana; motivos de perda (30 dias); resultado dos agentes (tabela oportunidades);
+   ligações analisadas (ligacoes.analise). A IA grátis escreve o resumo, 3 ações e o coach por vendedor, 1 vez por semana (cache no aparelho).
+   Na segunda-feira abre ampliado na primeira vez. */
+async function agResumo(box){if(!box||!AG_ON||!ehGestor()) return; const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7);
+  const s1=new Date(seg); s1.setDate(seg.getDate()-7); const s2=new Date(seg); s2.setDate(seg.getDate()-14); const A=ymdL(s1), B=ymdL(seg), Z=ymdL(s2), wk=A;
+  const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:(hj.getDay()===1); const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
+  try{const [P,O,OP,LG,PF]=await Promise.all([agPedidos(),apiAll(`orcamentos?select=app,status,situacao,total,criado_em,atualizado_em,user_id,vend:dados->>vend,mot:dados->>motivo_perda,auto:dados->ciclo_auto->>num&atualizado_em=gte.${agMais(-30)}`).catch(()=>[]),
+      api(`oportunidades?select=usuario_nome,agente,status,valor,atualizado_em&atualizado_em=gte.${A}`).catch(()=>[]),api(`ligacoes?select=usuario_nome,cliente,analise,criado_em&criado_em=gte.${A}&status=eq.pronto`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
+    const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=v=>String(vAt(String(v||'Sem vendedor').split(/\s+/)[0])||'Sem vendedor');
+    const V={}, vv=k=>V[k]=V[k]||{v:0,v0:0,n:0,oc:0,ov:0,g:0,p:0,op:0,opg:0,lg:0};
+    P.forEach(x=>{if(x.data>=A&&x.data<B){const r=vv(quem(x.vendedor)); r.v+=+x.valor||0; r.n++} else if(x.data>=Z&&x.data<A) vv(quem(x.vendedor)).v0+=+x.valor||0});
+    const mot={}; O.forEach(o=>{const q=quem(o.vend||nm[o.user_id]), c=String(o.criado_em).slice(0,10), u=String(o.atualizado_em).slice(0,10), st=stOf(o); if(c>=A&&c<B){const r=vv(q); r.oc++; r.ov+=+o.total||0}
+      if(u>=A&&u<B){if(st==='transmitido') vv(q).g++; else if(st==='cancelado') vv(q).p++} if(st==='cancelado'&&o.mot) mot[o.mot]=(mot[o.mot]||0)+1});
+    OP.forEach(x=>{const r=vv(quem(x.usuario_nome)); r.op++; if(['feita','ganhou'].includes(x.status)) r.opg++});
+    LG.forEach(x=>vv(quem(x.usuario_nome)).lg++);
+    const tot=Object.values(V).reduce((s,x)=>s+x.v,0), tot0=Object.values(V).reduce((s,x)=>s+x.v0,0), dl=tot0?(tot/tot0-1)*100:0;
+    const linhas=Object.entries(V).filter(([k,x])=>x.v||x.v0||x.oc||x.op||x.lg).sort((a,b)=>b[1].v-a[1].v);
+    const motL=Object.entries(mot).sort((a,b)=>b[1]-a[1]);
+    const fatos=`Semana ${dbr(A)} a ${dbr(ymdL(new Date(seg.getTime()-864e5)))}. Vendas da equipe ${brl(tot)} (semana anterior ${brl(tot0)}).
+Por vendedor: ${linhas.map(([k,x])=>`${k}: vendeu ${brl(x.v)} em ${x.n} pedidos (antes ${brl(x.v0)}); ${x.oc} orçamentos novos (${brl(x.ov)}); ${x.g} ganhos e ${x.p} perdidos; ${x.op} oportunidades dos agentes tratadas (${x.opg} feitas/ganhas); ${x.lg} ligações analisadas`).join(' | ')}.
+Motivos de perda (30 dias): ${motL.map(([m,n])=>`${m}: ${n}`).join('; ')||'nenhum registrado'}.
+Ligações analisadas pela IA: ${LG.slice(0,25).map(l=>{const a=l.analise||{}, f=a.feedback||{}; return `[${quem(l.usuario_nome)} · ${l.cliente||''}] resultado ${a.resultado||'?'}; melhorar: ${(f.melhorar||[]).join('; ')}; alertas: ${(a.alertas||[]).join('; ')}`}).join(' || ')||'nenhuma nesta semana'}.`;
+    const cache=L('agRes'); let IA=cache&&cache.w===wk?cache.r:null, nota='';
+    const draw=()=>{if(!box.isConnected) return; const seta=dl>=0?'▲':'▼';
+      box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b>📋 Resumo da semana · gestor</b><button class="chip" data-rsab>${ab?'Recolher ▴':'Ampliar ▾'}</button></div>
+       <div class="hint" style="font-size:13px">${dbr(A)} a ${dbr(ymdL(new Date(seg.getTime()-864e5)))} · vendas <b>${brl(tot)}</b> <span class="${dl>=0?'ok':'bad'}">${seta} ${Math.abs(dl).toFixed(0)}%</span> vs semana anterior${nota?' · '+esc(nota):''}</div>
+       ${ab?`${IA&&IA.resumo?`<div style="font-size:14px">${esc(IA.resumo)}</div>`:''}${IA&&IA.acoes&&IA.acoes.length?`<div><b style="font-size:14px">3 ações para esta semana</b><ol style="margin:4px 0 0 18px;padding:0;font-size:14px">${IA.acoes.map(a=>`<li>${esc(a)}</li>`).join('')}</ol></div>`:''}
+        <div style="overflow-x:auto"><table class="t"><tr><th>Vendedor</th><th class="n">Vendas</th><th class="n">Orçamentos</th><th class="n">Ganhos / perdidos</th><th class="n">Agentes</th><th class="n">Ligações</th></tr>${linhas.map(([k,x])=>`<tr><td>${esc(k)}</td><td class="n">${brl(x.v)}<br><small class="${x.v>=x.v0?'ok':'bad'}">${x.v0?((x.v/x.v0-1)*100).toFixed(0)+'%':'—'}</small></td><td class="n">${x.oc}<br><small class="hint">${brl(x.ov)}</small></td><td class="n"><span class="ok">${x.g}</span> / <span class="bad">${x.p}</span></td><td class="n">${x.opg}/${x.op}</td><td class="n">${x.lg}</td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem movimento na semana.</td></tr>'}</table></div>
+        ${motL.length?`<div class="hint" style="font-size:13px"><b>Motivos de perda (30 dias):</b> ${motL.slice(0,5).map(([m,n])=>`${esc(m)} (${n})`).join(' · ')}</div>`:''}
+        <div><b style="font-size:14px">🎙 Coach das ligações</b>${IA&&IA.coach&&IA.coach.length?IA.coach.map(c=>`<div style="font-size:13px"><b>${esc(c.vendedor||'')}</b>: ${esc(c.ponto||'')}</div>`).join(''):`<div class="hint" style="font-size:13px">${LG.length?'Aguardando a IA…':'Nenhuma ligação analisada na semana passada. Use o botão 🎙 na ficha do cliente.'}</div>`}</div>
+        <div class="hint" style="font-size:12px">"Agentes" = oportunidades do "Hoje para você" feitas ou ganhas / tratadas.</div>`:''}</div>`};
+    draw(); box.onclick=e=>{if(e.target.closest('[data-rsab]')){marca(!ab); draw()}};
+    if(!IA&&!(cache&&cache.w===wk&&cache.tent)){LS('agRes',{w:wk,tent:1}); nota='a IA está escrevendo o resumo…'; draw();
+      try{const tk=await token(); const r=await fetch(SB+'/functions/v1/agentes-ia',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(tk||KEY),'Content-Type':'application/json'},body:JSON.stringify({modo:'resumo',fatos})});
+        const j=await r.json().catch(()=>({})); if(r.ok&&!j.erro){IA=j; LS('agRes',{w:wk,r:j}); nota=''} else nota='resumo da IA indisponível agora'}catch(e){nota='resumo da IA indisponível agora'} draw()}}
+  catch(e){box.innerHTML=''}}
 /*AGENTES-FIM*/
 
 /* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo, agrupados por orçamento */

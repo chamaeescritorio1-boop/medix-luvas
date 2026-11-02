@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
   const assunto = String(b.assunto || '').slice(0, 300) || 'Orçamento Chamae';
   const texto = String(b.texto || '').slice(0, 20000);
   const ref = b.ref || {};
+  // opcional (02/11, Estratégia do dia): corpo em HTML e imagens no corpo (cid), ex.: a arte do e-mail de reativação
+  const html = b.html ? String(b.html).slice(0, 60000) : undefined;
 
   const C = contas();
   if (!C.length) return json({ erro: 'O envio de e-mail ainda não foi configurado (falta o secret SMTP_CONTAS no Supabase).' }, 503);
@@ -61,6 +63,13 @@ Deno.serve(async (req) => {
     anexos.push({ filename: String(b.anexo.nome || 'orcamento.pdf').replace(/[\\/:*?"<>|]/g, '_'), content: b.anexo.base64, encoding: 'base64', contentType: 'application/pdf' });
   }
 
+  for (const im of (Array.isArray(b.imagens) ? b.imagens : []).slice(0, 3)) {
+    if (!im?.base64 || !im?.cid) continue;
+    if (String(im.base64).length * 3 / 4 > 3 * 1024 * 1024) return json({ erro: 'Imagem grande demais (máx. 3 MB).' }, 413);
+    const nomeI = String(im.nome || 'imagem.png').replace(/[\\/:*?"<>|]/g, '_');
+    anexos.push({ filename: nomeI, content: im.base64, encoding: 'base64', cid: String(im.cid).slice(0, 60), contentType: /\.jpe?g$/i.test(nomeI) ? 'image/jpeg' : 'image/png', contentDisposition: 'inline' });
+  }
+
   const log = { ref_tipo: ref.tipo || null, ref_id: ref.id ? String(ref.id) : null, cnpj: ref.cnpj || null, de: conta.email, para, cc, assunto, anexo: anexos[0]?.filename || null, enviado_por: user.id };
   try {
     const t = nodemailer.createTransport({ host: HOST, port: PORT, secure: PORT === 465, auth: { user: conta.email, pass: conta.senha }, connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 60000 });
@@ -68,7 +77,7 @@ Deno.serve(async (req) => {
       from: { name: nome, address: conta.email },
       replyTo: vend && vend !== conta.email ? vend : undefined,
       to: para, cc: cc.length ? cc : undefined,
-      subject: assunto, text: texto, attachments: anexos,
+      subject: assunto, text: texto, html, attachments: anexos,
     });
     await rest('email_envios', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...log, status: 'enviado', provedor_id: info.messageId || null }) }).catch(() => {});
     return json({ ok: true, de: conta.email, id: info.messageId });

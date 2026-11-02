@@ -187,13 +187,20 @@ function navEditar(){let sel=navSel(); const ov=document.createElement('div'); o
   ov.onchange=e=>{const c=e.target.closest('[data-nk]'); if(!c) return; const k=c.dataset.nk; if(c.checked){if(sel.length>=NAVMAX){toast(`No máximo ${NAVMAX} atalhos`); c.checked=false; return} sel.push(k)} else sel=sel.filter(x=>x!==k); draw()}}
 
 /* ---------- início ---------- */
+/* Início em abas: só uma parte aparece por vez; lembra a última aba usada */
+const INI_ABAS=()=>[['hoje','Hoje'],['fab','Fábricas'],['sem','Minha semana'],...(ehGestor()&&AG_ON?[['eq','Equipe']]:[])];
+const iniAba=()=>{const v=L('iniAba'); return INI_ABAS().some(a=>a[0]===v)?v:'hoje'};
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
   const q=Q(); m.innerHTML=`<div class="faz" id="faz"><button class="faz-b" data-go2="orc" data-orcnovo><span class="faz-i">＋</span><span><b>Novo orçamento</b><small>Escolha a fábrica e monte</small></span></button><button class="faz-b" data-go2="cli"><span class="faz-i">📞</span><span><b>Bater carteira</b><small>Quem ligar hoje</small></span></button><button class="faz-b" data-go2="tar"><span class="faz-i">✔️</span><span><b>Tarefas<span class="faz-x"> para hoje</span> <span class="badge" id="tnHome" hidden>0</span></b><small>Retornos, visitas e ligações</small></span></button></div>
-   <div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps reps-c" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
-     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
-   <button class="card" data-go2="estr" style="display:block;width:100%;text-align:left;margin-top:20px;color:inherit;font:inherit;cursor:pointer;border-left:5px solid #ffd166">🎯 <b>Estratégia do dia</b> <span class="hint">· quem abordar hoje, com e-mail e arte prontos para você aprovar ›</span></button><div id="agHoje" style="margin-top:12px"></div><div id="agRes" style="margin-top:12px"></div><div id="semana"></div>
-   <div class="sec" style="margin-top:20px">Outros atalhos</div><div class="row"><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:undefined)}; contaTarefas(); agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
+   <div class="itabs" role="tablist">${INI_ABAS().map(([k,l])=>`<button role="tab" data-it="${k}" aria-selected="${k===iniAba()}">${l}</button>`).join('')}</div>
+   <div class="ipane" data-ip="fab"${iniAba()==='fab'?'':' hidden'}><div class="row" style="justify-content:flex-end"><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps reps-c" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
+     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div></div>
+   <div class="ipane" data-ip="hoje"${iniAba()==='hoje'?'':' hidden'}><button class="card" data-go2="estr" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid #ffd166">🎯 <b>Estratégia do dia</b> <span class="hint">· quem abordar hoje, com e-mail e arte prontos para você aprovar ›</span></button><div id="agHoje" style="margin-top:12px"></div></div>
+   <div class="ipane" data-ip="sem"${iniAba()==='sem'?'':' hidden'}><div id="semana"></div></div>
+   <div class="ipane" data-ip="eq"${iniAba()==='eq'?'':' hidden'}><div id="agRes"></div></div>
+   <div class="sec" style="margin-top:24px;font-size:17px">Outros atalhos</div><div class="row"><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
+  m.onclick=e=>{const ta=e.target.closest('[data-it]'); if(ta){const k=ta.dataset.it; LS('iniAba',k); m.querySelectorAll('[data-it]').forEach(x=>x.setAttribute('aria-selected',x===ta)); m.querySelectorAll('[data-ip]').forEach(x=>x.hidden=x.dataset.ip!==k); return}
+    const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:undefined)}; contaTarefas(); agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -1269,7 +1276,7 @@ function naHoraDeComprar(P,C,mine){const G={}, hoje=ymdL(new Date());
 function vaiInativar(C,R,mine){const PZ={}; R.forEach(r=>{const n=+(r.regras||{}).inativa_dias; if(n>0) PZ[HIST_REP[r.id]||r.nome]=n}); const out=[];
   C.forEach(c=>Object.values(c.reps).forEach(x=>{const pz=PZ[x.representada]; if(!pz||!x.ultimo||!mine(x.vendedor)) return; const d=dias(x.ultimo), f=pz-d; if(f>=0&&f<=20) out.push({cnpj:c.cnpj,n:c.n,rep:x.representada,d,f})}));
   return {temPz:Object.keys(PZ).length>0,L:out.sort((a,b)=>a.f-b.f)}}
-const CEL=()=>innerWidth<760, semAb=()=>{const v=L('semAb'); return v==null?!CEL():!!v};
+const CEL=()=>innerWidth<760, semAb=()=>{const v=L('semAb'); return v==null?true:!!v};
 async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===true; const eu=meuVend(); let todos=false, viR='', viT=false;
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
@@ -1514,7 +1521,7 @@ function agNovoCli(P,X,mine,ult){const G={}; P.forEach(x=>{const cn=String(x.cnp
    Na segunda-feira abre ampliado na primeira vez. */
 async function agResumo(box){if(!box||!AG_ON||!ehGestor()) return; const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7);
   const s1=new Date(seg); s1.setDate(seg.getDate()-7); const s2=new Date(seg); s2.setDate(seg.getDate()-14); const A=ymdL(s1), B=ymdL(seg), Z=ymdL(s2), wk=A;
-  const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:(hj.getDay()===1&&!CEL()); const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
+  const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:true; const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
   try{const [P,O,OP,LG,PF]=await Promise.all([agPedidos(),apiAll(`orcamentos?select=app,status,situacao,total,criado_em,atualizado_em,user_id,vend:dados->>vend,mot:dados->>motivo_perda,auto:dados->ciclo_auto->>num&atualizado_em=gte.${agMais(-30)}`).catch(()=>[]),
       api(`oportunidades?select=usuario_nome,agente,status,valor,atualizado_em&atualizado_em=gte.${A}`).catch(()=>[]),api(`ligacoes?select=usuario_nome,cliente,analise,criado_em&criado_em=gte.${A}&status=eq.pronto`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
     const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=v=>String(vAt(String(v||'Sem vendedor').split(/\s+/)[0])||'Sem vendedor');
@@ -2877,8 +2884,7 @@ async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?
 const TUT={
  inicio:{t:'Primeiros passos',d:'Um passeio rápido pelo Início e pela barra de baixo.',r:'home',p:[
   ['#faz','Aqui começa o seu dia: faça um orçamento novo, bata a carteira ou veja as tarefas para hoje.'],
-  ['.reps-c','Cada cartão é uma fábrica (representada). Toque nele para ver o catálogo com preços e montar o orçamento.'],
-  ['#agHoje','"Hoje para você" mostra quem merece atenção hoje: orçamento sem resposta, cliente na hora de comprar e outros.'],
+  ['.itabs','O resto do Início fica em abas. "Hoje" mostra quem merece atenção hoje; "Fábricas" tem o catálogo de cada representada; "Minha semana" mostra a meta e quem está na hora de comprar.'],
   ['#nav','Esta barra leva às telas principais. Em Mais › Escolher atalhos você decide quais aparecem.'],
   ['#srchBtn','Buscar acha cliente, pedido ou produto de qualquer tela.'],
   ['#ajudaBtn','Ficou com dúvida? Toque no ? em qualquer tela e aparece o passo a passo dela.']]},
@@ -2914,7 +2920,7 @@ const TUT={
   ['#trep','Se quiser, escolha uma fábrica só.'],
   ['#tgo','Toque em "Encontrar produtos". Confira as sugestões e mande para o orçamento.']]},
  conv:{t:'Marluvas e Medix',d:'Converter CA, refinar e nível de comissão.',r:'home',p:[
-  [null,'Toque no cartão Marluvas ou Medix no Início. Eles funcionam como as outras fábricas, com catálogo e orçamento.'],
+  [null,'Na aba "Fábricas" do Início, toque no cartão Marluvas ou Medix. Eles funcionam como as outras fábricas, com catálogo e orçamento.'],
   [null,'"Converter CA" acha o produto equivalente a partir do CA de outra marca. "Refinar" ajusta a busca.'],
   [null,'Na Medix, cada item tem o nível de comissão (botões 1 a 5) no próprio cartão.']]},
  gestor:{t:'Para o gestor',d:'Acessos, metas e tabelas de preço.',r:'mais',p:[

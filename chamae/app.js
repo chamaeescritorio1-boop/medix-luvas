@@ -42,10 +42,12 @@ async function token(){if(!sess) return null; const st=G('sess'); if(!st){sess=n
     catch(e){const ag=G('sess'); if(ag&&Date.now()<ag.exp){sess=ag; return sess.at} if(/invalid|expired|not found|already used|revoked/i.test(e.message)){sess=null;S('sess',null); return null} return sess.at}};
   return navigator.locks?navigator.locks.request('chamae-auth',renova):renova()}
 let PEDC=null; /* lista de orçamentos do período em Pedidos */
-let SEM_DREF=false; async function api(path,opt={}){if(opt.method&&opt.method!=='GET'&&/^(orcamentos|pedidos)/.test(path)) PEDC=null; const t=await token(); if(!t){showLock(); throw new Error('Entre novamente')} if(SEM_DREF&&path.includes('data_ref')) path=path.replace(/data_ref/g,'data'); const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+t,'Content-Type':'application/json',...(opt.headers||{})}}); const tx=await r.text(); if(!r.ok){if(path.includes('data_ref')&&/data_ref/.test(tx)){SEM_DREF=true; return api(path,opt)} throw new Error(tx.slice(0,300)||('HTTP '+r.status))} return tx?JSON.parse(tx):null}
-async function apiAll(path){const sep=path.includes('?')?'&':'?'; const pg=o=>api(`${path}${sep}limit=1000&offset=${o}`); const out=await pg(0); if(out.length<1000) return out;
-  /* as páginas seguintes vêm 4 de cada vez, em paralelo */
-  for(let off=1000;;off+=4000){const rs=await Promise.all([0,1,2,3].map(k=>pg(off+k*1000))); for(const r of rs){out.push(...r); if(r.length<1000) return out}}}
+let SEM_DREF=false; async function api(path,opt={}){if(opt.method&&opt.method!=='GET'&&/^(orcamentos|pedidos)/.test(path)) PEDC=null; const t=await token(); if(!t){showLock(); throw new Error('Entre novamente')} if(SEM_DREF&&path.includes('data_ref')) path=path.replace(/data_ref/g,'data'); const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+t,'Content-Type':'application/json',...(opt.headers||{})}}); if(opt.cab) opt.cab(r.headers); const tx=await r.text(); if(!r.ok){if(path.includes('data_ref')&&/data_ref/.test(tx)){SEM_DREF=true; return api(path,opt)} throw new Error(tx.slice(0,300)||('HTTP '+r.status))} return tx?JSON.parse(tx):null}
+async function apiAll(path){const sep=path.includes('?')?'&':'?'; const pg=(o,opt)=>api(`${path}${sep}limit=1000&offset=${o}`,opt); let tot=null;
+  /* a 1ª página já diz quantas linhas existem: as outras vêm todas juntas, sem pedir páginas vazias */
+  const out=await pg(0,{headers:{Prefer:'count=exact'},cab:h=>{const m=/\/(\d+)/.exec(h.get('content-range')||''); if(m) tot=+m[1]}}); if(out.length<1000) return out;
+  if(tot!=null){const rs=await Promise.all([...Array(Math.ceil(tot/1000)-1)].map((_,k)=>pg((k+1)*1000))); rs.forEach(r=>out.push(...r)); if(out.length>=tot) return out}
+  for(let off=out.length;;off+=4000){const rs=await Promise.all([0,1,2,3].map(k=>pg(off+k*1000))); for(const r of rs){out.push(...r); if(r.length<1000) return out}}}
 const ehGestor=()=>perfil&&perfil.papel==='gestor';
 function showLock(m){$('#lock').hidden=false; $('#nav').hidden=true; if(m) $('#lerr').textContent=m; if(sess&&sess.email) $('#le').value=sess.email}
 $('#lf').onsubmit=async e=>{e.preventDefault(); const b=$('#lf button'); b.disabled=true; try{setSess(await auth({email:$('#le').value.trim(),password:$('#ls').value},'password')); await afterLogin()}catch(err){$('#lerr').textContent=/invalid/i.test(err.message)?'E-mail ou senha incorretos':err.message} b.disabled=false};
@@ -77,10 +79,13 @@ const kv={_d:null,open(){return this._d||(this._d=new Promise((res,rej)=>{try{co
   async get(k){try{const d=await this.open(); return await new Promise(res=>{const t=d.transaction('kv').objectStore('kv').get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>res(undefined)})}catch(e){return undefined}},
   async set(k,v){try{const d=await this.open(); d.transaction('kv','readwrite').objectStore('kv').put(v,k)}catch(e){}}};
 const STALE=new Set(), BG={};
-async function swr(key,mem,mk,fetcher,force){if(STALE.has(key)){force=true; STALE.delete(key)} if(mem[mk]!==undefined&&!force) return mem[mk];
+const SWRP={}; /* mesma chave pedida duas vezes ao mesmo tempo: espera a primeira */
+function swr(key,mem,mk,fetcher,force){if(!force&&!STALE.has(key)&&mem[mk]!==undefined) return Promise.resolve(mem[mk]); if(!force&&SWRP[key]) return SWRP[key]; return SWRP[key]=swr0(key,mem,mk,fetcher,force).finally(()=>{delete SWRP[key]})}
+async function swr0(key,mem,mk,fetcher,force){if(STALE.has(key)){force=true; STALE.delete(key)} if(mem[mk]!==undefined&&!force) return mem[mk];
   if(!force){const c=await kv.get(key); if(c!==undefined){mem[mk]=c; if(!BG[key]){BG[key]=1; fetcher().then(v=>{mem[mk]=v; kv.set(key,v)}).catch(()=>{})} return c}}
   const v=await fetcher(); mem[mk]=v; kv.set(key,v); BG[key]=1; return v}
-async function reps(force){if(REPS&&!force) return REPS; const M={}; REPS=await swr('reps',M,'r',async()=>{const R=await api('representadas?select=*&order=ordem'); /* só a contagem de produtos de cada uma, todas de uma vez (antes baixava os 7 mil produtos só para contar) */ await Promise.all(R.map(async r=>{r.n=await contar(`produtos?select=id&rep=eq.${encodeURIComponent(r.id)}&ativo=eq.true`).catch(()=>0)})); return R},force); return REPS}
+const CNTP={t:0,n:{}}; /* contagem de produtos por representada (guardada 10 min) */
+async function reps(force){if(REPS&&!force) return REPS; const M={}; REPS=await swr('reps',M,'r',async()=>{const R=await api('representadas?select=*&order=ordem'); /* só a contagem de produtos de cada uma, todas de uma vez (antes baixava os 7 mil produtos só para contar) */ const fr=CNTP.t&&Date.now()-CNTP.t<6e5&&!STALE.has('cntp'); await Promise.all(R.map(async r=>{r.n=fr&&CNTP.n[r.id]!=null?CNTP.n[r.id]:await contar(`produtos?select=id&rep=eq.${encodeURIComponent(r.id)}&ativo=eq.true`).catch(()=>0); CNTP.n[r.id]=r.n})); if(!fr) CNTP.t=Date.now(); return R},force); return REPS}
 async function catalog(rep,force){return swr('cat_'+rep,CAT,rep,()=>apiAll(`produtos?select=*&rep=eq.${rep}&ativo=eq.true&order=cod`),force)}
 async function tabelas(rep,force){return swr('tab_'+rep,TABS,rep,()=>api(`tabelas?select=*&rep=eq.${rep}&ativa=eq.true&order=nome`),force)}
 async function prices(tid,force){if(!tid) return {}; return swr('pr_'+tid,PRICES,tid,async()=>{const rows=await apiAll(`precos?select=produto_id,nivel,preco&tabela_id=eq.${tid}`); const m={}; rows.forEach(r=>{(m[r.produto_id]=m[r.produto_id]||{})[r.nivel]=+r.preco}); return m},force)}
@@ -990,7 +995,7 @@ async function prevJobs(rep,jobs,C,T,pv,done){
           if(j.tab&&!j.keepOld){const keep=new Set(j.items.map(it=>ids[it.cod])); const gone=Object.keys(await prices(tid,true)).filter(pid=>!keep.has(+pid)); for(let i=0;i<gone.length;i+=100) await api(`precos?tabela_id=eq.${tid}&produto_id=in.(${gone.slice(i,i+100).join(',')})`,{method:'DELETE'})}
           (delete PRICES[tid],STALE.add('pr_'+tid))}
         await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:'importacao',resumo:jobs.map(j=>({arquivo:j.f,tabela:j.nome,itens:j.items.length,novos:j.novos,subiram:j.sub,cairam:j.desc,sairam:j.sai}))})}).catch(()=>{});
-        (delete CAT[rep],STALE.add('cat_'+rep)); (delete TABS[rep],STALE.add('tab_'+rep)); (REPS=null,STALE.add('reps')); st.textContent=''; toast('Importação concluída'); const msg=`✓ ${jobs.length} tabela(s) e ${arr.length} produtos gravados.`; if(done) return done(msg); admImp(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">${msg}</p>`)}
+        (delete CAT[rep],STALE.add('cat_'+rep)); (delete TABS[rep],STALE.add('tab_'+rep)); (REPS=null,(STALE.add('reps'),CNTP.t=0)); st.textContent=''; toast('Importação concluída'); const msg=`✓ ${jobs.length} tabela(s) e ${arr.length} produtos gravados.`; if(done) return done(msg); admImp(rep); $('#adm').insertAdjacentHTML('afterbegin',`<p class="ok">${msg}</p>`)}
       catch(err){st.textContent=''; toast('Erro: '+err.message); b.disabled=false}}}
 
 
@@ -1294,7 +1299,7 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
     const a12=new Date(hj); a12.setFullYear(hj.getFullYear()-1); const meses=[...new Set(wd.map(d=>d.getFullYear()*12+d.getMonth()))];
-    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=id,num,origem,cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a12)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).then(d=>semDupLeg(vAtL(d))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
+    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),agPedidos().then(d=>d.filter(x=>x.data>=ymdL(a12))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
     const mine=v=>!so||!eu||norm(v||'').startsWith(eu);
     /* meta da semana: meta do mês ÷ dias úteis do mês × dias úteis desta semana (seg–sex) */
     const metaRep=M=>{const o={}; M.filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; o[r]=(o[r]||0)+(+x.valor||0)}); return o};
@@ -1340,7 +1345,9 @@ const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganh
 const agMais=n=>{const d=new Date(); d.setDate(d.getDate()+n); return ymdL(d)};
 const agUteis=(a,b)=>{let n=0; const d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<e){d.setDate(d.getDate()+1); if(diaUtil(d)) n++} return n};
 let AGP=null, AGTAB=null;
-async function agPedidos(){if(AGP&&Date.now()-AGP.t<5*6e4) return AGP.d; const a=new Date(); a.setMonth(a.getMonth()-18);
+/* vários blocos do Início pedem os mesmos pedidos ao mesmo tempo: uma busca só, compartilhada */
+let AGPP=null; function agPedidos(){if(AGP&&Date.now()-AGP.t<5*6e4) return Promise.resolve(AGP.d); return AGPP||(AGPP=agPedidos0().finally(()=>{AGPP=null}))}
+async function agPedidos0(){const a=new Date(); a.setMonth(a.getMonth()-18);
   const d=semDupLeg(vAtL(await apiAll(`pedidos?select=id,num,origem,cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`))); AGP={t:Date.now(),d}; return d}
 async function agEstados(){const loc=L('agSt')||{}; if(AGTAB===false) return loc; try{const r=await api(`oportunidades?select=k,status,ate&user_id=eq.${sess.uid}&ate=gte.${ymdL(new Date())}`); AGTAB=true; const o={...loc}; r.forEach(x=>o[x.k]={s:x.status,ate:x.ate}); return o}catch(e){AGTAB=false; return loc}}
 async function agMarcar(it,status,dias,obs){const ate=agMais(dias), m=L('agSt')||{}; Object.keys(m).forEach(k=>{if(m[k].ate<ymdL(new Date())) delete m[k]}); m[it.k]={s:status,ate}; LS('agSt',m);
@@ -1494,7 +1501,7 @@ async function convPorQuem(box,repF){box.innerHTML='<p class="hint">Calculando p
    estoque: orçamento perdido por "Sem estoque" com item que voltou (Medix planilha, Sigma ao vivo); portal: acesso ao B2B nos últimos 2 dias;
    fat: NF-e emitida nos últimos 5 dias (pós-venda); novo: 1ª compra (18 meses) há 25–120 dias sem a 2ª. */
 const AG_CAP={cruz:3,epoca:3,novo:3,fat:3};
-let AGI=null; async function agItensDB(){if(AGI&&Date.now()-AGI.t<30*6e4) return AGI.d; let d=[]; try{d=await api('rpc/agentes_itens',{method:'POST',body:'{}'})||[]}catch(e){d=[]} AGI={t:Date.now(),d}; return d}
+let AGI=null, AGIP=null; async function agItensDB(){if(AGI&&Date.now()-AGI.t<30*6e4) return AGI.d; if(AGIP) return AGIP; AGIP=(async()=>{let d=[]; try{d=await api('rpc/agentes_itens',{method:'POST',body:'{}'})||[]}catch(e){d=[]} AGI={t:Date.now(),d}; AGIP=null; return d})(); return AGIP}
 function agCtx(P,C){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const vend={}, last={}, tk={}; P.forEach(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''), k=cn+'|'+x.representada; if(!last[k]||x.data>=last[k]){last[k]=x.data; vend[k]=x.vendedor||''} const t=tk[x.representada]=tk[x.representada]||{s:0,n:0}; t.s+=+x.valor||0; t.n++});
   return {byC,vend,tkRep:r=>tk[r]&&tk[r].n?tk[r].s/tk[r].n:0,dono:(cn,r)=>vend[cn+'|'+r]||(byC[cn]||{}).v||''}}
 const agNovo=(X,ag,cn,rep,v,sc,fatos,o)=>{const c=X.byC[cn]||{}; return {k:`${ag}|${cn}|${rep}${o&&o.kx?'|'+o.kx:''}`,ag,cnpj:cn,n:c.fa||c.n||cn,razao:c.n||'',tel:c.tel||'',rep,v:+v||0,sc:+sc||0,fatos,...(o||{})}};
@@ -2086,7 +2093,7 @@ async function pdfExemplo(rep,cfg,rg){const C=await catalog(rep).catch(()=>[]); 
   const sub=rows.reduce((s,r)=>s+r.tot,0), ipi=rows.reduce((s,r)=>s+r.ipiv,0);
   const o={rep,num:'EXEMPLO',cli:{n:'CLIENTE EXEMPLO LTDA',fa:'Cliente Exemplo',cnpj:'00000000000191',cid:'Ribeirão Preto/SP',tel:'(16) 99999-0000',em:'compras@exemplo.com.br',ct:[{n:'Fulano',cg:'Compras',tel:'(16) 99999-0000'}]},prazo:'28/42/56',obs:'Observação digitada no orçamento (exemplo).',oc:'OC-123',vend:''};
   await pdf(o,rows,{sub,ipi,fr:0,tab:T,mode:'dl',cfg,repG:rg})}
-const FRTAB={}; async function fichaRep(id){const m=$('#main'); const [R]=await Promise.all([reps(true),id?tabelas(id,true).catch(()=>[]):null]); const r=R.find(x=>x.id===id)||{id:'',nome:'',cor:'#2a3157',ativa:true,regras:{}}; const g=r.regras||{}; const ges=ehGestor(); const ro=ges?'':' readonly';
+const FRTAB={}; async function fichaRep(id){const m=$('#main'); const [R0,R1]=await Promise.all([reps(),id?api(`representadas?select=*&id=eq.${encodeURIComponent(id)}`).catch(()=>null):null,id?tabelas(id,true).catch(()=>[]):null]); if(R1&&R1[0]){const i=R0.findIndex(x=>x.id===id); const n=i>=0?R0[i].n:0; R1[0].n=n; if(i>=0) R0[i]=R1[0]} const R=R0; const r=R.find(x=>x.id===id)||{id:'',nome:'',cor:'#2a3157',ativa:true,regras:{}}; const g=r.regras||{}; const ges=ehGestor(); const ro=ges?'':' readonly';
   const cts=g.contatos||[], pzs=g.prazos||[], arqs=g.arquivos||[];
   m.innerHTML=`<div class="row" style="justify-content:space-between"><button class="chip" data-back>‹ Representadas</button>${id?`<button class="btn sm" data-catal>Ver catálogo</button>`:''}</div>
    <div class="sec" style="margin-top:10px">${id?repIcon(r,34)+' '+esc(r.nome):'Nova representada'}</div>
@@ -2128,13 +2135,13 @@ const FRTAB={}; async function fichaRep(id){const m=$('#main'); const [R]=await 
     li.value=c.toDataURL('image/jpeg',.9); lp.src=li.value; lp.style.display=''; toast('Logo carregado. Toque em Salvar representada')}catch(e){toast('Não consegui ler essa imagem')} lf.value=''};
   if(ges) m.querySelectorAll('[data-g="cnpj"],[data-g="cep"]').forEach(i=>{let ult=''; i.addEventListener('input',()=>{const d=i.value.replace(/\D/g,''); const k=i.dataset.g; if(d!==ult&&d.length===(k==='cnpj'?14:8)){ult=d; (k==='cnpj'?buscaCnpj:buscaCep)(m,false)}})});
   const coletar=()=>{const ng={...g}; m.querySelectorAll('[data-g]').forEach(i=>{const v=i.value.trim(); ng[i.dataset.g]=v===''?null:(i.type==='number'?+v:v)}); const ic={}; m.querySelectorAll('[data-icms]').forEach(i=>{const v=i.value.trim().replace(',','.'); if(v!=='') ic[i.dataset.icms]=+v}); ng.icms=Object.keys(ic).length?ic:null; if(ng.cnpj) ng.cnpj=String(ng.cnpj).replace(/\D/g,'')||null; const io=m.querySelector('#icor'), ii=m.querySelector('#icin'); if(io){ng.icms_origem=io.value||null; ng.icms_interna=ii.value===''?null:+ii.value} if(m.querySelector('[data-pdfon]')){const tx={}; m.querySelectorAll('[data-pdftx]').forEach(i=>{const v=i.value.trim(); if(v) tx[i.dataset.pdftx]=v}); ng.pdf={off:[...m.querySelectorAll('[data-pdfon]')].filter(i=>!i.checked).map(i=>i.dataset.pdfon),tx}} return ng};
-  const gravar=async(ng,extra)=>{const body={regras:ng,pedido_min:ng.pedido_min??null,...(extra||{})}; if(id) await api(`representadas?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)}); STALE.add('reps'); REPS=null; await reps(true)};
+  const gravar=async(ng,extra)=>{const body={regras:ng,pedido_min:ng.pedido_min??null,...(extra||{})}; if(id) await api(`representadas?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)}); (STALE.add('reps'),CNTP.t=0); REPS=null; await reps(true)};
   m.onclick=async e=>{const t=e.target; const tb=t.closest('[data-rt]'); if(tb){FRTAB[id||'']=tb.dataset.rt; m.querySelectorAll('[data-rt]').forEach(x=>x.classList.toggle('on',x===tb)); m.querySelectorAll('[data-rp]').forEach(x=>x.hidden=x.dataset.rp!==tb.dataset.rt); return}
     if(t.closest('[data-back]')) return go('reps'); if(t.closest('[data-catal]')) return go('rep',{rep:id}); if(t.id==='rlogobt') return $('#rlogof').click();
     const bq=t.closest('[data-busca]'); if(bq){bq.disabled=true; try{await (bq.dataset.busca==='cnpj'?buscaCnpj:buscaCep)(m,true)}finally{bq.disabled=false} return}
     try{
     if(t.id==='rsave'){const ng=coletar(); const k=s=>m.querySelector(`[data-k="${s}"]`); const extra={nome:k('nome').value.trim(),cor:k('cor').value,ativa:k('ativa').checked}; if(!extra.nome) return toast('Informe o nome');
-      if(!id){const nid=norm(k('id').value||extra.nome).toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,20); if(!nid) return toast('Informe o código'); await api('representadas',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id:nid,...extra,regras:ng,pedido_min:ng.pedido_min??null,ordem:99})}); STALE.add('reps'); REPS=null; await reps(true); toast('Representada criada'); return go('reps',{rid:nid})}
+      if(!id){const nid=norm(k('id').value||extra.nome).toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,20); if(!nid) return toast('Informe o código'); await api('representadas',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id:nid,...extra,regras:ng,pedido_min:ng.pedido_min??null,ordem:99})}); (STALE.add('reps'),CNTP.t=0); REPS=null; await reps(true); toast('Representada criada'); return go('reps',{rid:nid})}
       await gravar(ng,extra); toast('Representada salva'); return fichaRep(id)}
     const pa=t.closest('[data-pdfall]'); if(pa){pa.closest('.card').querySelectorAll('[data-pdfon]').forEach(i=>i.checked=pa.dataset.pdfall==='1'); return}
     if(t.id==='pdfprev'){t.disabled=true; try{const ng=coletar(); await pdfExemplo(id,ng.pdf,ng)}finally{t.disabled=false} return}
@@ -2214,7 +2221,7 @@ async function fichaProd(rep,pid){const m=$('#main'); const C=CAT[rep]||await ca
       const pr=[]; T.forEach(t=>{const b=m.querySelector(`[data-pb="${t.id}"]`).value, l=m.querySelector(`[data-pl="${t.id}"]`).value; if(b!=='') pr.push({tabela_id:t.id,produto_id:id,nivel:'base',preco:+b}); if(l!=='') pr.push({tabela_id:t.id,produto_id:id,nivel:'liq',preco:+l})});
       if(pr.length) await api('precos?on_conflict=tabela_id,produto_id,nivel',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(pr.map(x=>({...x,atualizado_em:new Date().toISOString()})))});
       await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:'edicao',resumo:{cod:body.cod}})}).catch(()=>{});
-      STALE.add('cat_'+rep); T.forEach(t=>STALE.add('pr_'+t.id)); delete CAT[rep]; T.forEach(t=>delete PRICES[t.id]); STALE.add('reps'); toast('Produto salvo'); go('prod',{rep,pid:id,volta})}catch(err){toast('Erro: '+err.message)}}}
+      STALE.add('cat_'+rep); T.forEach(t=>STALE.add('pr_'+t.id)); delete CAT[rep]; T.forEach(t=>delete PRICES[t.id]); (STALE.add('reps'),CNTP.t=0); toast('Produto salvo'); go('prod',{rep,pid:id,volta})}catch(err){toast('Erro: '+err.message)}}}
 
 /* ================= importar base de clientes ================= */
 function importarClientes(){const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><b style="font-size:18px">Importar clientes</b><p class="hint" style="margin:0">Clientes que já existem não são apagados nem sobrescritos; só entram os novos (marque abaixo para completar dados em branco dos existentes).</p>
@@ -2730,7 +2737,7 @@ async function paraTransmitir(){const m=$('#main'); let O=[]; try{O=await api('o
 
 /* ================= Produtos: inativar (excluir) sem perder histórico ================= */
 async function inativarProdutos(rep,ids,ativo){for(let i=0;i<ids.length;i+=150) await api(`produtos?id=in.(${ids.slice(i,i+150).join(',')})`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({ativo,atualizado_em:new Date().toISOString()})});
-  await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:ativo?'reativacao':'exclusao',resumo:{itens:ids.length}})}).catch(()=>{}); STALE.add('cat_'+rep); delete CAT[rep]; STALE.add('reps'); REPS=null}
+  await api('alteracoes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({rep,tipo:ativo?'reativacao':'exclusao',resumo:{itens:ids.length}})}).catch(()=>{}); STALE.add('cat_'+rep); delete CAT[rep]; (STALE.add('reps'),CNTP.t=0); REPS=null}
 
 /* exclusão com duas etapas */
 function confirmaExclusao(oque){return new Promise(res=>{if(!confirm(`Excluir ${oque}?`)) return res(false); const p=document.createElement('div'); p.className='ov'; p.style.zIndex=60; p.innerHTML=`<div class="sh grid" style="border:3px solid var(--bad)"><b class="bad" style="font-size:18px">Confirmação final</b><p>Esta ação não pode ser desfeita. Para excluir ${esc(oque)}, digite <b>EXCLUIR</b> abaixo.</p><input id="cxi" autocomplete="off" placeholder="EXCLUIR"><div class="row"><button class="btn" id="cxo" style="background:var(--bad)" disabled>Excluir definitivamente</button><button class="btn ghost" id="cxn">Cancelar</button></div></div>`; document.body.appendChild(p);

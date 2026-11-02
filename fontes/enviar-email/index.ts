@@ -26,6 +26,12 @@ const emailOk = (e: string) => /^[^\s@;,<>]+@[^\s@;,<>]+\.[^\s@;,<>]+$/.test(e);
 const rest = (path: string, init: RequestInit = {}) =>
   fetch(SB + '/rest/v1/' + path, { ...init, headers: { apikey: SRV, Authorization: 'Bearer ' + SRV, 'Content-Type': 'application/json', ...(init.headers || {}) } });
 
+// só a equipe aprovada (gestor/vendedor, fora do portal B2B)
+async function ehEquipe(auth: string) {
+  const r = await fetch(SB + '/rest/v1/rpc/eh_equipe', { method: 'POST', headers: { apikey: ANON, Authorization: auth, 'Content-Type': 'application/json' }, body: '{}' });
+  return r.ok && (await r.json()) === true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ erro: 'Use POST' }, 405);
@@ -37,6 +43,7 @@ Deno.serve(async (req) => {
   const pr = await rest(`perfis?id=eq.${user.id}&select=nome,email,aprovado,email_envio,assinatura`);
   const perfil = (await pr.json())?.[0];
   if (!perfil?.aprovado) return json({ erro: 'Seu usuário ainda não foi aprovado.' }, 403);
+  if (!(await ehEquipe(req.headers.get('Authorization') || ''))) return json({ erro: 'Sem acesso.' }, 403);
 
   let b: any;
   try { b = await req.json(); } catch { return json({ erro: 'Pedido inválido' }, 400); }

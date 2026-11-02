@@ -2,6 +2,7 @@
 // (carteira parada, orçamento sem retorno, ritmo da meta) e devolve, para cada uma, por que importa,
 // o que falar e uma mensagem de WhatsApp pronta. Os números vêm do app; a IA só redige e prioriza.
 // Chamado por agHoje() no app.js com { vendedor, meta, itens:[{k, agente, cliente, rep, fatos}] }.
+// Com { modo:'resumo', fatos } (agResumo, cartão do gestor) devolve { resumo, acoes[3], coach[{vendedor,ponto}] }.
 // Secret: GROQ_API_KEY (IA grátis; o mesmo das ligações). GROQ_LLM_MODEL fixa um modelo (opcional).
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -34,12 +35,43 @@ Recebe a lista de oportunidades do dia de UM vendedor, já encontradas pelo sist
 - "whatsapp": mensagem pronta para o cliente, cordial e informal-profissional, 2 a 4 frases, sem emojis em excesso, sem citar números internos (ciclo de compra, meta, ranking). Comece com "Olá" e não assine.
 Responda SOMENTE com JSON: {"itens":[{"k":"<mesma chave recebida>","prioridade":1,"porque":"","falar":"","whatsapp":""}]}. Inclua todas as chaves recebidas.`;
 
+const SIS_RESUMO = `Você é o gerente comercial assistente da Chamae (representação comercial B2B de EPI, calçados, luvas e ferramentas).
+Recebe os números da semana passada da equipe de vendas e as análises das ligações gravadas. Escreva em português do Brasil, direto, sem inventar números:
+- "resumo": 2 a 4 frases com o que melhorou, o que piorou e onde está o maior gap (vendedor, fábrica ou motivo de perda).
+- "acoes": exatamente 3 ações práticas e específicas para esta semana (cada uma até 25 palavras).
+- "coach": para cada vendedor que teve ligações analisadas, 1 ponto de melhoria concreto tirado das ligações (até 30 palavras). Lista vazia se não houver ligações.
+Responda SOMENTE com JSON: {"resumo":"","acoes":["","",""],"coach":[{"vendedor":"","ponto":""}]}`;
+
+async function groqJson(key: string, sistema: string, msg: string, max = 6000) {
+  let modelo = await escolherModelo(key), ultimo = '';
+  for (let t = 0; t < 3; t++) {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modelo, response_format: { type: 'json_object' }, max_tokens: max, temperature: 0.4,
+        messages: [{ role: 'system', content: sistema }, { role: 'user', content: msg }] }),
+    });
+    const tx = await r.text();
+    if (r.status === 429) throw Object.assign(new Error('Limite grátis da Groq atingido; tente mais tarde.'), { status: 429 });
+    if (!r.ok) { ultimo = tx; if (/model_not_found|decommissioned|does not exist|not supported/i.test(tx)) { modeloGroq = null; modelo = await escolherModelo(key, modelo); } continue; }
+    try { const j = JSON.parse(tx); return { o: JSON.parse(j.choices[0].message.content), modelo: j.model }; } catch (_) { ultimo = 'resposta fora do formato'; }
+  }
+  throw Object.assign(new Error('Falha na IA grátis: ' + ultimo.slice(0, 200)), { status: 502 });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   try {
     const key = Deno.env.get('GROQ_API_KEY');
     if (!key) return json({ erro: 'Falta o secret GROQ_API_KEY no Supabase.' }, 500);
     const body = await req.json();
+    if (body.modo === 'resumo') {
+      const s2 = (x: unknown, n: number) => String(x ?? '').slice(0, n);
+      try {
+        const { o, modelo } = await groqJson(key, SIS_RESUMO, String(body.fatos || '').slice(0, 14000), 4000);
+        return json({ resumo: s2(o.resumo, 900), acoes: (Array.isArray(o.acoes) ? o.acoes : []).slice(0, 3).map((a: unknown) => s2(a, 300)),
+          coach: (Array.isArray(o.coach) ? o.coach : []).slice(0, 8).map((c: any) => ({ vendedor: s2(c && c.vendedor, 60), ponto: s2(c && c.ponto, 300) })), modelo });
+      } catch (e) { return json({ erro: String((e as Error).message) }, (e as any).status || 500); }
+    }
     const itens = (Array.isArray(body.itens) ? body.itens : []).slice(0, 15);
     if (!itens.length) return json({ itens: [] });
     const hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());

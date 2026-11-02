@@ -1,17 +1,19 @@
 /* Sistema mais fácil (aprovado pelo Victor em 02/11/2026): Início com "O que fazer agora", avisos claros, letra maior no celular,
    filtros recolhíveis, ajuda passo a passo. Só aparência; para desfazer, basta tirar o <link> deste arquivo e voltar o app.js anterior. */
 
-/* Início: o que fazer agora */
-.faz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.faz-b{display:flex;align-items:center;gap:14px;text-align:left;border:1px solid var(--line);border-radius:18px;padding:16px 18px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;box-shadow:var(--shadow,none);min-height:84px}
-.faz-b:first-child{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.faz-b:first-child small{color:inherit;opacity:.8}
-.faz-b b{display:block;font-size:17px}
-.faz-b small{display:block;color:var(--muted);font-size:13.5px;margin-top:2px}
-.faz-i{font-size:24px;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--surface2);flex:none}
-.faz-b:first-child .faz-i{background:rgba(255,255,255,.15)}
-.faz-b:hover{border-color:var(--brand,var(--accent))}
-@media(max-width:760px){.faz{grid-template-columns:1fr;gap:10px}.faz-b{min-height:68px;padding:12px 14px}}
+/* Início: o que fazer agora — barra discreta de atalhos (ajustada a pedido do Victor em 02/11) */
+.faz{display:flex;flex-wrap:wrap;gap:8px}
+.faz-b{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:0 16px;height:44px;background:var(--surface);color:var(--ink);font:inherit;font-size:15px;cursor:pointer}
+.faz-b b{font-weight:600;font-size:15px}
+.faz-b small{display:none}
+.faz-i{font-size:16px;line-height:1;width:auto;height:auto;background:none;color:var(--muted)}
+.faz-b:first-child{border-color:var(--brand,var(--accent))}
+.faz-b:first-child .faz-i{color:var(--brand,var(--accent));font-weight:700}
+.faz-b:hover{border-color:var(--brand,var(--accent));background:var(--surface2)}
+.faz-b .badge{margin-left:2px}
+@media(max-width:760px){.faz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .faz-b{flex-direction:column;justify-content:center;gap:4px;height:auto;min-height:64px;padding:8px 4px;text-align:center}
+ .faz-b b{font-size:13.5px;line-height:1.2}.faz-i{font-size:18px}.faz-x{display:none}}
 
 /* representadas mais compactas no Início */
 .reps-c .rep{min-height:84px;padding:12px 14px;gap:6px}

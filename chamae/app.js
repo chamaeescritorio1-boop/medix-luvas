@@ -440,7 +440,7 @@ async function orc(){const m=$('#main'); m.onclick=null; m.onchange=null; m.onin
 async function orcNovo(){const p=$('#opane'); const R=(await reps()).filter(r=>r.ativa); const q=Q(); if(!p.isConnected) return;
   p.innerHTML=`<div class="card grid"><b>1. Escolha a representada</b><p class="hint" style="margin:0">Cada representada tem o seu orçamento (Marluvas e Medix nunca se misturam).</p><div class="reps">${R.map(r=>`<button class="rep" style="--c:${esc(r.cor||'#2a3157')};min-height:90px" data-nr="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${q[r.id]&&q[r.id].itens.length?q[r.id].itens.length+' itens em andamento':r.n?r.n+' produtos':'catálogo a cadastrar'}</small></button>`).join('')}</div></div>`;
   p.onclick=e=>{const b=e.target.closest('[data-nr]'); if(!b) return; const rep=b.dataset.nr; const qq=Q(); if(qq[rep]&&qq[rep].itens.length&&!confirm(`Já existe um orçamento ${repName(rep)} em andamento. Começar outro do zero? (o atual continua nos Salvos se você salvou)`)){ctx.ot='cont'; ctx.rep=rep; return orc()}
-    delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o); ctx.ot='cont'; ctx.rep=rep; orc()}}
+    delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o); if(L('orcCat')) return go('rep',{rep}); ctx.ot='cont'; ctx.rep=rep; orc()}}
 
 /* orçamentos feitos dentro dos apps Marluvas/Medix (só linhas cod/qt/pu) viram orçamento do sistema para abrir e editar */
 const legado=o=>{const d=(o&&o.dados)||{}; return !!EXTERNAL[o.app]&&!(d.rep&&Array.isArray(d.itens)&&d.itens[0]&&d.itens[0].pid!=null)&&Array.isArray(d.linhas)&&d.linhas.length>0};
@@ -1223,6 +1223,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   const vend=G('repVend')||JSON.parse(RAW('mdx_repVend')||'""')||''; const V=await vendedores();
   m.innerHTML=`<div class="sec">Ajustes</div><p class="hint" style="margin-top:-6px">Valem para o sistema inteiro, inclusive os apps Medix e Marluvas neste aparelho.</p><div class="grid">
   <div class="card grid"><b>Aparência</b>
+   <label class="f">Orçamento novo começa pelo <span class="hint">(teste: vale só neste aparelho)</span><div class="row" id="ajOcat"><button type="button" class="chip${L('orcCat')?'':' on'}" data-ocat="0">Formulário (cliente, tabela, prazo)</button><button type="button" class="chip${L('orcCat')?' on':''}" data-ocat="1">Catálogo da fábrica, com fotos</button></div></label>
    <label class="f">Visual<div class="row" id="ajLay">${[['premium','Premium'],['classico','Clássico']].map(([k,l])=>`<button type="button" class="chip${lay===k?' on':''}" data-lay="${k}">${l}</button>`).join('')}</div></label>
    <label class="f">Tema da tela<select id="ajTema"><option value="auto">Automático (segue o aparelho)</option><option value="light">Claro (dia)</option><option value="dark">Escuro (noite)</option></select></label></div>
   <div class="card grid"><b>Integração Reprio</b><p class="hint" style="margin:0">A chave da API fica guardada só neste aparelho e vale para todas as representadas.</p>
@@ -1236,7 +1237,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   ${ehGestor()?'<div class="card grid"><b>Versões</b><p class="hint" style="margin:0">Toda atualização passa por um teste automático antes de ir ao ar. Se algo ficar estranho depois de uma atualização, abra a versão anterior e me avise.</p><div class="row"><a class="btn sm ghost" href="/medix-luvas/chamae-anterior/">Abrir versão anterior</a></div></div>':''}
   <p class="hint">Conversão de CA, base do CAEPI, fichas técnicas e conversões da equipe continuam nos Ajustes dos apps Medix e Marluvas, porque só existem lá.</p></div>`;
   $('#ajTema').value=tema; $('#ajTema').onchange=e=>{const v=e.target.value; LS('tema',v); RAWS('mdx_theme',JSON.stringify(v)); RAWS('cca_theme',JSON.stringify(v)); aplicarVisual(); toast('Tema aplicado')};
-  $('#ajLay').onclick=e=>{const b=e.target.closest('[data-lay]'); if(!b) return; RAWS('mdx_lay',b.dataset.lay); RAWS('cca_lay',b.dataset.lay); aplicarVisual(); ajustes()};
+  $('#ajOcat').onclick=e=>{const b=e.target.closest('[data-ocat]'); if(!b) return; LS('orcCat',b.dataset.ocat==='1'); toast(b.dataset.ocat==='1'?'Orçamento novo vai abrir no catálogo':'Orçamento novo volta a abrir no formulário'); ajustes()}; $('#ajLay').onclick=e=>{const b=e.target.closest('[data-lay]'); if(!b) return; RAWS('mdx_lay',b.dataset.lay); RAWS('cca_lay',b.dataset.lay); aplicarVisual(); ajustes()};
   const msg=t=>$('#ajRkM').textContent=t;
   $('#ajVend').onchange=e=>{const v=e.target.value; S('repVend',v); RAWS('mdx_repVend',JSON.stringify(v)); RAWS('cca_repVend',JSON.stringify(v)); toast('Vendedor padrão salvo')};
   $('#ajRkS').onclick=()=>{const v=$('#ajRk').value.trim(); if(!v){msg('Cole a chave antes de salvar.');return} ['chamae_rk','mdx_rk','cca_rk'].forEach(k=>RAWS(k,v)); $('#ajRk').value=''; toast('Chave salva'); ajustes()};

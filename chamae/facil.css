@@ -83,13 +83,20 @@ details.pdet>summary{font-size:13px;color:var(--muted);font-weight:500}
 .tut-go{color:var(--brand,var(--accent));font-weight:700;font-size:14px;margin-top:4px}
 details.faq>summary{cursor:pointer}
 
-/* Início em abas (Hoje, Fábricas, Minha semana, Equipe) */
-.itabs{display:flex;gap:4px;margin:22px 0 14px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
-.itabs::-webkit-scrollbar{display:none}
-.itabs button{border:0;background:none;color:var(--muted);font:inherit;font-size:15px;font-weight:600;padding:10px 14px;border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
-.itabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--brand,var(--accent))}
-.itabs button:hover{color:var(--ink)}
-.ipane>#semana>.row:first-child{margin-top:0!important}
-@media(max-width:760px){.itabs{margin-top:16px}.itabs button{padding:10px 10px;font-size:14.5px}}
-.ipane>#semana>.row:first-child{justify-content:flex-end!important}
-.ipane>#semana>.row:first-child>.sec,.ipane [data-semab]{display:none}
+/* Início em blocos que abrem e fecham (Fábricas, Hoje, Minha semana, Equipe) */
+.iblks{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:20px}
+details.iblk{min-width:0}
+details.iblk{border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+details.iblk>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;min-height:52px;box-sizing:border-box}
+details.iblk>summary::-webkit-details-marker{display:none}
+details.iblk>summary b{font-size:17px}
+details.iblk>summary .hint{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+details.iblk>summary::after{content:'▾';color:var(--muted);transition:transform .2s}
+details.iblk:not([open])>summary::after{transform:rotate(-90deg)}
+details.iblk>summary:hover{background:var(--surface2);border-radius:14px}
+.iblk-c{padding:0 16px 16px}
+.iblk-c>.card:first-child,.iblk-c>div>.card:first-child{margin-top:0}
+.iblk #semana>.row:first-child{margin-top:0!important;justify-content:flex-end!important}
+.iblk #semana>.row:first-child>.sec,.iblk [data-semab]{display:none}
+@media(max-width:760px){.iblks{margin-top:16px;gap:8px}details.iblk>summary{padding:12px 14px}details.iblk>summary b{font-size:16px}.iblk-c{padding:0 12px 12px}}
+details.iblk>summary .ib-x{min-height:34px;padding:4px 12px;font-size:13.5px;align-self:center}

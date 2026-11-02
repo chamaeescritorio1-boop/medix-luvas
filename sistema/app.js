@@ -11,7 +11,19 @@ const L=k=>{if(TEMPF.test(k)) return MEMF[k]===undefined?null:JSON.parse(MEMF[k]
 try{Object.keys(localStorage).filter(k=>k.startsWith('chs_')&&TEMPF.test(k.slice(4))).forEach(k=>localStorage.removeItem(k))}catch(e){}
 const FILTROS_DA_TELA={prod:['prodF'],ped:['pedF'],cli:['cliF','cartF'],tar:['tarF'],metas:['metasF'],rel:['relS'],rep:['grp_']};
 const limparFiltros=r=>(FILTROS_DA_TELA[r]||[]).forEach(px=>Object.keys(MEMF).forEach(k=>{if(k.startsWith(px)) delete MEMF[k]}));
-function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+/* avisos: os comuns somem em 4 s; erro vira frase simples, fica até tocar em ✕ e guarda o detalhe técnico para quem precisar */
+const ERRO_RX=/^(Erro|Sem permissão ou erro|Não consegui)\b[^:]*:\s*/;
+function erroSimples(det){const s=String(det||'');
+  if(/failed to fetch|networkerror|load failed|network|internet|offline|timeout|aborted/i.test(s)) return 'Sem internet ou o servidor não respondeu. Confira a conexão e tente de novo.';
+  if(/entre novamente|jwt|token|401|sess[aã]o/i.test(s)) return 'Seu acesso expirou. Entre de novo com seu e-mail e senha.';
+  if(/permission|permiss|42501|403|row-level|rls|policy/i.test(s)) return 'Você não tem permissão para isso. Fale com o gestor.';
+  if(/duplicate|23505|já existe/i.test(s)) return 'Isso já está cadastrado.';
+  return ''}
+function toast(t){t=String(t??''); const m=t.match(ERRO_RX); const d=document.createElement('div'); d.className='toast';
+  if(m&&/:/.test(t)){const det=t.slice(m[0].length), base=m[0].replace(/:\s*$/,'').trim(), es=erroSimples(det); const simples=/^Não consegui/.test(base)?base+'. '+(es||'Tente de novo; se repetir, avise o gestor.'):(es||'Não consegui concluir. Tente de novo; se repetir, avise o gestor.');
+    d.classList.add('toast-erro'); d.innerHTML=`<div class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:10px"><span>⚠️ ${esc(simples)}</span><button class="chip" aria-label="Fechar" style="padding:2px 9px;flex:none">✕</button></div><details style="margin-top:6px"><summary class="hint" style="cursor:pointer">Detalhe técnico</summary><small style="word-break:break-word">${esc(det)}</small></details>`;
+    d.querySelector('button').onclick=()=>d.remove(); document.body.appendChild(d); setTimeout(()=>d.remove(),20000); return}
+  d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),4000)}
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
 /* time de vendas atual: só estes aparecem em seletores, metas e filtros; clientes e pedidos de quem saiu contam para quem herdou a carteira (out/2026) */
 const TIME=['CLAYTON','DRAUZIO','VICTOR'], EXV={RENATO:'VICTOR',JOAOP:'VICTOR',JOAO:'VICTOR',CAE:'CLAYTON',ALESSANDRO:'CLAYTON'};
@@ -44,8 +56,21 @@ $('#lcria').onclick=async()=>{const em=$('#le').value.trim().toLowerCase(), pw=$
 async function afterLogin(){try{let p; try{p=await api('perfis?select=*&id=eq.'+sess.uid)}catch(_){p=await api('perfis?select=id,nome,email,papel&id=eq.'+sess.uid)} perfil=p[0]||null; S('perfil',perfil)}catch(e){}
   if(perfil&&perfil.aprovado===false){sess=null; S('sess',null); return showLock('Seu acesso está aguardando aprovação de um gestor (Mais › Equipe).')}
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
-  $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email;
-  w.onclick=()=>go('aj'); if(!window._bootCedo) go(L('route')||'home'); window._bootCedo=false; contaTarefas(); iniciarLembretes()}
+  $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent='👤 '+(meuNome()||sess.email);
+  w.onclick=menuUsuario; if(!window._bootCedo) go(L('route')||'home'); window._bootCedo=false; contaTarefas(); iniciarLembretes();
+  if(!L('tourVisto')){LS('tourVisto',1); setTimeout(()=>tutorial('inicio'),1200)}}
+
+/* formulário curto em janela própria (no lugar das janelinhas do navegador): resolve com os valores ou null */
+function formulario(titulo,campos,ok){return new Promise(res=>{const ov=document.createElement('div'); ov.className='ov';
+  ov.innerHTML=`<form class="sh grid" style="max-width:480px"><div class="sec" style="font-size:20px;margin:0">${esc(titulo)}</div>${campos.map((c,i)=>`<label class="f">${esc(c.l)}<input name="${c.k}" type="${c.type||'text'}"${c.mode?` inputmode="${c.mode}"`:''} value="${esc(c.val||'')}" placeholder="${esc(c.ph||'')}"${c.req?' required':''}${i?'':' autofocus'}></label>`).join('')}
+   <div class="row" style="justify-content:flex-end;margin-top:6px"><button type="button" class="btn ghost" data-fx>Cancelar</button><button class="btn">${esc(ok||'OK')}</button></div></form>`;
+  document.body.appendChild(ov); const f=ov.querySelector('form'); const fim=v=>{ov.remove(); res(v)}; setTimeout(()=>{const i=f.querySelector('input'); i&&i.focus()},50);
+  ov.onclick=e=>{if(e.target===ov||e.target.closest('[data-fx]')) fim(null)}; f.onsubmit=e=>{e.preventDefault(); const v={}; campos.forEach(c=>v[c.k]=f.elements[c.k].value.trim()); fim(v)}})}
+function sairDaConta(){if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}}
+function menuUsuario(e){if(e) e.stopPropagation(); const old=$('#umenu'); if(old) return old.remove(); const d=document.createElement('div'); d.id='umenu'; d.className='umenu';
+  d.innerHTML=`<div class="hint" style="padding:6px 10px">${esc(sess&&sess.email||'')}</div><button data-um="aj">⚙️ Meus dados e ajustes</button><button data-um="ajuda">❓ Ajuda e tutoriais</button><button data-um="sair">🚪 Sair da conta</button>`;
+  document.body.appendChild(d); const fecha=ev=>{if(!d.contains(ev.target)){d.remove(); document.removeEventListener('click',fecha,true)}}; setTimeout(()=>document.addEventListener('click',fecha,true),0);
+  d.onclick=ev=>{const b=ev.target.closest('[data-um]'); if(!b) return; d.remove(); document.removeEventListener('click',fecha,true); const k=b.dataset.um; if(k==='sair') return sairDaConta(); go(k)}}
 
 /* ---------- dados ---------- */
 let REPS=null; const CAT={}, TABS={}, PRICES={};
@@ -87,7 +112,7 @@ async function clientes(force){if(CLIS&&!force) return CLIS; CLIS=await swr('cli
     try{const r=await apiAll('cliente_rep?select=cnpj,cliente,cidade,representada,ultimo,ultimo_prazo,vendedor'); vAtL(r).forEach(x=>{const c=add(x.cnpj,{n:x.cliente,cid:x.cidade,v:x.vendedor}); if(c) c.reps[x.representada]=x})}catch(e){}
     if(Object.keys(m).length<300){try{const d=await lerApp('marluvas'); (d.CLI||[]).forEach(x=>add(x.cnpj,{n:x.n,fa:x.fa,cid:x.cid,em:x.em,tel:x.tel,v:x.v,t:x.t,pz:x.pz}))}catch(e){}}
     return Object.values(m).filter(c=>c.n).sort((a,b)=>String(a.n).localeCompare(String(b.n)))},force); return CLIS}
-const repName=id=>((REPS||[]).find(r=>r.id===id)||{}).nome||id;
+const repName=id=>((REPS||[]).find(r=>r.id===id)||{}).nome||HIST_REP[id]||id;
 const HIST_REP={marcon:'Marcon',marluvas:'Marluvas',medix:'Medix',sigma:'Sigma Tools',camper:'Camper',zm:'ZM Bombas',terra:'Terra',fortlev:'Fortlev',pegorari:'Pegorari',valcan:'Valcan',cid:'CID',chemicals:'Chemicals 4U'};
 const TRANSP={marcon:[{n:'Cliente retira (FOB)',p:0},{n:'Alfa Transportes FOB (~5%)',p:5},{n:'Transportadora Floresta FOB (~5%)',p:5},{n:'Transportadora a ser indicada (FOB)',p:0}]};
 const EXTERNAL={marluvas:'/conversor-ca/teste/',medix:'/medix-luvas/teste/'};
@@ -128,16 +153,16 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView}[r]||home)()}
-$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
+function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView,ajuda:ajudaView}[r]||home)()}
+$('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; {const ab=$('#ajudaBtn'); if(ab) ab.onclick=ajudaDaTela} $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
 /* ---------- barra de baixo: cada um escolhe os atalhos (Início e Mais ficam fixos) ---------- */
 const NAVSVG=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${d}</svg>`;
-const NAVOPC=[['cli','Clientes','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/>'],
+const NAVOPC=[['estr','Estratégia','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M3 3l3 3M21 3l-3 3"/>'],['cli','Clientes','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/>'],
   ['tar','Tarefas','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/>','tn'],
   ['orc','Orçamento','<path d="M6 3h9l3 3v15H6z M9 10h6M9 14h6M9 18h4"/>','qn'],
-  ['ped','Pedidos','<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'],
+  ['ped','Pedidos','<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'],
   ['prod','Produtos','<path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/>'],
   ['fin','Financeiro','<rect x="2.5" y="6" width="19" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.8"/><path d="M6 9.5v.01M18 15.5v.01"/>'],
   ['trans','Transmitir','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'],
@@ -168,12 +193,20 @@ function navEditar(){let sel=navSel(); const ov=document.createElement('div'); o
   ov.onchange=e=>{const c=e.target.closest('[data-nk]'); if(!c) return; const k=c.dataset.nk; if(c.checked){if(sel.length>=NAVMAX){toast(`No máximo ${NAVMAX} atalhos`); c.checked=false; return} sel.push(k)} else sel=sel.filter(x=>x!==k); draw()}}
 
 /* ---------- início ---------- */
+/* Início em blocos que abrem e fecham (escolha do Victor 02/11); cada um lembra se ficou aberto */
+const INI_AB0={fab:true,hoje:true,sem:false,eq:false};
+const ibAb=k=>{const v=(L('iniBl')||{})[k]; return v==null?INI_AB0[k]:!!v};
+const ibBloco=(k,tit,sub,corpo,extra='')=>`<details class="iblk" data-ib="${k}"${ibAb(k)?' open':''}><summary><b>${tit}</b><span class="hint">${sub}</span>${extra}</summary><div class="iblk-c">${corpo}</div></details>`;
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
-  const q=Q(); m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
-     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
-   <div id="semana"></div>
-   <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><button class="btn ghost" data-go2="orc">＋ Novo orçamento</button><button class="btn ghost" data-go2="cli">📞 Bater carteira</button><button class="btn ghost" data-go2="tar">✔️ Tarefas</button><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; minhaSemana($('#semana'),true)}
+  const q=Q(); m.innerHTML=`<div class="faz" id="faz"><button class="faz-b" data-go2="orc" data-orcnovo><span class="faz-i">＋</span><span><b>Novo orçamento</b><small>Escolha a fábrica e monte</small></span></button><button class="faz-b" data-go2="cli"><span class="faz-i">📞</span><span><b>Bater carteira</b><small>Quem ligar hoje</small></span></button><button class="faz-b" data-go2="tar"><span class="faz-i">✔️</span><span><b>Tarefas<span class="faz-x"> para hoje</span> <span class="badge" id="tnHome" hidden>0</span></b><small>Retornos, visitas e ligações</small></span></button></div>
+   <div class="iblks">${ibBloco('fab','Fábricas','catálogo de cada representada',`<div class="reps reps-c">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
+     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>`,'<button class="chip ib-x" data-go2="reps">Gerenciar ›</button>')}
+   ${ibBloco('hoje','Hoje','quem merece atenção hoje',`<button class="card" data-go2="estr" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid #ffd166">🎯 <b>Estratégia do dia</b> <span class="hint">· quem abordar hoje, com e-mail e arte prontos para você aprovar ›</span></button><div id="agHoje" style="margin-top:12px"></div>`)}
+   ${ibBloco('sem','Minha semana','meta e quem está na hora de comprar','<div id="semana"></div>')}
+   ${ehGestor()&&AG_ON?ibBloco('eq','Equipe','resumo da semana do time','<div id="agRes"></div>'):''}</div>
+   <div class="sec" style="margin-top:24px;font-size:17px">Outros atalhos</div><div class="row"><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
+  m.querySelectorAll('[data-ib]').forEach(d=>d.addEventListener('toggle',()=>{const o=L('iniBl')||{}; o[d.dataset.ib]=d.open; LS('iniBl',o)}));
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:undefined)}; contaTarefas(); agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -278,7 +311,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
        <div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px">${F.map((p,i)=>{const it=iq(p); return `<div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:6px"><div style="min-width:0;line-height:1.25"><b>Tam ${esc(tamMx(p).lab)}</b> <small class="hint">${esc(p.cod)}</small>${CP[p.id]?`<div style="font-size:12px">🔥 ${brl(CP[p.id].pu)}</div>`:mn!==mx&&prs[i]!=null?`<div style="font-size:12px">${brl(prs[i])}</div>`:''}<div style="font-size:12px">${EQ[p.cod]?estTxt(rep,p.cod,EQ):'<span class="hint">estoque não informado</span>'}</div></div><div class="qty" style="gap:4px;flex:none"><button data-m="${p.id}" aria-label="Menos ${esc(tamMx(p).lab)}">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${it?it.qt:''}" placeholder="0" aria-label="Quantidade tamanho ${esc(tamMx(p).lab)}" style="width:54px"><button data-p="${p.id}" aria-label="Mais ${esc(tamMx(p).lab)}">+</button></div></div>`}).join('')}<div class="hint" style="font-size:12px;text-align:right" data-ftot="${ids}">${tot?`Total: <b>${tot}</b> ${un}`:''}</div></div></div></div>`};
     $('#pl').innerHTML=pagina(U,pg).map(p=>{if(p.fam) return famCard(p.fam);const inQ=o.itens.find(i=>i.pid===p.id); const nvS=NVc.length?nvSel(p.id,inQ):null; const pr=nvS?{...(nvS.P[p.id]||{}),liq:nvS.P[p.id]&&nvS.P[p.id].liq!=null?rHU(nvS.P[p.id].liq*fz):null}:P[p.id]||{}; const es=enc.sel.includes(p.id);
       return `<div class="card pc"${enc.on&&es?' style="border-color:var(--accent);border-width:2px"':''}><img src="${esc(p.img||'')}" alt="Ampliar foto" data-zoom="${esc(p.img||'')}" data-cap="${esc(p.cod)}" style="cursor:zoom-in" loading="lazy" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:5px;min-width:0"><div class="cod">${esc(p.cod)}</div><div class="d">${esc(p.descricao)}</div>
-       ${CP[p.id]?`<div class="pr">${brl(CP[p.id].pu)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small> <s class="hint" style="font-size:13px">${brl(pr.liq)}</s></div><div class="tags"><span class="tag" style="${CAMP_ST}">${esc(campTxt(CP[p.id]))}</span></div>`:`<div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div>`}${NVc.length?`<div class="row" role="group" aria-label="Nível de preço" style="gap:4px;flex-wrap:wrap">${NVc.map(v=>{const l=v.P[p.id]&&v.P[p.id].liq, on=nvS&&v.t.id==nvS.t.id; return `<button class="${on?'btn':'btn ghost'}" style="min-width:34px;width:34px;height:38px;padding:0;font-weight:700;font-size:16px" data-cniv="${p.id}" data-tid="${v.t.id}" aria-pressed="${on}"${l?'':' disabled'} title="${esc(v.t.nome)}${l?' · '+brl(rHU(l*fz)):''}">${v.n}</button>`}).join('')}</div>`:''}<div class="tags"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span><span class="tag">EAN ${esc(p.attrs&&p.attrs.ean||'—')}</span><span class="tag">NCM ${esc(p.ncm||'—')}</span>${pr.icms!=null?`<span class="tag">ICMS ${pct(pr.icms)}</span>`:''}${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div>
+       ${CP[p.id]?`<div class="pr">${brl(CP[p.id].pu)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small> <s class="hint" style="font-size:13px">${brl(pr.liq)}</s></div><div class="tags"><span class="tag" style="${CAMP_ST}">${esc(campTxt(CP[p.id]))}</span></div>`:`<div class="pr">${brl(pr.liq)}<small> /${esc((p.un||'un').toLowerCase())} s/ IPI</small></div>`}${NVc.length?`<div class="row" role="group" aria-label="Nível de preço" style="gap:4px;flex-wrap:wrap">${NVc.map(v=>{const l=v.P[p.id]&&v.P[p.id].liq, on=nvS&&v.t.id==nvS.t.id; return `<button class="${on?'btn':'btn ghost'}" style="min-width:34px;width:34px;height:38px;padding:0;font-weight:700;font-size:16px" data-cniv="${p.id}" data-tid="${v.t.id}" aria-pressed="${on}"${l?'':' disabled'} title="${esc(v.t.nome)}${l?' · '+brl(rHU(l*fz)):''}">${v.n}</button>`}).join('')}</div>`:''}${p.ca||(p.attrs&&p.attrs.tam)?`<div class="tags">${p.ca?`<span class="tag">CA ${esc(p.ca)}</span>`:''}${p.attrs&&p.attrs.tam?`<span class="tag">Tam. ${esc(p.attrs.tam)}</span>`:''}</div>`:''}<details class="pdet"><summary>Detalhes</summary><div class="tags" style="margin-top:6px"><span class="tag">${esc(grupoOf(rep,p))}</span>${p.emb?`<span class="tag">${esc(p.emb)}</span>`:''}<span class="tag">IPI ${pct(p.ipi)}</span><span class="tag">EAN ${esc(p.attrs&&p.attrs.ean||'—')}</span><span class="tag">NCM ${esc(p.ncm||'—')}</span>${pr.icms!=null?`<span class="tag">ICMS ${pct(pr.icms)}</span>`:''}${p.attrs&&p.attrs.prazo?`<span class="tag">Entrega ${esc(p.attrs.prazo)} dias</span>`:''}${p.mult>1?`<span class="tag">múlt. ${p.mult}</span>`:''}</div></details>
        ${rep==='sigma'?`<div class="row" data-stkbox="${esc(p.cod)}">${stkHtml(p.cod)}</div>`:''}${rep==='medix'&&EQ[p.cod]?`<div class="hint" style="font-size:13px">${estTxt(rep,p.cod,EQ)}</div>`:''}
        ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:GRc[p.cod]?`<div class="row">${inQ&&gradeTxt(inQ.gq)?`<span class="hint" style="font-size:12px;width:100%">${esc(gradeTxt(inQ.gq))} · <b>${inQ.qt}</b> pares</span>`:''}<button class="btn sm${inQ?' ghost':''}" data-cgr="${p.id}">${inQ?'✎ Editar grade':'+ Orçamento'}</button></div>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
     $('#cnt').textContent=`${U.length} produtos${U.length!==list.length?` (${list.length} códigos)`:''}${U.length>POR_PAG?` · ${pg*POR_PAG+1}–${Math.min(U.length,(pg+1)*POR_PAG)}`:''}${semPreco?` · ${semPreco} sem preço nesta tabela`:''}`; $('#pgr').innerHTML=pager(U.length,pg); $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
@@ -430,7 +463,7 @@ async function orc(){const m=$('#main'); m.onclick=null; m.onchange=null; m.onin
 async function orcNovo(){const p=$('#opane'); const R=(await reps()).filter(r=>r.ativa); const q=Q(); if(!p.isConnected) return;
   p.innerHTML=`<div class="card grid"><b>1. Escolha a representada</b><p class="hint" style="margin:0">Cada representada tem o seu orçamento (Marluvas e Medix nunca se misturam).</p><div class="reps">${R.map(r=>`<button class="rep" style="--c:${esc(r.cor||'#2a3157')};min-height:90px" data-nr="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${q[r.id]&&q[r.id].itens.length?q[r.id].itens.length+' itens em andamento':r.n?r.n+' produtos':'catálogo a cadastrar'}</small></button>`).join('')}</div></div>`;
   p.onclick=e=>{const b=e.target.closest('[data-nr]'); if(!b) return; const rep=b.dataset.nr; const qq=Q(); if(qq[rep]&&qq[rep].itens.length&&!confirm(`Já existe um orçamento ${repName(rep)} em andamento. Começar outro do zero? (o atual continua nos Salvos se você salvou)`)){ctx.ot='cont'; ctx.rep=rep; return orc()}
-    delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o); ctx.ot='cont'; ctx.rep=rep; orc()}}
+    delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o); if(L('orcCat')) return go('rep',{rep}); ctx.ot='cont'; ctx.rep=rep; orc()}}
 
 /* orçamentos feitos dentro dos apps Marluvas/Medix (só linhas cod/qt/pu) viram orçamento do sistema para abrir e editar */
 const legado=o=>{const d=(o&&o.dados)||{}; return !!EXTERNAL[o.app]&&!(d.rep&&Array.isArray(d.itens)&&d.itens[0]&&d.itens[0].pid!=null)&&Array.isArray(d.linhas)&&d.linhas.length>0};
@@ -460,19 +493,20 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
   const rg=regra(rep), uf=o.cli?ufOf(o.cli.cid):'', ic=icmsUF(uf,rep); const V=await vendedores(); const un=rows.reduce((s,r)=>s+r.i.qt,0); if(!p.isConnected) return;
   p.innerHTML=`${ab.length>1?`<div class="row" style="margin-bottom:10px">${ab.map(r=>`<button class="chip${r===rep?' on':''}" data-r="${r}">${repIcon(r,18)} ${esc(repName(r))} (${Q()[r].itens.length})</button>`).join('')}</div>`:''}
    <div class="row" style="justify-content:space-between;align-items:center"><div class="sec" style="font-size:20px;margin:0">${repIcon(rep,32)} Orçamento ${esc(repName(rep))}${o.num?` <span class="hint" style="font-size:15px">Nº ${esc(o.num)}</span>`:''}</div>${rows.length||o.cli?'<button class="chip" id="oclrT">🧹 Zerar orçamento</button>':''}</div>
-   <div class="card grid"><b>1. Cliente, tabela, prazo e vendedor</b>
+   <div class="card grid"><b>1. Cliente, tabela e prazo</b>
     <label class="f">Cliente${o.cli?'':' <span class="warn">(obrigatório para enviar)</span>'}</label>
     ${o.cli?`<div class="card row" style="justify-content:space-between;background:var(--surface2)"><div><b>${esc(o.cli.n)}</b>${o.cli.fa?` <span class="hint">(${esc(o.cli.fa)})</span>`:''}<div class="hint">${o.cli.cnpj?'CNPJ '+esc(fmtCnpj(o.cli.cnpj))+' · ':''}${esc(o.cli.cid||'')}${o.cli.ult?` · último pedido ${esc(repName(rep))}: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))}`:''}</div>${o.cli.cnpj?`<div class="hint" style="margin-top:4px">Contato no PDF: <button class="chip" id="octp" title="Escolher quem aparece no PDF deste orçamento">${(o.cli.ct||[]).length?esc(o.cli.ct.map(x=>x.n).join(', ')):'nenhum'} ✎</button></div>`:''}</div><button class="chip" id="trocaCli">Trocar</button></div>`
       :`<input id="cq" type="search" autocomplete="off" placeholder="Buscar por nome, fantasia, CNPJ ou cidade"><div id="cres"></div><button class="chip" id="cliNovo" style="justify-self:start">+ Cliente novo (sem cadastro)</button>`}
     ${o.cli&&o.sug&&(o.sug.prazo||o.sug.tabela)?`<div class="card row" style="justify-content:space-between;background:var(--surface2);border-color:var(--accent)"><span>💡 Último pedido ${esc(repName(rep))}${o.sug.data?' ('+esc(o.sug.data.split('-').reverse().join('/'))+')':''}: ${o.sug.prazo?'prazo <b>'+esc(o.sug.prazo)+'</b>':''}${o.sug.tabela?' · tabela <b>'+esc(o.sug.tabela)+'</b>':''}</span><button class="chip on" id="osug">Usar</button></div>`:''}
     <div class="r2"><label class="f">${NIV_REP(rep)?'Nível de comissão (padrão dos itens)':'Tabela de preço'}<select id="otab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option>Nenhuma tabela</option>'}</select></label>
      <label class="f">Prazo médio · prazo de pagamento<div class="row" style="gap:6px;flex-wrap:nowrap"><input id="opzm" readonly tabindex="-1" value="${esc(pzmTxt(o.prazo))}" title="Prazo médio" style="width:96px;flex:none;text-align:center;font-weight:700;background:var(--surface2)"><input id="opz" list="pzl" value="${esc(o.prazo||'')}" placeholder="ex.: 28/42/56" style="flex:1;min-width:0"></div><datalist id="pzl">${[...new Set([...((((REPS||[]).find(x=>x.id===rep)||{}).regras||{}).prazos||[]).map(p=>p.n),'A VISTA','28','28/35','28/42','28/35/42','28/42/56','30/45/60','30/60/90'])].map(x=>`<option value="${x}">`).join('')}</datalist>${cpz&&(cpz.enc||cpz.min)?`<small style="font-weight:700;color:${cpz.enc<0?'#2fb46e':cpz.enc>0?'var(--warn)':'inherit'}">${[cpz.enc?encTxt(cpz.enc)+' neste prazo':'',cpz.min?'mínimo '+brl(cpz.min):''].filter(Boolean).join(' · ')}</small>`:''}</label></div>
+    <details class="mopc"${o.oc||o.programado||o.obs||o.transpN||(o.status&&o.status!=='orcamento')||L('orcMais')?' open':''}><summary>Mais opções <span class="hint">· vendedor, frete, situação, OC, data de faturamento e observações</span></summary><div class="grid" style="margin-top:10px">
     <div class="r2"><label class="f">Vendedor<select id="ovend"><option value="">—</option>${[...new Set([meuNome()||'',...V].filter(Boolean))].map(v=>`<option${v===vendNome(o)?' selected':''}>${esc(v)}</option>`).join('')}</select></label>
      ${tr.length?`<label class="f">Transportadora / frete<select id="otr">${tr.map((t,k)=>`<option value="${k}"${k==o.transp?' selected':''}>${esc(t.n)}</option>`).join('')}</select></label>`:`<label class="f">Transportadora<input id="otrn" value="${esc(o.transpN||'')}" placeholder="Nome da transportadora"></label>`}</div>
     <div class="hint">${esc(ehGurO(o,(TABS[rep]||[]).find(t=>t.id==o.tabela))?gurFrete:rg.frete)}${ic!=null?` · ICMS ${ic}% (${uf})`:''}</div>
     <div class="r2"><label class="f">Situação<select id="ostat">${STATUS.map(([k,l])=>`<option value="${k}"${k===(o.status||'orcamento')?' selected':''}>${l}</option>`).join('')}</select></label><label class="f">Ordem de compra (OC)<input id="ooc2" value="${esc(o.oc||'')}" placeholder="opcional"></label></div>
     <label class="f">Data programada de faturamento <span class="hint">(deixe vazio se for faturar já; o pedido conta no mês desta data)</span><input id="oprog" type="date" value="${esc(o.programado||'')}"></label>
-    <label class="f">Observações (frete, entrega…)<textarea id="oobs" rows="2">${esc(o.obs||'')}</textarea></label></div>
+    <label class="f">Observações (frete, entrega…)<textarea id="oobs" rows="2">${esc(o.obs||'')}</textarea></label></div></details></div>
    <div class="card grid" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>2. Itens</b><div class="row"><button class="chip" id="otec" title="Cole a descrição técnica que o cliente mandou e o sistema acha os produtos mais próximos">🔎 Colar pedido do cliente</button><button class="chip" id="oimp">📄 Importar OC (PDF/Excel)</button>${rows.length?'<button class="chip" id="oclr2">🧹 Zerar</button>':''}${EXTERNAL[rep]&&!CONV_PASTA?'<button class="chip" id="oca">⇄ Converter CA</button>':''}${o.cli&&o.cli.cnpj?'<button class="chip" id="oiqc" title="Produtos que este cliente já comprou desta representada">🛒 Itens que já comprou</button>':''}<button class="chip on" data-go3="${rep}">+ Adicionar do catálogo</button></div></div>
     ${EXTERNAL[rep]&&CONV_PASTA?caCampo('ocaQ','oca',true):''}
     ${rows.length?rows.map(r=>`<div class="pc" style="grid-template-columns:64px 1fr;border-bottom:1px solid var(--line);padding-bottom:10px"><img src="${esc(r.p.img||'')}" alt="Ampliar foto" data-zoom="${esc(r.p.img||'')}" data-cap="${esc(r.p.cod)}" loading="lazy" style="width:64px;height:64px;cursor:zoom-in" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:4px;min-width:0">
@@ -491,6 +525,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
   const gerar=async(mode,b)=>{if(!rows.length) return toast('Adicione itens antes'); if(!o.cli&&!confirm('Gerar sem cliente?')) return; b.disabled=true; let ww=null; if(mode==='wa'&&(MOVEL||!waDesk())) ww=window.open('','_blank'); if(!(await confDivergencias(o,rows))){b.disabled=false; if(ww) ww.close(); return} try{await garantirNumero(o); if((await pdf(o,rows,{...tt,tab:rows.some(r=>r.tabN&&r.tabN!==(tab||{}).nome)?null:tab,tr:tr[o.transp],mode,ww}))===false){b.disabled=false; return posSalvar(o._env)} o._env=true; await save('enviado'); setTimeout(()=>{if(route==='orc'&&p.isConnected) posSalvar(true)},900)}catch(err){toast('Erro no PDF: '+err.message); if(ww) ww.close()} b.disabled=false};
   anxMontar(p.querySelector('#oanx'),{id:()=>o.sid||null,garantir:async()=>{if(!rows.length){toast('Adicione itens antes de anexar'); return null} await save('rascunho'); return o.sid}});
   if(!o.cli){const ci=p.querySelector('#cq'); if(ci) cliBusca(ci,p.querySelector('#cres'),rep)}
+  {const mo=p.querySelector('details.mopc'); if(mo) mo.ontoggle=()=>LS('orcMais',mo.open)}
   p.onclick=async e=>{const t=e.target; const sk=t.closest('[data-stk]'); if(sk){const pr=sigmaStk(sk.dataset.stk,true); stkPinta(p); await pr; return stkPinta(p)} const r=t.closest('[data-r]'); if(r){ctx.rep=r.dataset.r; return orc()}
     const d=t.closest('[data-del]'); if(d){o.itens=o.itens.filter(i=>i.pid!=d.dataset.del); saveQ(o); return orc()}
     const nv=t.closest('[data-oniv]'); if(nv){const it=o.itens.find(i=>i.pid==nv.dataset.oniv); if(it){if(it.pu!=null&&(it.tab||o.tabela)!=+nv.dataset.tid&&!confirm('Este item tem preço negociado. Trocar o nível volta ao preço do nível escolhido. Continuar?')) return; if((it.tab||o.tabela)!=+nv.dataset.tid) delete it.pu; it.tab=+nv.dataset.tid; saveQ(o)} return orc()}
@@ -506,14 +541,17 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
     if(t.id==='osug'){if(o.sug.prazo) o.prazo=o.sug.prazo; const tt2=T.find(x=>norm(x.nome).replace(/^TABELA\s+/,'')===norm(o.sug.tabela||'').replace(/^TABELA\s+/,'')); if(tt2) o.tabela=tt2.id; saveQ(o); toast('Prazo e tabela do último pedido aplicados'); return orc()}
     if(t.id==='trocaCli'){o.cli=null; saveQ(o); return orc()}
     if(t.id==='octp'){const r_=await escolherCtPdf(o.cli); if(r_){o.cli.ct=r_; saveQ(o)} return orc()}
-    if(t.id==='cliNovo'){const n=prompt('Nome / razão social do cliente:'); if(!n) return; const cn=(prompt('CNPJ (opcional):')||'').replace(/\D/g,''); const cid=prompt('Cidade/UF (ex.: Ribeirão Preto/SP):')||''; o.cli={cnpj:cn,n:n.toUpperCase(),cid,novo:true}; saveQ(o); return orc()}
+    if(t.id==='cliNovo'){const v=await formulario('Cliente novo (sem cadastro)',[{k:'n',l:'Nome ou razão social',req:true},{k:'cn',l:'CNPJ (opcional)',mode:'numeric'},{k:'cid',l:'Cidade/UF (opcional)',ph:'ex.: Ribeirão Preto/SP'}],'Usar no orçamento'); if(!v) return; o.cli={cnpj:(v.cn||'').replace(/\D/g,''),n:v.n.toUpperCase(),cid:v.cid||'',novo:true}; saveQ(o); return orc()}
     if(t.id==='oclr'||t.id==='oclr2'||t.id==='oclrT'){if(confirm('Zerar o carrinho desta representada? Se tiver itens, o orçamento fica guardado em Salvos como rascunho.')){await limparCarrinho(rep); ctx.ot=null; ctx.rep=null; orc()} return}
     if(t.id==='osave'){if(!(await confDivergencias(o,rows))) return; if(rep==='sigma'&&!(await conferirSigma(linS(),'Salvar'))) return stkPinta(p); await save('rascunho'); stkPinta(p); return posSalvar()}
   };
   const posSalvar=env=>{if(document.querySelector('.ov[data-pos]')) return; const ov=document.createElement('div'); ov.className='ov'; ov.dataset.pos=1; const B=(ac,tx,pri)=>`<button class="btn${pri?'':' ghost'}" data-ac="${ac}" style="width:100%;justify-content:center">${tx}</button>`;
    ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between"><b style="font-size:18px">✓ Orçamento ${env?'enviado e salvo':'salvo'}${o.num?' · Nº '+esc(o.num):''}</b><button class="chip" data-x>✕</button></div><div class="hint">${o.cli?esc(o.cli.fa||o.cli.n)+' · ':''}${brl(sub+ipi+aj+fr)} · O que deseja fazer agora?</div>${rep==='sigma'&&SIGMA_AUTO?'<div class="hint">PDF, WhatsApp e e-mail também lançam o orçamento no portal Sigma.</div>':''}
-    <div class="grid" style="gap:8px">${B('owa','📲 WhatsApp + PDF',1)}${B('opdf','📄 Baixar PDF')}${B('omail','✉️ Enviar por e-mail')}${B('ocopy','📋 Copiar texto')}${B('otar','⏰ Tarefa de follow-up')}${B('fim','✓ Fechar · zerar carrinho e ir ao início')}</div></div>`; document.body.appendChild(ov);
-   ov.onclick=async e=>{const b=e.target.closest('button'); if(e.target===ov||(b&&(b.hasAttribute('data-x')||0))) return ov.remove(); if(!b||!b.dataset.ac) return; const id=b.dataset.ac;
+    <div data-rev><div class="hint" style="font-size:13px">🔎 Revisando o orçamento…</div></div><div class="grid" style="gap:8px">${B('owa','📲 WhatsApp + PDF',1)}${B('opdf','📄 Baixar PDF')}${B('omail','✉️ Enviar por e-mail')}${B('ocopy','📋 Copiar texto')}${B('otar','⏰ Tarefa de follow-up')}${B('fim','✓ Fechar · zerar carrinho e ir ao início')}</div></div>`; document.body.appendChild(ov);
+   revisarOrc(rep,o,rows,{sub,pmin,cpz,EQ}).then(A=>{const el=ov.querySelector('[data-rev]'); if(el) el.innerHTML=revisorHtml(A)}).catch(()=>{const el=ov.querySelector('[data-rev]'); if(el) el.innerHTML=''});
+   ov.onclick=async e=>{const b=e.target.closest('button'); if(e.target===ov||(b&&(b.hasAttribute('data-x')||0))) return ov.remove();
+    if(b&&b.dataset.revadd){const pid=isNaN(+b.dataset.revadd)?b.dataset.revadd:+b.dataset.revadd, q=+b.dataset.revm||1; if(!o.itens.some(x=>x.pid==pid)) o.itens.push({pid,qt:q}); saveQ(o); ov.remove(); toast('Item incluído · ajuste a quantidade e salve de novo'); return orc()}
+    if(!b||!b.dataset.ac) return; const id=b.dataset.ac;
     if(id==='ocopy'){try{await navigator.clipboard.writeText(textoCliente(o,rows,tt)); toast('Texto copiado')}catch(err){toast('Não consegui copiar')} return}
     if(id==='opdf'||id==='owa'){const r_=gerar(id==='owa'?'wa':'dl',b); ov.remove(); return r_}
     ov.remove();
@@ -659,7 +697,7 @@ function anxMontar(box,op){if(!box) return; const T=window.anxToast||(m=>alert(m
 }
 /*ANEXOS-FIM*/
 window.anxToken=token; window.anxToast=toast;
-async function salvar(o,total,sit,rows){await garantirNumero(o); const linhas=(rows||[]).map(r=>({cod:r.p.cod,desc:r.p.descricao,qt:r.i.qt,pu:r.pu,cm:r.niv!=null?String(r.niv):undefined,tabn:r.tabN||undefined,ipi:r.p.ipi,ean:r.p.attrs&&r.p.attrs.ean,ncm:r.p.ncm,ptab:r.ptab,neg:r.i.neg||undefined,plista:r.db?r.plista:undefined,descs:r.db&&(r.i.dc||r.i.dp)?[r.i.dc?'comercial '+r.db.com+'%':'',r.i.dp?'pagamento '+r.db.pag+'%':''].filter(Boolean).join(' + '):undefined,lt:r.lt||undefined,camp:r.camp?{nome:r.camp.nome,fim:r.camp.fim,de:r.ptab0}:undefined,gq:gradeTxt(r.i.gq)?r.i.gq:undefined,sd:o.rep==='sigma'&&SGS[r.p.cod]&&SGS[r.p.cod].it?SGS[r.p.cod].it.disp:undefined})); const body={id:o.sid||(o.sid=sess.uid.slice(0,8)+'-'+o.rep+'-'+o.id),app:o.rep,cliente:o.cli&&o.cli.n,cnpj:o.cli&&o.cli.cnpj,total:Math.round(total*100)/100,itens:o.itens.length,situacao:sit,dados:{...o,linhas},atualizado_em:new Date().toISOString()}; if(o.status) body.status=o.status; saveQ(o); try{await api('orcamentos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}catch(e){toast('Salvo no aparelho; sincroniza depois')} if(sit==='enviado') followUpOrc(o,total); if(sit==='enviado'&&o.rep==='sigma'&&SIGMA_AUTO){if(!(o.sigma&&o.sigma.orv)) enviarSigma({id:body.id,dados:body.dados},false,true,o); else if(o.sigma.ass&&o.sigma.ass!==sgAss(linhas)) toast(`Atenção: o orçamento mudou depois de ir para a Sigma (${o.sigma.orv}). Use Reenviar em Pedidos.`)} if(o.status==='cancelado'||o.status==='transmitido') fecharFollowUps(o.sid,stLbl(o.status))}
+async function salvar(o,total,sit,rows){await garantirNumero(o); const linhas=(rows||[]).map(r=>({cod:r.p.cod,desc:r.p.descricao,qt:r.i.qt,pu:r.pu,cm:r.niv!=null?String(r.niv):undefined,tabn:r.tabN||undefined,ipi:r.p.ipi,ean:r.p.attrs&&r.p.attrs.ean,ncm:r.p.ncm,ptab:r.ptab,neg:r.i.neg||undefined,plista:r.db?r.plista:undefined,descs:r.db&&(r.i.dc||r.i.dp)?[r.i.dc?'comercial '+r.db.com+'%':'',r.i.dp?'pagamento '+r.db.pag+'%':''].filter(Boolean).join(' + '):undefined,lt:r.lt||undefined,camp:r.camp?{nome:r.camp.nome,fim:r.camp.fim,de:r.ptab0}:undefined,gq:gradeTxt(r.i.gq)?r.i.gq:undefined,sd:o.rep==='sigma'&&SGS[r.p.cod]&&SGS[r.p.cod].it?SGS[r.p.cod].it.disp:undefined})); await estOrigem(o); const body={id:o.sid||(o.sid=sess.uid.slice(0,8)+'-'+o.rep+'-'+o.id),app:o.rep,cliente:o.cli&&o.cli.n,cnpj:o.cli&&o.cli.cnpj,total:Math.round(total*100)/100,itens:o.itens.length,situacao:sit,dados:{...o,linhas},atualizado_em:new Date().toISOString()}; if(o.status) body.status=o.status; saveQ(o); try{await api('orcamentos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}catch(e){toast('Salvo no aparelho; sincroniza depois')} estLigarOrc(o,body.id,total); if(sit==='enviado') followUpOrc(o,total); if(sit==='enviado'&&o.rep==='sigma'&&SIGMA_AUTO){if(!(o.sigma&&o.sigma.orv)) enviarSigma({id:body.id,dados:body.dados},false,true,o); else if(o.sigma.ass&&o.sigma.ass!==sgAss(linhas)) toast(`Atenção: o orçamento mudou depois de ir para a Sigma (${o.sigma.orv}). Use Reenviar em Pedidos.`)} if(o.status==='cancelado'||o.status==='transmitido') fecharFollowUps(o.sid,stLbl(o.status))}
 
 /* ---------- consulta de pedidos e orçamentos ---------- */
 const fmtDt=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'';
@@ -695,22 +733,24 @@ const RSTAT={rascunho:'orcamento',em_digitacao:'orcamento',aprovado:'aprovado_tr
 const REPID=Object.fromEntries(Object.entries(HIST_REP).map(([k,v])=>[v,k]));
 async function reprioOrcs(de,ate){try{const q=c=>apiAll(`pedidos?select=id,num,oc,representada,cnpj,cliente,data,valor,vendedor,status,itens${c}&origem=eq.reprio&data=gte.${de}&data=lte.${ate}&order=data.desc`); const r=await q(',num_fabrica,situacao_fabrica').catch(()=>q(''));
   return r.map(x=>({id:'rp:'+x.id,origem:'reprio',app:REPID[x.representada]||x.representada,cliente:x.cliente,cnpj:x.cnpj,total:x.valor,itens:x.itens,status:RSTAT[x.status]||'orcamento',atualizado_em:x.data+'T12:00:00',vend:x.vendedor,num_fabrica:x.num_fabrica,situacao_fabrica:x.situacao_fabrica,dados:{oc:x.oc,num_fabrica:x.num_fabrica,rep:REPID[x.representada]}}))}catch(e){return []}}
-async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:'orc',y:now.getFullYear(),mo:now.getMonth(),st:'',view:L('pedView')||undefined},L('pedF')||{}); const V=await vendedores();
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div><button class="chip" id="psync">↻ Sincronizar Reprio</button>
-    <div class="row"><select id="py">${[0,1,2,3,4].map(i=>now.getFullYear()-i).map(y=>`<option${y==f.y?' selected':''}>${y}</option>`).join('')}</select><select id="pmo"><option value="-1"${f.mo==-1?' selected':''}>Ano todo</option>${MESES.map((n,i)=>`<option value="${i}"${i==f.mo?' selected':''}>${n}</option>`).join('')}</select></div></div>
+async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:L('pedAba')||'orc',y:now.getFullYear(),mo:now.getMonth(),st:'',view:L('pedView')||undefined},L('pedF')||{}); const V=await vendedores();
+  const nF=(f.q?1:0)+(f.rep?1:0)+(f.vend?1:0), perTxt=f.de||f.ate?`${f.de?f.de.split('-').reverse().join('/'):'…'} a ${f.ate?f.ate.split('-').reverse().join('/'):'hoje'}`:f.mo==-1?`Ano ${f.y}`:`${MESES[f.mo]} ${f.y}`;
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div><button class="chip" id="psync">↻ Sincronizar Reprio</button></div>
    <div class="row" style="margin:10px 0"><button class="chip${f.tipo==='orc'?' on':''}" data-tp="orc">Orçamentos</button><button class="chip${f.tipo==='ped'?' on':''}" data-tp="ped">Pedidos faturados (histórico + Reprio)</button></div>
    <div id="balls"></div>
-   <div class="card grid" style="margin-top:10px"><input id="pq" type="search" placeholder="Ordem de compra, nº do pedido, cliente, CNPJ ou código de produto" value="${esc(f.q)}">
+   <details class="card pfil" style="margin-top:10px"${!CEL()||nF?' open':''}><summary><b>🔎 Buscar e filtrar</b> <span class="hint">· ${esc(perTxt)}${nF?` · ${nF} filtro${nF>1?'s':''}`:''}</span></summary><div class="grid" style="margin-top:10px"><input id="pq" type="search" placeholder="Ordem de compra, nº do pedido, cliente, CNPJ ou código de produto" value="${esc(f.q)}">
     <div class="r2"><select id="prep"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===f.rep?' selected':''}>${r}</option>`).join('')}</select>
     <select id="pvend"><option value="">Todos os vendedores</option>${V.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('')}</select></div>
+    <div class="row"><span class="hint">Período:</span><select id="py" aria-label="Ano">${[0,1,2,3,4].map(i=>now.getFullYear()-i).map(y=>`<option${y==f.y?' selected':''}>${y}</option>`).join('')}</select><select id="pmo" aria-label="Mês"><option value="-1"${f.mo==-1?' selected':''}>Ano todo</option>${MESES.map((n,i)=>`<option value="${i}"${i==f.mo?' selected':''}>${n}</option>`).join('')}</select></div>
     <div class="row"><button class="chip" data-per="mes">Este mês</button><button class="chip" data-per="ant">Mês anterior</button><button class="chip" data-per="30">30 dias</button><button class="chip" data-per="90">90 dias</button><button class="chip" data-per="365">12 meses</button><button class="chip" data-per="0">Tudo</button></div>
     <details${f.de||f.ate?' open':''}><summary class="hint" style="cursor:pointer">Período personalizado</summary><div class="r2" style="margin-top:6px"><label class="f">De<input id="pde" type="date" value="${f.de}"></label><label class="f">Até<input id="pate" type="date" value="${f.ate}"></label></div></details>
-    <button class="btn" id="pgo">Buscar</button></div>
+    <button class="btn" id="pgo">Buscar</button></div></details>
    <div id="pres" style="margin-top:12px"></div>`;
+  ['#prep','#pvend'].forEach(s=>{const el=$(s); if(el) el.onchange=()=>{read(); buscar('filtro')}});
   const range=()=>{if(f.de||f.ate) return [f.de,f.ate]; return f.mo==-1?[`${f.y}-01-01`,`${f.y}-12-31`]:[mesIni(f.y,+f.mo),mesFim(f.y,+f.mo)]};
   const read=()=>{f.q=$('#pq').value.trim(); f.rep=$('#prep').value; f.vend=$('#pvend').value; f.de=$('#pde').value; f.ate=$('#pate').value; LS('pedF',f)};
   $('#py').onchange=e=>{read(); f.y=+e.target.value; f.de=f.ate=''; LS('pedF',f); ped()}; $('#pmo').onchange=e=>{read(); f.mo=+e.target.value; f.de=f.ate=''; LS('pedF',f); ped()};
-  m.onclick=async e=>{const t=e.target; const tp=t.closest('[data-tp]'); if(tp){read(); f.tipo=tp.dataset.tp; f.st=''; LS('pedF',f); return ped()}
+  m.onclick=async e=>{const t=e.target; const tp=t.closest('[data-tp]'); if(tp){read(); f.tipo=tp.dataset.tp; f.st=''; LS('pedF',f); LS('pedAba',f.tipo); return ped()}
     const pr=t.closest('[data-per]'); if(pr){const v=pr.dataset.per; const d=new Date(); if(v==='mes'){f.y=d.getFullYear(); f.mo=d.getMonth(); f.de=f.ate=''} else if(v==='ant'){const a=new Date(d.getFullYear(),d.getMonth()-1,1); f.y=a.getFullYear(); f.mo=a.getMonth(); f.de=f.ate=''} else {f.de=+v?ymd(new Date(Date.now()-v*864e5)):'2020-01-01'; f.ate=ymd(d)} f.q=$('#pq').value.trim(); f.rep=$('#prep').value; f.vend=$('#pvend').value; LS('pedF',f); return ped()}
     const vw=t.closest('[data-vw]'); if(vw){read(); f.view=vw.dataset.vw; LS('pedF',f); LS('pedView',f.view); return ped()}
     if(t.id==='psync'){await sincronizarReprio(t); return buscar('forca')}
@@ -726,7 +766,7 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
         const O=O1.filter(o=>!f.st||stOf(o)===f.st); r._O=O;
         
         await mapaFotos(O.map(o=>(o.dados&&o.dados.rep)||o.app));
-        const ORIG=o=>o.origem==='reprio'?'<span class="tg tg-r">Reprio</span>':o.dados&&o.dados.origem==='b2b'?'<span class="tg tg-b">Portal</span>':'<span class="tg tg-s">Sistema</span>';
+        const ORIG=o=>o.origem==='reprio'?'<span class="tg tg-r">Reprio</span>':o.dados&&o.dados.origem==='b2b'?'<span class="tg tg-b">Portal</span>':'<span class="tg tg-s">Sistema</span>'+estSelo(o.dados);
         r.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><p class="hint" style="margin:0">${O.length} registro(s) · <b>${brl(O.reduce((s,o)=>s+(+o.total||0),0))}</b></p></div>
          <div class="ptab"><div class="ph"><span>Nº / Data</span><span>Representada</span><span>Cliente</span><span>Vendedor</span><span class="n">Valor</span><span>Situação</span></div>
          ${O.map(o=>{const d=o.dados||{}; const rep=d.rep||o.app; const nf=d.num_fabrica||o.num_fabrica; const c=d.cli||{};
@@ -811,14 +851,14 @@ async function detOrc(id,o0){if(String(id).startsWith('rp:')) return detalhe(id.
   const TP=((o.dados&&o.dados.rep)||o.app)==='marluvas'?await tiposMarluvas():null; const tps=TP?new Set(L2.map(l=>tipoLinha(TP,l)||'MTS')):new Set(); const misto=tps.has('MTS')&&tps.has('MTO')&&!['transmitido','cancelado'].includes(st);
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh"><div class="row" style="justify-content:space-between"><div class="sec" style="font-size:20px;margin:0">Orçamento ${esc(APPNOME[o.app]||o.app)}</div><button class="chip" data-x>Fechar</button></div>
    ${fichaTopo([['Cliente',o.cliente||'Sem cliente',1],['CNPJ',o.cnpj?fmtCnpj(o.cnpj):'—'],['Data',new Date(o.atualizado_em).toLocaleDateString('pt-BR')],['Prazo médio',pzmTxt(o.dados&&o.dados.prazo)],['Prazo',(o.dados&&o.dados.prazo)||'—'],['Tabela',(o.dados&&o.dados.tabela_nome)||((TABS[(o.dados&&o.dados.rep)||o.app]||[]).find(t=>t.id==(o.dados&&o.dados.tabela))||{}).nome||'—'],['Vendedor',(o.dados&&o.dados.vend)||o.vend||'—'],['OC',(o.dados&&o.dados.oc)||'—'],['Total',brl(o.total)]])}
-   ${o.dados&&o.dados.num_fabrica?`<p><b>Pedido na fábrica nº ${esc(o.dados.num_fabrica)}</b>${o.dados.transmitido_por?' · transmitido por '+esc(o.dados.transmitido_por):''}${o.dados.programado?' · programado '+esc(o.dados.programado.split('-').reverse().join('/')):''}</p>`:''}${o.dados&&o.dados.motivo_perda?`<p class="bad">Perdido: ${esc(o.dados.motivo_perda)}${o.dados.motivo_obs?' — '+esc(o.dados.motivo_obs):''}</p>`:''}${(L2||[]).some(l=>l.neg&&l.neg.length)?`<div class="card" style="border-color:var(--warn)"><b class="warn">Preços negociados</b>${L2.filter(l=>l.neg&&l.neg.length).map(l=>`<div class="hint"><b>${esc(l.cod)}</b>: tabela ${brl(l.ptab||l.neg[0].tab)} → ${brl(l.pu)} · ${l.neg.map(h=>esc(h.por)+' em '+new Date(h.em).toLocaleDateString('pt-BR')).join(', ')}</div>`).join('')}</div>`:''}${misto?'<div class="card row" style="border-color:var(--warn);justify-content:space-between"><span><b class="warn">MTS e MTO no mesmo orçamento.</b> A Marluvas fatura em 2 pedidos (mínimo R$ 3.500 cada).</span><button class="btn sm" data-split>✂ Separar MTS / MTO</button></div>':o.dados&&o.dados.tipo_ped?`<p class="hint">Pedido ${esc(o.dados.tipo_ped)}${o.dados.separado?' · separado '+(o.dados.separado.de?'do orçamento '+esc(String(o.dados.separado.de).slice(-10)):'(o '+(o.dados.tipo_ped==='MTS'?'MTO':'MTS')+' virou outro orçamento)'):''}</p>`:''}<label class="f">Status<select id="ost">${STATUS.map(([k,l])=>`<option value="${k}"${k===st?' selected':''}>${l}</option>`).join('')}</select></label>
+   ${o.dados&&o.dados.num_fabrica?`<p><b>Pedido na fábrica nº ${esc(o.dados.num_fabrica)}</b>${o.dados.transmitido_por?' · transmitido por '+esc(o.dados.transmitido_por):''}${o.dados.programado?' · programado '+esc(o.dados.programado.split('-').reverse().join('/')):''}</p>`:''}${o.dados&&o.dados.ciclo_auto?`<p class="ok">🤖 Marcado como ganho sozinho: virou o pedido${o.dados.ciclo_auto.num?' nº '+esc(o.dados.ciclo_auto.num):''} de ${esc(String(o.dados.ciclo_auto.data||'').split('-').reverse().join('/'))} (${brl(o.dados.ciclo_auto.valor)}). <button class="chip" data-cdesf>Não foi este pedido</button></p>`:''}${o.dados&&o.dados.motivo_perda?`<p class="bad">Perdido: ${esc(o.dados.motivo_perda)}${o.dados.motivo_obs?' — '+esc(o.dados.motivo_obs):''}</p>`:''}${(L2||[]).some(l=>l.neg&&l.neg.length)?`<div class="card" style="border-color:var(--warn)"><b class="warn">Preços negociados</b>${L2.filter(l=>l.neg&&l.neg.length).map(l=>`<div class="hint"><b>${esc(l.cod)}</b>: tabela ${brl(l.ptab||l.neg[0].tab)} → ${brl(l.pu)} · ${l.neg.map(h=>esc(h.por)+' em '+new Date(h.em).toLocaleDateString('pt-BR')).join(', ')}</div>`).join('')}</div>`:''}${misto?'<div class="card row" style="border-color:var(--warn);justify-content:space-between"><span><b class="warn">MTS e MTO no mesmo orçamento.</b> A Marluvas fatura em 2 pedidos (mínimo R$ 3.500 cada).</span><button class="btn sm" data-split>✂ Separar MTS / MTO</button></div>':o.dados&&o.dados.tipo_ped?`<p class="hint">Pedido ${esc(o.dados.tipo_ped)}${o.dados.separado?' · separado '+(o.dados.separado.de?'do orçamento '+esc(String(o.dados.separado.de).slice(-10)):'(o '+(o.dados.tipo_ped==='MTS'?'MTO':'MTS')+' virou outro orçamento)'):''}</p>`:''}<label class="f">Status<select id="ost">${STATUS.map(([k,l])=>`<option value="${k}"${k===st?' selected':''}>${l}</option>`).join('')}</select></label>
    ${sigmaInfo(o)}${o.dados&&o.dados.reprio?`<p><span class="tg tg-r">Reprio</span> <b>Rascunho nº ${esc(o.dados.reprio.num)}</b> · enviado ${new Date(o.dados.reprio.em).toLocaleDateString('pt-BR')}${o.dados.reprio.por?' por '+esc(o.dados.reprio.por):''}</p>`:''}
    <label class="f" style="margin-top:8px">Ordem de compra do cliente<input id="ooc" value="${esc(o.dados&&o.dados.oc||'')}" placeholder="Nº da OC (opcional)"></label>
    <div style="overflow-x:auto;margin-top:10px"><table class="t"><tr><th></th><th>Código</th><th>Produto</th><th class="n">Qtd.</th><th class="n">Unit.</th><th class="n">Total</th>${sg?'<th>Estoque Sigma agora</th>':''}</tr>${L2.map(l=>`<tr><td>${fotoDe((o.dados&&o.dados.rep)||o.app,l.cod)?`<img src="${esc(fotoDe((o.dados&&o.dados.rep)||o.app,l.cod))}" data-zoom="${esc(fotoDe((o.dados&&o.dados.rep)||o.app,l.cod))}" alt="" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}</td><td>${esc(l.cod||'')}</td><td>${esc(l.desc||'')}${gradeTxt(l.gq)?`<div class="hint" style="font-size:12px"><b>Grade:</b> ${esc(gradeTxt(l.gq))}</div>`:''}${l.cm?` <span class="tag">${l.cm==='E'?'encarte':'nível '+esc(l.cm)}</span>`:''}${TP&&tipoLinha(TP,l)?` <span class="tag"${tipoLinha(TP,l)==='MTO'?' style="background:#5aa9ff22;color:#5aa9ff"':''}>${tipoLinha(TP,l)}</span>`:''}</td><td class="n">${l.qt}</td><td class="n">${l.pu?brl(l.pu):'—'}</td><td class="n">${l.pu?brl(l.qt*l.pu):'—'}</td>${sg?`<td data-stkbox="${esc(l.cod||'')}" data-qt="${+l.qt||0}">${stkHtml(l.cod||'',+l.qt||0)}</td>`:''}</tr>`).join('')}</table></div>
    <div class="tot"><span>Total</span><b>${brl(o.total)}</b></div>
    <div class="row" style="margin-top:10px"><button class="btn" data-sv>Salvar status</button><button class="btn" data-trm style="background:var(--ok)">🚚 Transmitir</button>${RPR.rep[(o.dados&&o.dados.rep)||o.app]&&!String(o.id).startsWith('rp:')?`<button class="btn" data-rpr style="background:#5aa9ff">📤 ${o.dados&&o.dados.reprio?'Reenviar':'Enviar'} para o Reprio</button>`:''}${((o.dados&&o.dados.rep)||o.app)==='sigma'&&!String(o.id).startsWith('rp:')?`<button class="btn" data-sgv style="background:#e8792b">📤 ${o.dados&&o.dados.sigma&&o.dados.sigma.orv?'Reenviar':'Enviar'} para a Sigma</button>`:''}<button class="btn ghost" data-oexc style="color:var(--bad)">🗑 Excluir</button><button class="btn ghost" data-pdf>Gerar PDF</button><button class="btn ghost" data-oml>✉️ E-mail</button>${(o.dados&&o.dados.rep&&o.dados.itens&&o.dados.itens[0]&&o.dados.itens[0].pid!=null)||legado(o)||(EXTERNAL[o.app]&&!String(o.id).startsWith('rp:'))?'<button class="btn ghost" data-ab>Abrir para editar</button>':''}</div><div data-anx></div></div>`;
   document.body.appendChild(ov); anxMontar(ov.querySelector('[data-anx]'),{id:()=>o.id}); if(sg&&L2.length){const pr=sigmaStkMany(L2.map(l=>l.cod)); stkPinta(ov); pr.then(()=>stkPinta(ov))}
-  ov.onclick=async e=>{if(e.target===ov||e.target.closest('[data-x]')) return ov.remove();
+  ov.onclick=async e=>{if(e.target===ov||e.target.closest('[data-x]')) return ov.remove(); if(e.target.closest('[data-cdesf]')){if(!confirm('Voltar este orçamento para aberto? Ele não será mais fechado sozinho por pedido.')) return; try{await cicloDesfazer(o.id); toast('Orçamento voltou para aberto'); ov.remove()}catch(er){toast(er.message)} return}
     const sk=e.target.closest('[data-stk]'); if(sk){const pr=sigmaStk(sk.dataset.stk,true); stkPinta(ov); await pr; return stkPinta(ov)}
     if(e.target.closest('[data-sv]')){if(sg&&$('#ost').value!==st&&['aprovado_transmissao','aguardando_atg'].includes($('#ost').value)&&!(await conferirSigma(L2,'Aprovar'))) return stkPinta(ov); try{if($('#ost').value!==st) await setStatus(o.id,$('#ost').value); const oc=$('#ooc').value.trim(); if(oc!==(o.dados&&o.dados.oc||'')) await api(`orcamentos?id=eq.${encodeURIComponent(o.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({dados:{...(o.dados||{}),oc}})}); toast('Status atualizado'); ov.remove(); ped()}catch(err){toast('Sem permissão ou erro: '+err.message.slice(0,80))}}
     if(e.target.closest('[data-split]')){try{if(await separarMtsMto(o,L2,TP)){toast('Separado em 2 orçamentos: MTS e MTO'); ov.remove(); if(route==='ped') ped()}}catch(err){toast('Erro ao separar: '+err.message.slice(0,80))} return}
@@ -1208,6 +1248,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   const vend=G('repVend')||JSON.parse(RAW('mdx_repVend')||'""')||''; const V=await vendedores();
   m.innerHTML=`<div class="sec">Ajustes</div><p class="hint" style="margin-top:-6px">Valem para o sistema inteiro, inclusive os apps Medix e Marluvas neste aparelho.</p><div class="grid">
   <div class="card grid"><b>Aparência</b>
+   <label class="f">Orçamento novo começa pelo <span class="hint">(teste: vale só neste aparelho)</span><div class="row" id="ajOcat"><button type="button" class="chip${L('orcCat')?'':' on'}" data-ocat="0">Formulário (cliente, tabela, prazo)</button><button type="button" class="chip${L('orcCat')?' on':''}" data-ocat="1">Catálogo da fábrica, com fotos</button></div></label>
    <label class="f">Visual<div class="row" id="ajLay">${[['premium','Premium'],['classico','Clássico']].map(([k,l])=>`<button type="button" class="chip${lay===k?' on':''}" data-lay="${k}">${l}</button>`).join('')}</div></label>
    <label class="f">Tema da tela<select id="ajTema"><option value="auto">Automático (segue o aparelho)</option><option value="light">Claro (dia)</option><option value="dark">Escuro (noite)</option></select></label></div>
   <div class="card grid"><b>Integração Reprio</b><p class="hint" style="margin:0">A chave da API fica guardada só neste aparelho e vale para todas as representadas.</p>
@@ -1221,7 +1262,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   ${ehGestor()?'<div class="card grid"><b>Versões</b><p class="hint" style="margin:0">Toda atualização passa por um teste automático antes de ir ao ar. Se algo ficar estranho depois de uma atualização, abra a versão anterior e me avise.</p><div class="row"><a class="btn sm ghost" href="/medix-luvas/chamae-anterior/">Abrir versão anterior</a></div></div>':''}
   <p class="hint">Conversão de CA, base do CAEPI, fichas técnicas e conversões da equipe continuam nos Ajustes dos apps Medix e Marluvas, porque só existem lá.</p></div>`;
   $('#ajTema').value=tema; $('#ajTema').onchange=e=>{const v=e.target.value; LS('tema',v); RAWS('mdx_theme',JSON.stringify(v)); RAWS('cca_theme',JSON.stringify(v)); aplicarVisual(); toast('Tema aplicado')};
-  $('#ajLay').onclick=e=>{const b=e.target.closest('[data-lay]'); if(!b) return; RAWS('mdx_lay',b.dataset.lay); RAWS('cca_lay',b.dataset.lay); aplicarVisual(); ajustes()};
+  $('#ajOcat').onclick=e=>{const b=e.target.closest('[data-ocat]'); if(!b) return; LS('orcCat',b.dataset.ocat==='1'); toast(b.dataset.ocat==='1'?'Orçamento novo vai abrir no catálogo':'Orçamento novo volta a abrir no formulário'); ajustes()}; $('#ajLay').onclick=e=>{const b=e.target.closest('[data-lay]'); if(!b) return; RAWS('mdx_lay',b.dataset.lay); RAWS('cca_lay',b.dataset.lay); aplicarVisual(); ajustes()};
   const msg=t=>$('#ajRkM').textContent=t;
   $('#ajVend').onchange=e=>{const v=e.target.value; S('repVend',v); RAWS('mdx_repVend',JSON.stringify(v)); RAWS('cca_repVend',JSON.stringify(v)); toast('Vendedor padrão salvo')};
   $('#ajRkS').onclick=()=>{const v=$('#ajRk').value.trim(); if(!v){msg('Cole a chave antes de salvar.');return} ['chamae_rk','mdx_rk','cca_rk'].forEach(k=>RAWS(k,v)); $('#ajRk').value=''; toast('Chave salva'); ajustes()};
@@ -1232,7 +1273,7 @@ async function ajustes(){const m=$('#main'); const tema=L('tema')||'auto', lay=R
   $('#ajFup').onchange=e=>{LS('fupDias',Math.max(0,+e.target.value||0)); toast('Follow-up: '+(+e.target.value?e.target.value+' dias':'desligado'))};
   $('#ajNomeS').onclick=async()=>{const v=$('#ajNome').value.trim(); if(!v) return; LS('meuNome',v); try{await api(`perfis?id=eq.${sess.uid}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome:v})}); if(perfil) perfil.nome=v; S('perfil',perfil)}catch(e){} $('#who').textContent=v; toast('Nome salvo')};
   const ad=$('#ajAdm'); if(ad) ad.onclick=()=>go('admin'); const ar=$('#ajReps'); if(ar) ar.onclick=()=>go('reps');
-  $('#ajSair').onclick=()=>{if(confirm('Sair da conta?')){sess=null;S('sess',null);try{['chamae_tp','mdx_k','cca_k'].forEach(k=>localStorage.removeItem(k))}catch(e){} showLock()}};
+  $('#ajSair').onclick=sairDaConta;
   try{const [u]=await api('pedidos?select=data,num&origem=eq.reprio&order=data.desc&limit=1'); $('#ajSync').innerHTML=u?`Pedidos do Reprio sincronizados automaticamente a cada 2 horas. Último pedido recebido: <b>${esc(u.data.split('-').reverse().join('/'))}</b> (nº ${esc(u.num)}).`:'Nenhum pedido do Reprio sincronizado ainda.'}catch(e){$('#ajSync').textContent='Não consegui verificar agora.'}}
 
 /* ---------- minha semana: meta da semana + na hora de comprar ---------- */
@@ -1253,11 +1294,12 @@ function naHoraDeComprar(P,C,mine){const G={}, hoje=ymdL(new Date());
 function vaiInativar(C,R,mine){const PZ={}; R.forEach(r=>{const n=+(r.regras||{}).inativa_dias; if(n>0) PZ[HIST_REP[r.id]||r.nome]=n}); const out=[];
   C.forEach(c=>Object.values(c.reps).forEach(x=>{const pz=PZ[x.representada]; if(!pz||!x.ultimo||!mine(x.vendedor)) return; const d=dias(x.ultimo), f=pz-d; if(f>=0&&f<=20) out.push({cnpj:c.cnpj,n:c.n,rep:x.representada,d,f})}));
   return {temPz:Object.keys(PZ).length>0,L:out.sort((a,b)=>a.f-b.f)}}
+const CEL=()=>innerWidth<760, semAb=()=>{const v=L('semAb'); return v==null?true:!!v};
 async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===true; const eu=meuVend(); let todos=false, viR='', viT=false;
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
     const a12=new Date(hj); a12.setFullYear(hj.getFullYear()-1); const meses=[...new Set(wd.map(d=>d.getFullYear()*12+d.getMonth()))];
-    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),apiAll(`pedidos?select=id,num,origem,cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a12)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`).then(d=>semDupLeg(vAtL(d))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
+    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),agPedidos().then(d=>d.filter(x=>x.data>=ymdL(a12))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
     const mine=v=>!so||!eu||norm(v||'').startsWith(eu);
     /* meta da semana: meta do mês ÷ dias úteis do mês × dias úteis desta semana (seg–sex) */
     const metaRep=M=>{const o={}; M.filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; o[r]=(o[r]||0)+(+x.valor||0)}); return o};
@@ -1279,16 +1321,469 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
     const par=O.filter(o=>(!so||o.user_id===sess.uid)&&['orcamento','aguardando_aprovacao','aguardando_atg'].includes(stOf(o))&&dias(o.atualizado_em.slice(0,10))>=5).slice(0,6);
     const stl=k=>(STATUS.find(s=>s[0]===k)||[,k])[1];
     const nhHtml=()=>`<b>🛒 Na hora de comprar</b><p class="hint" style="margin:0">Clientes chegando no tempo em que costumam comprar de cada fábrica.</p>${(todos?NH:NH.slice(0,6)).map(x=>`<button class="chip" style="text-align:left" data-pc="${esc(x.cnpj)}"><b>${esc(x.n)}</b> · ${esc(x.rep)}<br><span class="hint">compra a cada ${x.ciclo} dias ·</span> <span class="${x.d>x.ciclo?'warn':'ok'}">${x.d>x.ciclo?`passou ${x.d-x.ciclo} ${x.d-x.ciclo>1?'dias':'dia'}`:`está com ${x.d}`}</span></button>`).join('')||'<p class="hint" style="margin:0">Ninguém no ponto de compra agora.</p>'}${NH.length>6?`<button class="chip" data-nhm style="justify-self:start">${todos?'Mostrar menos':`Ver todos (${NH.length})`}</button>`:''}`;
-    box.innerHTML=`<div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Minha semana</div><div class="row"><button class="chip${so?' on':''}" data-sm="1">Só meus</button><button class="chip${so?'':' on'}" data-sm="0">Equipe toda</button></div></div>
-    <div class="sem">${metaHtml}<div class="card grid" data-nh>${nhHtml()}</div><div class="card grid" data-vi>${viHtml()}</div>
+    box.innerHTML=`<div class="row" style="justify-content:space-between;margin-top:20px"><div class="sec" style="margin:0">Minha semana</div><div class="row"><button class="chip${so?' on':''}" data-sm="1">Só meus</button><button class="chip${so?'':' on'}" data-sm="0">Equipe toda</button><button class="chip" data-semab>${semAb()?'Recolher ▴':'Abrir ▾'}</button></div></div>
+    <div class="sem"${semAb()?'':' hidden'}>${metaHtml}<div class="card grid" data-nh>${nhHtml()}</div><div class="card grid" data-vi>${viHtml()}</div>
      <div class="card grid" id="sgAl" hidden></div><div class="card grid"><b>Orçamentos parados</b>${par.map(o=>`<button class="chip" style="text-align:left" data-bo="${esc(o.cliente||'')}"><b>${esc(o.cliente||'Sem cliente')}</b> · ${esc(repName(o.app))}${priv?'':' · '+brl(o.total)} · ${esc(stl(stOf(o)))} · ${dias(o.atualizado_em.slice(0,10))} dias</button>`).join('')||'<p class="hint">Nada parado há mais de 5 dias. 👏</p>'}</div></div>`;
     alertaSigma(box.querySelector('#sgAl'),so); sigmaPendentes();
-    box.onclick=e=>{const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box,priv)} if(e.target.closest('[data-gometas]')){e.preventDefault(); e.stopPropagation(); return go('metas')}
+    box.onclick=e=>{if(e.target.closest('[data-semab]')){LS('semAb',!semAb()); return minhaSemana(box,priv)} const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box,priv)} if(e.target.closest('[data-gometas]')){e.preventDefault(); e.stopPropagation(); return go('metas')}
       if(e.target.closest('[data-nhm]')){todos=!todos; box.querySelector('[data-nh]').innerHTML=nhHtml(); return} const vb=e.target.closest('[data-vir],[data-vim]'); if(vb){if(vb.dataset.vir!=null){viR=vb.dataset.vir; viT=false} else viT=!viT; box.querySelector('[data-vi]').innerHTML=viHtml(); return}
       if(e.target.closest('[data-gorep]')){e.preventDefault(); e.stopPropagation(); return go('reps')}
       const c=e.target.closest('[data-pc]'); if(c){e.stopPropagation(); return painelCliente(c.dataset.pc,(c.dataset.pl?VI.L.filter(x=>!viR||x.rep===viR):NH).map(x=>x.cnpj))}
       const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
   catch(e){box.innerHTML=''}}
+
+/*AGENTES-INICIO*/
+/* Agentes de IA — Fase 1 (01/11): cartão "🤖 Hoje para você" no Início.
+   1 Carteira parada: cliente × fábrica que passou do seu ritmo de compra (mediana dos intervalos, 18 meses, ≥3 datas).
+   3 Orçamento sem retorno: orçamento aberto há AG_ORC_DIAS dias úteis ou mais, sem pedido e sem contato depois.
+   4 Ritmo da meta: meta do mês × vendido até hoje por fábrica; fábrica atrasada pesa mais na prioridade.
+   Os números saem das regras (grátis). A IA grátis (função agentes-ia, Groq) só escreve porquê / o que falar / WhatsApp, 1 vez por dia.
+   Feito / Amanhã / Não faz sentido ficam na tabela `oportunidades` (se ela não existir, ficam só neste aparelho). */
+const AG_MAX=10, AG_ORC_DIAS=2, AG_ON=true; /* cadência de cobrança: 2º, 5º e 10º dia útil */
+const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?',sumiu:'Item que sumiu',epoca:'Comprou nesta época',cruz:'Venda cruzada',ticket:'Ticket caindo',estoque:'Voltou ao estoque',portal:'Entrou no portal',fat:'Pedido faturado',novo:'Cliente novo'},
+  AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8',sumiu:'#ff7a70',epoca:'#4fd18b',cruz:'#5aa9ff',ticket:'#e07bd8',estoque:'#2fd3c6',portal:'#ff5a36',fat:'#b37bff',novo:'#8bd14f'}, AG_CICLO_MAX=3;
+const agMais=n=>{const d=new Date(); d.setDate(d.getDate()+n); return ymdL(d)};
+const agUteis=(a,b)=>{let n=0; const d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<e){d.setDate(d.getDate()+1); if(diaUtil(d)) n++} return n};
+let AGP=null, AGTAB=null;
+/* vários blocos do Início pedem os mesmos pedidos ao mesmo tempo: uma busca só, compartilhada */
+let AGPP=null; function agPedidos(){if(AGP&&Date.now()-AGP.t<5*6e4) return Promise.resolve(AGP.d); return AGPP||(AGPP=agPedidos0().finally(()=>{AGPP=null}))}
+async function agPedidos0(){const a=new Date(); a.setMonth(a.getMonth()-18);
+  const d=semDupLeg(vAtL(await apiAll(`pedidos?select=id,num,origem,cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`))); AGP={t:Date.now(),d}; return d}
+async function agEstados(){const loc=L('agSt')||{}; if(AGTAB===false) return loc; try{const r=await api(`oportunidades?select=k,status,ate&user_id=eq.${sess.uid}&ate=gte.${ymdL(new Date())}`); AGTAB=true; const o={...loc}; r.forEach(x=>o[x.k]={s:x.status,ate:x.ate}); return o}catch(e){AGTAB=false; return loc}}
+async function agMarcar(it,status,dias,obs){const ate=agMais(dias), m=L('agSt')||{}; Object.keys(m).forEach(k=>{if(m[k].ate<ymdL(new Date())) delete m[k]}); m[it.k]={s:status,ate}; LS('agSt',m);
+  if(AGTAB!==false){try{await api('oportunidades?on_conflict=k,user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({k:it.k,user_id:sess.uid,usuario_nome:meuNome(),agente:it.ag,cnpj:it.cnpj||null,cliente:it.n,rep:it.rep,valor:Math.round(it.v||0),status,ate,obs:obs||null,atualizado_em:new Date().toISOString()})}); AGTAB=true}catch(e){AGTAB=false}}}
+/* regras → lista de oportunidades */
+function agParadas(P,C,mine,ult){const G={}, hoje=ymdL(new Date()), a12=agMais(-365);
+  P.forEach(x=>{const k=String(x.cnpj||'').replace(/\D/g,''); if(!k||!x.data||x.data>hoje) return; const g=G[k+'|'+x.representada]=G[k+'|'+x.representada]||{cnpj:k,rep:x.representada,dv:{},v:''}; g.dv[x.data]=(g.dv[x.data]||0)+(+x.valor||0); if(!g.u||x.data>=g.u){g.u=x.data; g.v=x.vendedor||''}});
+  const byC={}; C.forEach(c=>byC[c.cnpj]=c); const out=[];
+  Object.values(G).forEach(g=>{const ds=Object.keys(g.dv).sort(); if(ds.length<3||!mine(g.v)) return; const gap=[]; for(let i=1;i<ds.length;i++) gap.push(Math.round((new Date(ds[i])-new Date(ds[i-1]))/864e5));
+    gap.sort((a,b)=>a-b); const ciclo=gap[gap.length>>1]; if(ciclo<7||ciclo>180) return; const d=dias(g.u), r=d/ciclo; if(r<1.3||d>Math.max(4*ciclo,120)||d>365) return;
+    const uc=ult[g.cnpj]; if(uc&&dias(uc.slice(0,10))<7) return; /* já falou com o cliente esta semana */
+    const vs=ds.filter(x=>x>=a12).map(x=>g.dv[x]), tk=(vs.length?vs:ds.map(x=>g.dv[x])).reduce((a,b)=>a+b,0)/(vs.length||ds.length); const c=byC[g.cnpj]||{};
+    out.push({k:`parada|${g.cnpj}|${g.rep}`,ag:'parada',cnpj:g.cnpj,n:c.fa||c.n||g.cnpj,razao:c.n||'',tel:c.tel||'',rep:g.rep,v:tk,ciclo,d,ultimo:g.u,
+      sc:tk*(r<=2?1:r<=3?.8:.5),fatos:`Compra ${g.rep} a cada ~${ciclo} dias (mediana); último pedido em ${g.u.split('-').reverse().join('/')}, há ${d} dias; ticket médio ${brl(tk)}; ${ds.length} compras em 18 meses.`})});
+  return out}
+function agOrcs(O,P,C,so,ult){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const hoje=ymdL(new Date()), out=[];
+  O.forEach(o=>{if(so&&o.user_id!==sess.uid) return; const st=stOf(o); if(!['orcamento','aguardando_aprovacao','aguardando_atg'].includes(st)) return; const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn||!(+o.total>0)) return;
+    const d0=String(o.atualizado_em||'').slice(0,10); if(!d0) return; const u=agUteis(d0,hoje), d=dias(d0); if(u<AG_ORC_DIAS||d>180) return; const ci=d>30;
+    const rn=HIST_REP[o.app]||repName(o.app); if(P.some(x=>String(x.cnpj||'').replace(/\D/g,'')===cn&&x.representada===rn&&x.data>=d0)) return; /* virou pedido */
+    const st3=u>=10?3:u>=5?2:1, sd=agUtilMais(d0,[2,5,10][st3-1]); const uc=ult[cn]; if(uc&&uc>=(ci?String(o.atualizado_em):sd)) return; /* teve contato depois (na cadência: depois desta etapa) */
+    const c=byC[cn]||{}; if(ci){out.push({k:`ciclo|${o.id}`,ag:'ciclo',oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,sc:0,
+      fatos:`Orçamento ${rn} de ${brl(o.total)} aberto há ${d} dias sem pedido nem desfecho registrado. Pergunte ao cliente se ainda está em negociação, e registre se ganhou ou perdeu.`}); return}
+    out.push({k:`orc|${o.id}|${st3}`,ag:'orc',etapa:st3,oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,
+      sc:(+o.total)*(u<=10?1.2:u<=20?1:.7),fatos:`Orçamento ${rn} de ${brl(o.total)} (${(STATUS.find(s=>s[0]===st)||[,st])[1]}), parado há ${u} dias úteis (${d} corridos), sem pedido e sem contato registrado depois. Esta é a ${st3}ª cobrança da cadência (2º, 5º e 10º dia útil): ${['','lembrete leve, pergunte se recebeu e se ficou alguma dúvida','ofereça ajustar quantidade, prazo ou condição','última tentativa, pergunte com franqueza se fechou com outro e por quê'][st3]}.`})});
+  return out}
+const agUtilMais=(d0,n)=>{const d=new Date(d0+'T12:00:00'); let k=0; while(k<n){d.setDate(d.getDate()+1); if(diaUtil(d)) k++} return ymdL(d)};
+function agMeta(M,P,mine,so,eu){const hj=new Date(), y=hj.getFullYear(), mo=hj.getMonth(), ini=ymdL(new Date(y,mo,1)), hoje=ymdL(hj);
+  const meta={}; (M||[]).filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; meta[r]=(meta[r]||0)+(+x.valor||0)});
+  const vend={}; P.forEach(x=>{if(x.data>=ini&&x.data<=hoje&&mine(x.vendedor)) vend[x.representada]=(vend[x.representada]||0)+(+x.valor||0)});
+  const U=uteisMes(y,mo); let pas=0; for(const d=new Date(y,mo,1);d<=hj;d.setDate(d.getDate()+1)) if(diaUtil(d)) pas++; const rest=Math.max(1,U-pas+(diaUtil(hj)?1:0));
+  const L2=Object.keys(meta).filter(r=>meta[r]>0).map(r=>{const m=meta[r], v=vend[r]||0, esp=m*pas/U; return {rep:r,m,v,esp,falta:Math.max(0,m-v),dia:Math.max(0,m-v)/rest,atr:v<esp*.95}}).sort((a,b)=>b.falta-a.falta);
+  const mT=L2.reduce((s,x)=>s+x.m,0), vT=L2.reduce((s,x)=>s+x.v,0); return {L:L2,mT,vT,esp:mT*pas/U,rest,atr:new Set(L2.filter(x=>x.atr).map(x=>x.rep))}}
+async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ges||L('agSo')!==false, eu=meuVend(), mine=v=>!so||!eu||norm(v||'').startsWith(eu); let aberto=null;
+  box.innerHTML='<div class="card grid ag"><b>🤖 Hoje para você</b><p class="hint" style="margin:0">Os agentes estão olhando sua carteira…</p></div>';
+  cicloAuto().then(n=>{if(n) toast(`🤖 ${n} ${n>1?'orçamentos viraram pedido e foram marcados':'orçamento virou pedido e foi marcado'} como ganho`)});
+  try{const hj=new Date(); const [C,P,O,CT,M,ST]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
+      apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-75)}`).catch(()=>[]),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[]),agEstados()]);
+    const [RI,R0]=await Promise.all([agItensDB(),reps().catch(()=>[])]);
+    const ult={}; CT.forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
+    const MT=agMeta(M,P,mine,so,eu), hoje=ymdL(hj);
+    const X=agCtx(P,C); const [ES,PO,FA]=await Promise.all([agEstoque(X,so,ult).catch(()=>[]),agPortal(X,mine).catch(()=>[]),agFat(X,mine,ult).catch(()=>[])]);
+    const capa=a=>{const n={}; return a.sort((x,y)=>y.sc-x.sc).filter(x=>{const c=AG_CAP[x.ag]; if(!c) return true; n[x.ag]=(n[x.ag]||0)+1; return n[x.ag]<=c})};
+    const todos=capa([...agParadas(P,C,mine,ult),...agOrcs(O,P,C,so,ult),...agItensSinais(RI,X,mine,ult),...agCruz(C,P,R0,X,mine,ult),...agTicket(P,X,mine,ult),...ES,...PO,...FA,...agNovoCli(P,X,mine,ult)].filter(x=>{const s=ST[x.k]; return !(s&&s.ate>=hoje)}));
+    todos.forEach(x=>{if(MT.atr.has(x.rep)) {x.sc*=1.5; x.meta=true}});
+    /* um cliente aparece uma vez só (fica a oportunidade de maior peso) */
+    const vis=new Set(), L2=todos.filter(x=>x.ag!=='ciclo').sort((a,b)=>b.sc-a.sc).filter(x=>{if(vis.has(x.cnpj)) return false; vis.add(x.cnpj); return true}).slice(0,AG_MAX);
+    const CI=todos.filter(x=>x.ag==='ciclo'&&!vis.has(x.cnpj)).sort((a,b)=>b.v-a.v); L2.push(...CI.slice(0,AG_CICLO_MAX)); const ciMais=Math.max(0,CI.length-AG_CICLO_MAX);
+    const IA=agCache(so); const metaTx=MT.L.length?MT.L.map(x=>`${x.rep}: meta ${brl(x.m)}, vendido ${brl(x.v)}, esperado até hoje ${brl(x.esp)}${x.atr?' (ATRASADA)':''}, falta ${brl(x.falta)} = ${brl(x.dia)} por dia útil`).join('\n'):'';
+    const soma=r=>L2.filter(x=>x.rep===r).reduce((s,x)=>s+x.v,0);
+    const metaHtml=()=>{if(!MT.L.length) return ''; const pc=MT.mT?MT.vT/MT.mT*100:0, at=MT.L.filter(x=>x.atr);
+      return `<div class="agm"><div class="row" style="justify-content:space-between"><span>🎯 <b>Ritmo da meta</b> · ${brl(MT.vT)} de ${brl(MT.mT)}</span><b class="${MT.vT>=MT.esp?'ok':'warn'}">${pc.toFixed(0)}%</b></div><div class="mbar"><i style="width:${Math.min(100,pc)}%${MT.vT>=MT.esp?'':';background:var(--warn)'}"></i></div>
+       ${at.length?at.slice(0,4).map(x=>`<div class="hint" style="font-size:13px">⚠️ <b>${esc(x.rep)}</b> atrasada: falta ${brl(x.falta)} (${brl(x.dia)}/dia útil)${soma(x.rep)?` · as oportunidades abaixo somam ${brl(soma(x.rep))}`:''}</div>`).join(''):`<div class="hint" style="font-size:13px">Todas as fábricas no ritmo ou à frente. 👏</div>`}</div>`};
+    const texto=x=>IA.m[x.k]||agPadrao(x);
+    const item=(x,i)=>{const t=texto(x), ph=String(x.tel||'').replace(/\D/g,''), wa=(ph.length>=10?`https://wa.me/55${ph}`:'https://wa.me/')+'?text='+encodeURIComponent(t.whatsapp||'');
+      return `<div class="agi" data-agi="${i}" style="border-left:4px solid ${AG_COR[x.ag]};padding:6px 0 6px 10px;display:grid;gap:6px;margin-top:4px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><div><span class="tag" style="background:${AG_COR[x.ag]};color:#111">${AG_NOME[x.ag]}</span>${x.meta?' <span class="tag" style="background:var(--warn);color:#111">meta atrasada</span>':''}<br><b>${esc(x.n)}</b> <span class="hint">· ${esc(x.rep)} · ${brl(x.v)}</span></div>${t.prioridade===1?'<span title="Prioridade">🔥</span>':''}</div>
+        <div style="font-size:14px">${esc(t.porque)}</div>${t.falar?`<div class="hint" style="font-size:13px">💡 ${esc(t.falar)}</div>`:''}
+        ${aberto===i?`<div class="hint" style="font-size:13px;white-space:pre-wrap;border:1px dashed var(--line);border-radius:8px;padding:6px">💬 ${esc(t.whatsapp||'')}</div>`:''}
+        <div class="row" style="gap:6px">${ph?`<a class="btn sm" href="tel:+55${ph}" data-agl="${i}">📞 Ligar</a>`:''}<a class="btn sm ghost" target="_blank" rel="noopener" href="${wa}" data-agw="${i}">💬 WhatsApp</a><button class="chip" data-agv="${i}">${aberto===i?'Ocultar':'Ver'} mensagem</button>
+         <button class="chip" data-agc="${i}">Ver cliente</button>${x.oid?`<button class="chip" data-ago="${i}">Abrir orçamento</button>`:''}<button class="chip" data-agt="${i}">＋ Tarefa</button>${x.oid?`${x.ag==='ciclo'?`<button class="chip" data-agg="${i}">✓ Ganhamos</button>`:''}<button class="chip" data-agp="${i}">✖ Perdemos</button>`:''}
+         <button class="chip" data-agf="${i}" title="Já cuidei disso">✓ Feito</button><button class="chip" data-aga="${i}">${x.ag==='ciclo'?'Ainda negociando':'Amanhã'}</button><button class="chip" data-agn="${i}">✕ Não faz sentido</button></div></div>`};
+    /* recolhido (padrão): só o resumo e as 3 primeiras em uma linha; "Ampliar" mostra tudo (fica lembrado no aparelho) */
+    const metaCurta=()=>{if(!MT.L.length) return ''; const pc=MT.mT?MT.vT/MT.mT*100:0, at=MT.L.filter(x=>x.atr).map(x=>x.rep); return `<div class="hint" style="font-size:13px">🎯 Meta do mês <b class="${MT.vT>=MT.esp?'ok':'warn'}">${pc.toFixed(0)}%</b>${at.length?` · atrasada: ${esc(at.slice(0,3).join(', '))}${at.length>3?'…':''}`:' · no ritmo 👏'}</div>`};
+    const linha=(x,i)=>{const t=texto(x); return `<button class="chip" style="text-align:left;border-left:4px solid ${AG_COR[x.ag]}" data-agx="${i}">${t.prioridade===1?'🔥 ':''}<b>${esc(x.n)}</b> · ${esc(x.rep)} · ${brl(x.v)}<br><span class="hint" style="font-size:12px">${esc(AG_NOME[x.ag])} · ${esc(t.porque)}</span></button>`};
+    const draw=(nota)=>{if(!box.isConnected) return; const tot=L2.filter(x=>x.ag!=='ciclo').reduce((s,x)=>s+x.v,0), ab=L('agAb')===true;
+      box.innerHTML=`<div class="card grid ag"><div class="row" style="justify-content:space-between"><b>🤖 Hoje para você</b><div class="row" style="gap:6px">${ab&&ges?`<button class="chip${so?' on':''}" data-ags="1">Só meus</button><button class="chip${so?'':' on'}" data-ags="0">Equipe toda</button>`:''}${L2.length||MT.L.length?`<button class="chip" data-agab>${ab?'Recolher ▴':'Ampliar ▾'}</button>`:''}</div></div>
+        ${ab?metaHtml():metaCurta()}${L2.length?`<p class="hint" style="margin:0">${L2.length} ${L2.length>1?'oportunidades':'oportunidade'} · ${brl(tot)} em jogo${nota?' · '+esc(nota):''}</p>${ab?L2.map(item).join('')+(ciMais?`<p class="hint" style="margin:0;font-size:12px">E mais ${ciMais} ${ciMais>1?'orçamentos antigos':'orçamento antigo'} sem desfecho; aparecem aqui aos poucos.</p>`:''):L2.slice(0,3).map(linha).join('')+(L2.length>3?`<button class="chip" data-agab style="justify-self:start">Ver mais ${L2.length-3}</button>`:'')}`:'<p class="hint" style="margin:0">Nada pendente na sua carteira hoje. 👏</p>'}</div>`};
+    draw(IA.pend(L2)?'a IA está escrevendo as mensagens…':'');
+    if(IA.pend(L2)) agIA(L2,metaTx,IA,so).then(e=>draw(e||'')).catch(()=>draw(''));
+    box.onclick=async e=>{const g=s=>e.target.closest(s), n=s=>{const b=g(s); return b?L2[+b.dataset[Object.keys(b.dataset)[0]]]:null}; let x;
+      const s=g('[data-ags]'); if(s){LS('agSo',s.dataset.ags==='1'); return agHoje(box)}
+      if(g('[data-agab]')){LS('agAb',L('agAb')!==true); aberto=null; return draw('')}
+      if(x=n('[data-agx]')){LS('agAb',true); aberto=L2.indexOf(x); draw(''); const el=box.querySelector(`[data-agi="${aberto}"]`); if(el) el.scrollIntoView({block:'center'}); return}
+      if(x=n('[data-agv]')){const i=L2.indexOf(x); aberto=aberto===i?null:i; return draw('')}
+      if(x=n('[data-agc]')){e.stopPropagation(); return painelCliente(x.cnpj,L2.map(y=>y.cnpj))}
+      if(x=n('[data-ago]')){e.stopPropagation(); return detOrc(x.oid)}
+      if(x=n('[data-agt]')){e.stopPropagation(); return formTarefa({cnpj:x.cnpj,cliente:x.razao||x.n,rep:Object.keys(HIST_REP).find(k=>HIST_REP[k]===x.rep)||null,orcamento_id:x.oid||null,tipo:'ligacao',titulo:x.ag==='orc'?`Cobrar orçamento ${x.rep} (${brl(x.v)})`:`Retomar compras ${x.rep}`})}
+      if(n('[data-agl]')||n('[data-agw]')) return; /* deixa o link abrir */
+      if((x=n('[data-agp]'))||(x=n('[data-agg]'))){e.stopPropagation(); const ganhou=!!g('[data-agg]'); try{await setStatus(x.oid,ganhou?'transmitido':'cancelado')}catch(er){return toast(er.message)} await agMarcar(x,ganhou?'ganhou':'perdeu',365); L2.splice(L2.indexOf(x),1); aberto=null; draw(''); return toast(ganhou?'Boa! Marcado como ganho 🎉':'Registrado como perdido, com o motivo')}
+      let st=null, d=0, obs=null; if(x=n('[data-agf]')){st='feita'; d=x.ag==='orc'?7:14} else if(x=n('[data-aga]')){st='adiada'; d=x.ag==='ciclo'?15:1} else if(x=n('[data-agn]')){obs=prompt('Por que não faz sentido? (opcional — ajuda os agentes a melhorar)',''); if(obs===null) return; st='nao_faz_sentido'; d=60}
+      if(st){e.stopPropagation(); await agMarcar(x,st,d,obs); L2.splice(L2.indexOf(x),1); aberto=null; draw(''); toast(st==='feita'?'Boa! Marcado como feito':st==='adiada'?(d>1?`Volta em ${d} dias`:'Volta amanhã'):'Ok, não vou mostrar este por 60 dias')}}}
+  catch(e){box.innerHTML=''}}
+function agPadrao(x){const T={
+  sumiu:{p:1,q:`Parou de levar ${x.its?x.its.map(i=>i.cod).join(', '):'itens que comprava'} de ${x.rep}.`,f:'Pergunte se ainda usa esses itens e se está comprando de outro fornecedor; ofereça cotar de novo.',w:`Olá! Tudo bem? Notei que faz um tempo que você não pede ${x.its&&x.its[0]?String(x.its[0].descr||x.its[0].cod).toLowerCase():'alguns itens'} conosco. Ainda usa? Posso te passar uma cotação atualizada.`},
+  epoca:{p:2,q:`Nesta época do ano passado comprou ${x.its?x.its.map(i=>i.cod).join(', '):'itens'} de ${x.rep}.`,f:'Lembre a compra do ano passado e pergunte se já precisa programar.',w:`Olá! Tudo bem? Nesta época do ano passado você comprou ${x.its&&x.its[0]?String(x.its[0].descr||x.its[0].cod).toLowerCase():'conosco'}. Quer que eu já prepare um orçamento para esta temporada?`},
+  cruz:{p:3,q:`Compra ${x.de||''} e ainda não compra ${x.rep}.`,f:`Apresente a ${x.rep} como complemento do que ele já compra.`,w:`Olá! Tudo bem? Além de ${x.de||'nossos produtos'}, também trabalhamos com a ${x.rep}. Posso te mandar uma apresentação ou uma cotação?`},
+  ticket:{p:2,q:`Está comprando bem menos ${x.rep} que nos meses anteriores.`,f:'Pergunte se mudou a demanda ou se parte das compras foi para outro fornecedor.',w:`Olá! Tudo bem? Passando para saber como estão as coisas por aí e se posso ajudar com algum item ${x.rep}.`},
+  estoque:{p:1,q:`Perdemos este orçamento por falta de estoque, e o item voltou.`,f:'Avise que chegou e ofereça reenviar o orçamento.',w:`Olá! Tudo bem? Boa notícia: os itens que estavam em falta no seu orçamento ${x.rep} voltaram ao estoque. Quer que eu atualize o orçamento?`},
+  portal:{p:1,q:'Entrou no portal B2B agora.',f:'Ligue e pergunte se está procurando algum item.',w:'Olá! Tudo bem? Vi que você acessou nosso portal. Está procurando algum item? Posso te ajudar com a cotação.'},
+  fat:{p:2,q:`Pedido ${x.rep} faturado (${brl(x.v)}).`,f:'Avise que o pedido saiu e pergunte se falta algo para repor.',w:`Olá! Tudo bem? Seu pedido ${x.rep} foi faturado e já está a caminho. Precisa de mais algum item para aproveitar o próximo envio?`},
+  novo:{p:1,q:`Cliente novo: fez a 1ª compra e ainda não fez a 2ª.`,f:'Pergunte como foi a experiência com o primeiro pedido e ofereça a reposição.',w:`Olá! Tudo bem? Como foi com o primeiro pedido ${x.rep}? Se precisar repor ou de outros itens, estou à disposição.`}}[x.ag];
+  if(T) return {prioridade:T.p,porque:T.q,falar:T.f,whatsapp:T.w};
+  if(x.ag==='ciclo') return {prioridade:3,porque:`Orçamento de ${brl(x.v)} aberto há ${x.d} dias sem desfecho.`,falar:'Pergunte se ainda está em negociação. Se fechou com outro, registre o motivo em ✖ Perdemos.',whatsapp:`Olá! Tudo bem? Sobre o orçamento ${x.rep} que enviei há algum tempo: ainda está em avaliação ou posso ajudar com alguma alteração?`};
+  return x.ag==='orc'?{prioridade:x.u<=10?1:2,porque:`${x.etapa||1}ª cobrança · orçamento de ${brl(x.v)} parado há ${x.u} dias úteis, sem retorno do cliente.`,falar:'Pergunte se conseguiu avaliar e o que falta para fechar: quantidade, prazo ou condição.',whatsapp:`Olá! Tudo bem? Conseguiu avaliar o orçamento ${x.rep} que enviei? Se precisar ajustar quantidades ou condições, me fala que eu preparo.`}
+  :{prioridade:x.d/x.ciclo<=2?1:2,porque:`Compra ${x.rep} a cada ~${x.ciclo} dias e está há ${x.d} sem comprar.`,falar:'Pergunte como está o estoque e ofereça repetir o último pedido.',whatsapp:`Olá! Tudo bem? Passando para saber como está o estoque dos produtos ${x.rep}. Quer que eu prepare a reposição com base no último pedido?`}}
+function agCache(so){const hoje=ymdL(new Date()); let c=L('agIA'); if(!c||c.d!==hoje||c.u!==(sess&&sess.uid)) c={d:hoje,u:sess&&sess.uid,m:{},tent:{}};
+  return {m:c.m,c,pend:L2=>L2.some(x=>!c.m[x.k]&&!c.tent[x.k])}}
+async function agIA(L2,metaTx,IA,so){const c=IA.c, falta=L2.filter(x=>!c.m[x.k]&&!c.tent[x.k]); falta.forEach(x=>c.tent[x.k]=1); LS('agIA',c);
+  try{const tk=await token(); const r=await fetch(SB+'/functions/v1/agentes-ia',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(tk||KEY),'Content-Type':'application/json'},
+      body:JSON.stringify({vendedor:so?meuNome():'equipe toda',meta:metaTx,itens:falta.map(x=>({k:x.k,agente:AG_NOME[x.ag],cliente:x.n,rep:x.rep,fatos:x.fatos}))})});
+    const j=await r.json().catch(()=>({})); if(!r.ok||j.erro) return 'textos da IA indisponíveis agora';
+    (j.itens||[]).forEach(t=>{if(t&&t.k&&falta.some(x=>x.k===t.k)) c.m[t.k]={prioridade:+t.prioridade||2,porque:t.porque||'',falar:t.falar||'',whatsapp:t.whatsapp||''}}); LS('agIA',c); return ''}
+  catch(e){return 'textos da IA indisponíveis agora'}}
+/* ---- Fechar o ciclo (02/11): orçamento aberto que virou pedido (mesmo nº do Reprio, ou mesmo cliente × fábrica até 60 dias depois) fica como ganho sozinho.
+   Guarda dados.ciclo_auto {id,num,valor,data,antes} para desfazer ("Não foi este pedido" no detalhe → ciclo_ign, não fecha de novo). Roda no Início, no máximo 1x por hora por aparelho. */
+async function cicloAuto(force){if(!force&&(+L('cicloT')||0)>Date.now()-36e5) return 0; LS('cicloT',Date.now()); let n=0;
+  try{const [O,P]=await Promise.all([apiAll(`orcamentos?select=id,app,cliente,cnpj,total,status,situacao,criado_em,atualizado_em,dados&or=(status.is.null,status.not.in.(transmitido,cancelado))&criado_em=gte.${agMais(-200)}&order=criado_em.asc`),agPedidos()]);
+    const usados=new Set(), por={}; P.forEach(p=>{const k=String(p.cnpj||'').replace(/\D/g,'')+'|'+p.representada; (por[k]=por[k]||[]).push(p)}); Object.values(por).forEach(a=>a.sort((x,y)=>String(x.data).localeCompare(String(y.data))));
+    for(const o of O){const d=o.dados||{}; if(d.ciclo_ign) continue; const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn) continue; const rn=HIST_REP[o.app]||repName(o.app), c0=String(o.criado_em||'').slice(0,10); if(!c0) continue;
+      const L3=(por[cn+'|'+rn]||[]).filter(p=>!usados.has(p.id)); const rnum=d.reprio&&d.reprio.num&&String(d.reprio.num);
+      const lim=new Date(c0+'T12:00:00'); lim.setDate(lim.getDate()+60); const fim=ymdL(lim);
+      const p=(rnum&&L3.find(x=>String(x.num)===rnum))||L3.find(x=>x.data>=c0&&x.data<=fim); if(!p) continue; usados.add(p.id);
+      const dados={...d,ciclo_auto:{id:p.id,num:p.num||'',valor:+p.valor||0,data:p.data,antes:o.status||null,em:new Date().toISOString(),exato:!!(rnum&&String(p.num)===rnum)}};
+      try{await api(`orcamentos?id=eq.${encodeURIComponent(o.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'transmitido',dados,atualizado_em:p.data+'T12:00:00'})}); n++; fecharFollowUps(o.id,'Virou pedido '+(p.num||''))}catch(e){}}
+  }catch(e){} return n}
+async function cicloDesfazer(id){const [row]=await api(`orcamentos?select=dados&id=eq.${encodeURIComponent(id)}`); const d=(row&&row.dados)||{}, ca=d.ciclo_auto||{};
+  const dados={...d,ciclo_ign:true}; delete dados.ciclo_auto; await api(`orcamentos?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:ca.antes||'orcamento',dados,atualizado_em:new Date().toISOString()})})}
+/* ---- Revisor antes de enviar (02/11): roda na janela depois do Salvar. Só regras, sem IA: cliente/prazo, pedido mínimo, preço muito abaixo da tabela,
+   estoque (Sigma ao vivo, Medix planilha), item que o cliente costuma comprar e ficou de fora, campanha vigente. */
+async function revisarOrc(rep,o,rows,{sub,pmin,cpz,EQ}){const A=[], it=(nv,tx,add)=>A.push({nv,tx,add});
+  if(!o.cli) it('warn','Orçamento sem cliente: não entra no histórico, no follow-up nem nos agentes.');
+  if(!o.prazo) it('warn','Sem prazo de pagamento escolhido.');
+  if(pmin&&sub<pmin) it('bad',`Faltam <b>${brl(pmin-sub)}</b> para o pedido mínimo de ${brl(pmin)}${cpz&&cpz.min?' do prazo '+esc(cpz.n):''}.`);
+  const ab=rows.filter(r=>+r.ptab>0&&+r.pu>0&&r.pu<r.ptab*.9&&!r.camp); if(ab.length) it('warn',`${ab.length} ${ab.length>1?'itens':'item'} mais de 10% abaixo da tabela: ${ab.slice(0,4).map(r=>`<b>${esc(r.p.cod)}</b> (−${((1-r.pu/r.ptab)*100).toFixed(0)}%)`).join(', ')}${ab.length>4?'…':''}. Confira se o desconto foi aprovado.`);
+  if(rep==='sigma'){const f=rows.filter(r=>SGS[r.p.cod]&&SGS[r.p.cod].it&&SGS[r.p.cod].it.disp<r.i.qt); if(f.length) it('bad',`Estoque Sigma menor que o pedido: ${f.slice(0,4).map(r=>`<b>${esc(r.p.cod)}</b> (${nBR(SGS[r.p.cod].it.disp)} de ${r.i.qt})`).join(', ')}.`)}
+  if(rep==='medix'&&EQ){const f=rows.filter(r=>EQ[r.p.cod]&&EQ[r.p.cod][0]!=='S'); if(f.length) it('warn',`Sem estoque na Medix: ${f.slice(0,4).map(r=>`<b>${esc(r.p.cod)}</b>${EQ[r.p.cod][1]?' (previsão '+esc(EQ[r.p.cod][1])+')':''}`).join(', ')}. Avise o prazo ao cliente.`)}
+  const camp=rows.filter(r=>r.camp); if(camp.length) it('info',`${camp.length} ${camp.length>1?'itens':'item'} com preço de campanha (${esc(camp[0].camp.nome)}${camp[0].camp.fim?' até '+esc(String(camp[0].camp.fim).split('-').reverse().join('/')):''}). Use isso como argumento de fechamento.`);
+  if(o.cli&&o.cli.cnpj){try{const a12=agMais(-365); const [peds,C]=await Promise.all([api(`pedidos?select=id,data,pedido_itens(cod,descricao)&cnpj=eq.${o.cli.cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||rep)}&data=gte.${a12}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)&order=data.desc&limit=60`),catalog(rep).catch(()=>[])]);
+    const ix={}; C.forEach(p=>{if(p.ref) ix[norm(p.ref).trim()]=p; ix[norm(p.cod).trim()]=p}); const no=new Set(o.itens.map(x=>x.pid)), cnt={};
+    peds.forEach(pd=>new Set((pd.pedido_itens||[]).map(i=>norm(i.cod).trim())).forEach(k=>{const p=ix[k]; if(p&&!no.has(p.id)) (cnt[p.id]=cnt[p.id]||{p,n:0}).n++}));
+    const min=peds.length>=4?2:1, F=Object.values(cnt).filter(x=>x.n>=min&&(peds.length<2||x.n>=peds.length*.34)).sort((a,b)=>b.n-a.n).slice(0,5);
+    if(F.length) it('info',`Ele costuma levar e ficou de fora:`,F.map(x=>({p:x.p,tx:`${x.n} de ${peds.length} pedidos`})));
+    const cv=(CAMPS[rep]||[]).filter(c=>campVigente(c)); if(cv.length){const ks=new Set(); peds.forEach(pd=>(pd.pedido_itens||[]).forEach(i=>ks.add(norm(i.cod).trim())));
+      const G=[]; cv.forEach(c=>(c.itens||[]).forEach(x=>{const p=ix[norm(x.cod||'').trim()]; if(p&&ks.has(norm(x.cod||'').trim())&&!no.has(p.id)&&!F.some(f=>f.p.id===p.id)&&!G.some(g=>g.p.id===p.id)) G.push({p,tx:'campanha '+c.nome})}));
+      if(G.length) it('info','Em campanha agora e ele já comprou antes:',G.slice(0,5))}}catch(e){}}
+  return A}
+function revisorHtml(A){if(!A.length) return '<div class="hint" style="font-size:13px">🔎 Revisor: nada a corrigir neste orçamento. ✓</div>';
+  const ic={bad:'⛔',warn:'⚠️',info:'💡'}, cl={bad:'bad',warn:'warn',info:''};
+  return `<div class="card grid" style="gap:6px;padding:10px"><b style="font-size:14px">🔎 Revisor antes de enviar</b>${A.map(a=>`<div style="font-size:13px" class="${cl[a.nv]}">${ic[a.nv]} ${a.tx}${a.add?`<div class="grid" style="gap:4px;margin-top:4px">${a.add.map(x=>`<div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:6px"><span style="color:var(--ink,inherit)"><b>${esc(x.p.cod)}</b> ${esc(String(x.p.descricao||'').slice(0,40))} <span class="hint">· ${esc(x.tx)}</span></span><button class="chip" data-revadd="${esc(x.p.id)}" data-revm="${+x.p.mult||1}">＋ Incluir</button></div>`).join('')}</div>`:''}</div>`).join('')}</div>`}
+/* conversão dos últimos 90 dias por vendedor e por fábrica (orçamentos do Sistema, pela data de criação); "ganho" inclui os fechados sozinhos pelo pedido (Fechar o ciclo) */
+async function convPorQuem(box,repF){box.innerHTML='<p class="hint">Calculando por vendedor e fábrica…</p>'; const de=agMais(-90);
+  const [O,PF]=await Promise.all([apiAll(`orcamentos?select=app,status,situacao,total,criado_em,user_id,vend:dados->>vend,auto:dados->ciclo_auto->>num&criado_em=gte.${de}`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
+  const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=o=>vAt(String(o.vend||nm[o.user_id]||'Sem vendedor').split(/\s+/)[0]);
+  const L4=O.filter(o=>+o.total>0&&(!repF||repName(o.app)===repF));
+  const agr=f=>{const g={}; L4.forEach(o=>{const k=f(o), x=g[k]=g[k]||{k,n:0,v:0,g:0,gv:0,p:0,a:0,au:0}, st=stOf(o); x.n++; x.v+=+o.total; if(st==='transmitido'){x.g++; x.gv+=+o.total; if(o.auto!=null) x.au++} else if(st==='cancelado') x.p++; else x.a++}); return Object.values(g).sort((a,b)=>b.v-a.v)};
+  const tab=(tit,R)=>`<div class="card" style="overflow-x:auto;margin-top:12px"><b>${tit}</b><table class="t"><tr><th></th><th class="n">Orçamentos</th><th class="n">Ganhos</th><th class="n">Perdidos</th><th class="n">Em aberto</th><th class="n">Conversão</th><th class="n">R$ ganho</th></tr>${R.map(x=>`<tr><td>${esc(x.k)}</td><td class="n">${x.n} <small class="hint">${brl(x.v)}</small></td><td class="n ok">${x.g}${x.au?` <small class="hint">(${x.au} auto)</small>`:''}</td><td class="n bad">${x.p}</td><td class="n">${x.a}</td><td class="n"><b>${(x.g/x.n*100).toFixed(0)}%</b></td><td class="n">${brl(x.gv)}</td></tr>`).join('')||'<tr><td colspan="7" class="hint">Sem orçamentos no período.</td></tr>'}</table></div>`;
+  const ab=L4.filter(o=>!['transmitido','cancelado'].includes(stOf(o))).length;
+  box.innerHTML=tab('Últimos 90 dias por vendedor (orçamentos do Sistema)',agr(quem))+tab('Últimos 90 dias por fábrica',agr(o=>repName(o.app)))+
+   `<p class="hint">Ganho = virou pedido (marcado no Sistema ou fechado sozinho pelo pedido do Reprio, "auto"). ${ab?`${ab} ainda em aberto: os agentes perguntam ao vendedor se ganhou ou perdeu.`:''}</p>`}
+/* ---- Leva 2 (02/11): mais 8 agentes na mesma lista + resumo do gestor ----
+   sumiu/epoca: função agentes_itens() no banco (itens dos pedidos); cruz: fábricas que clientes parecidos compram; ticket: 6 meses × 6 meses anteriores;
+   estoque: orçamento perdido por "Sem estoque" com item que voltou (Medix planilha, Sigma ao vivo); portal: acesso ao B2B nos últimos 2 dias;
+   fat: NF-e emitida nos últimos 5 dias (pós-venda); novo: 1ª compra (18 meses) há 25–120 dias sem a 2ª. */
+const AG_CAP={cruz:3,epoca:3,novo:3,fat:3};
+let AGI=null, AGIP=null; async function agItensDB(){if(AGI&&Date.now()-AGI.t<30*6e4) return AGI.d; if(AGIP) return AGIP; AGIP=(async()=>{let d=[]; try{d=await api('rpc/agentes_itens',{method:'POST',body:'{}'})||[]}catch(e){d=[]} AGI={t:Date.now(),d}; AGIP=null; return d})(); return AGIP}
+function agCtx(P,C){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const vend={}, last={}, tk={}; P.forEach(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''), k=cn+'|'+x.representada; if(!last[k]||x.data>=last[k]){last[k]=x.data; vend[k]=x.vendedor||''} const t=tk[x.representada]=tk[x.representada]||{s:0,n:0}; t.s+=+x.valor||0; t.n++});
+  return {byC,vend,tkRep:r=>tk[r]&&tk[r].n?tk[r].s/tk[r].n:0,dono:(cn,r)=>vend[cn+'|'+r]||(byC[cn]||{}).v||''}}
+const agNovo=(X,ag,cn,rep,v,sc,fatos,o)=>{const c=X.byC[cn]||{}; return {k:`${ag}|${cn}|${rep}${o&&o.kx?'|'+o.kx:''}`,ag,cnpj:cn,n:c.fa||c.n||cn,razao:c.n||'',tel:c.tel||'',rep,v:+v||0,sc:+sc||0,fatos,...(o||{})}};
+const agFalou=(ult,cn,dd)=>{const u=ult[cn]; return !!(u&&dias(u.slice(0,10))<dd)};
+function agItensSinais(R,X,mine,ult){const G={}; R.forEach(r=>{const cn=String(r.cnpj||'').replace(/\D/g,''); if(!cn||!mine(X.dono(cn,r.rep))||agFalou(ult,cn,7)) return; const k=r.tipo+'|'+cn+'|'+r.rep; (G[k]=G[k]||{t:r.tipo,cn,rep:r.rep,its:[]}).its.push(r)});
+  return Object.values(G).map(g=>{g.its.sort((a,b)=>(+b.valor||0)-(+a.valor||0)); const top=g.its.slice(0,3), v=top.reduce((s,x)=>s+(+x.valor||0),0), nm=top.map(x=>`${x.cod} ${String(x.descr||'').slice(0,40)}`).join('; ');
+    return g.t==='sumiu'?agNovo(X,'sumiu',g.cn,g.rep,v,v*.9,`Ainda compra ${g.rep}, mas parou de levar: ${top.map(x=>`${x.cod} ${String(x.descr||'').slice(0,40)} (comprou em ${x.n} pedidos, último em ${dbr(x.ultimo)})`).join('; ')}. Pode estar comprando de outro fornecedor.`,{its:top})
+     :agNovo(X,'epoca',g.cn,g.rep,v,v*.7,`Nesta mesma época do ano passado comprou ${g.rep}: ${nm}. Não comprou esses itens nos últimos 60 dias.`,{its:top})})}
+function agCruz(C,P,R0,X,mine,ult){const at=new Set((R0||[]).filter(r=>r.ativa).map(r=>HIST_REP[r.id]||r.nome)), nA={}, nAB={}, a365=agMais(-365);
+  C.forEach(c=>{const ks=Object.keys(c.reps).filter(r=>at.has(r)); ks.forEach(a=>{nA[a]=(nA[a]||0)+1; const m=nAB[a]=nAB[a]||{}; ks.forEach(b=>{if(b!==a) m[b]=(m[b]||0)+1})})});
+  const out=[]; C.forEach(c=>{if(!mine(c.v)||agFalou(ult,c.cnpj,14)) return; const ever=new Set(Object.keys(c.reps)), ativos=Object.values(c.reps).filter(x=>at.has(x.representada)&&x.ultimo>=a365).map(x=>x.representada); let best=null;
+    ativos.forEach(a=>Object.entries(nAB[a]||{}).forEach(([b,n])=>{if(ever.has(b)||n<8) return; const cf=n/nA[a]; if(cf>=.3&&(!best||cf>best.cf)) best={a,b,cf}}));
+    if(best){const v=X.tkRep(best.b); out.push(agNovo(X,'cruz',c.cnpj,best.b,v,v*best.cf*.6,`Compra ${best.a} e nunca comprou ${best.b}. ${Math.round(best.cf*100)}% dos clientes que compram ${best.a} também compram ${best.b} (pedido médio ${brl(v)}).`,{de:best.a}))}});
+  return out}
+function agTicket(P,X,mine,ult){const G={}, a=agMais(-180), b=agMais(-360); P.forEach(x=>{if(x.data<b) return; const cn=String(x.cnpj||'').replace(/\D/g,''), k=cn+'|'+x.representada, g=G[k]=G[k]||{cn,rep:x.representada,a:0,b:0}; if(x.data>=a) g.a+=+x.valor||0; else g.b+=+x.valor||0});
+  return Object.values(G).filter(g=>g.b>=3000&&g.a>0&&g.a<g.b*.6&&mine(X.dono(g.cn,g.rep))&&!agFalou(ult,g.cn,7)).map(g=>agNovo(X,'ticket',g.cn,g.rep,g.b-g.a,(g.b-g.a)*.5,`Nos últimos 6 meses comprou ${brl(g.a)} de ${g.rep}, contra ${brl(g.b)} nos 6 meses anteriores (queda de ${Math.round((1-g.a/g.b)*100)}%). Continua comprando, mas menos.`))}
+async function agEstoque(X,so,ult){let O=[]; try{O=await api(`orcamentos?select=id,app,cliente,cnpj,total,user_id,atualizado_em,dados&status=eq.cancelado&app=in.(medix,sigma)&atualizado_em=gte.${agMais(-120)}`)}catch(e){return []}
+  O=O.filter(o=>(!so||o.user_id===sess.uid)&&/^sem estoque/i.test((o.dados||{}).motivo_perda||'')); if(!O.length) return [];
+  const EQ=O.some(o=>o.app==='medix')?await estoqueMedix():{}, cs=O.filter(o=>o.app==='sigma').flatMap(o=>((o.dados||{}).linhas||[]).map(l=>String(l.cod||'').trim())).filter(Boolean);
+  const SR=cs.length?await sigmaStkMany(cs,false,30*6e4).catch(()=>({})):{}; const out=[];
+  O.forEach(o=>{const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn) return; const uc=ult[cn]; if(uc&&uc>=String(o.atualizado_em)) return;
+    const vol=((o.dados||{}).linhas||[]).filter(l=>{const c=String(l.cod||'').trim(); return o.app==='medix'?EQ[c]&&EQ[c][0]==='S':((SR[c]||{}).it||{}).disp>=(+l.qt||1)});
+    if(vol.length) out.push({...agNovo(X,'estoque',cn,HIST_REP[o.app]||repName(o.app),+o.total,(+o.total)*1.1,`Perdemos o orçamento de ${brl(o.total)} em ${dbr(String(o.atualizado_em).slice(0,10))} por falta de estoque. Voltou a ter: ${vol.slice(0,4).map(l=>`${l.cod} ${String(l.desc||'').slice(0,40)}`).join('; ')}.`,{kx:o.id}),oid:o.id})});
+  return out}
+async function agPortal(X,mine){let R=[]; try{R=await api(`b2b_acessos?select=cnpj,nome,ultimo_acesso&ultimo_acesso=gte.${agMais(-2)}`)}catch(e){return []}
+  return R.map(r=>{const cn=String(r.cnpj||'').replace(/\D/g,''), c=X.byC[cn]||{}; if(!cn||!mine(c.v)) return null; const rep=Object.keys(c.reps||{})[0]||'';
+    return agNovo(X,'portal',cn,rep,X.tkRep(rep),1e7,`${r.nome||'O cliente'} entrou no portal B2B em ${new Date(r.ultimo_acesso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Está olhando produtos agora: boa hora para ligar.`,{kx:String(r.ultimo_acesso).slice(0,10)})}).filter(Boolean)}
+async function agFat(X,mine,ult){let R=[]; try{R=await api(`fin_nfe?select=numero,emissao,rep,dest_cnpj,v_nf,cancelada&emissao=gte.${agMais(-5)}&order=emissao.desc`)}catch(e){return []}
+  return R.filter(r=>!r.cancelada).map(r=>{const cn=String(r.dest_cnpj||'').replace(/\D/g,''), rep=HIST_REP[r.rep]||repName(r.rep); if(!cn||!mine(X.dono(cn,rep))) return null; const uc=ult[cn]; if(uc&&uc.slice(0,10)>=r.emissao) return null;
+    return agNovo(X,'fat',cn,rep,+r.v_nf,(+r.v_nf)*.4,`A ${rep} faturou a NF ${r.numero} de ${brl(r.v_nf)} em ${dbr(r.emissao)}. Bom momento para avisar que o pedido saiu e perguntar o que mais precisa repor.`,{kx:r.numero})}).filter(Boolean)}
+function agNovoCli(P,X,mine,ult){const G={}; P.forEach(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''); if(!cn) return; const g=G[cn]=G[cn]||{ds:new Set(),p:null}; g.ds.add(x.data); if(!g.p||x.data<g.p.data) g.p=x});
+  const lim=agMais(-120); return Object.entries(G).filter(([cn,g])=>g.ds.size===1&&g.p.data>=lim&&dias(g.p.data)>=25&&mine(X.dono(cn,g.p.representada))&&!agFalou(ult,cn,7))
+    .map(([cn,g])=>agNovo(X,'novo',cn,g.p.representada,+g.p.valor,(+g.p.valor)*.8,`Cliente novo (ou que voltou): primeira compra dos últimos 18 meses em ${dbr(g.p.data)}, ${brl(g.p.valor)} de ${g.p.representada}. Há ${dias(g.p.data)} dias e ainda não fez a 2ª compra.`))}
+/* ---- Resumo do gestor + Coach das ligações (02/11): cartão só para gestor no Início, abaixo do "Hoje para você".
+   Semana passada (seg–dom) × retrasada, por vendedor; orçamentos da semana; motivos de perda (30 dias); resultado dos agentes (tabela oportunidades);
+   ligações analisadas (ligacoes.analise). A IA grátis escreve o resumo, 3 ações e o coach por vendedor, 1 vez por semana (cache no aparelho).
+   Na segunda-feira abre ampliado na primeira vez. */
+async function agResumo(box){if(!box||!AG_ON||!ehGestor()) return; const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7);
+  const s1=new Date(seg); s1.setDate(seg.getDate()-7); const s2=new Date(seg); s2.setDate(seg.getDate()-14); const A=ymdL(s1), B=ymdL(seg), Z=ymdL(s2), wk=A;
+  const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:true; const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
+  try{const [P,O,OP,LG,PF]=await Promise.all([agPedidos(),apiAll(`orcamentos?select=app,status,situacao,total,criado_em,atualizado_em,user_id,vend:dados->>vend,mot:dados->>motivo_perda,auto:dados->ciclo_auto->>num&atualizado_em=gte.${agMais(-30)}`).catch(()=>[]),
+      api(`oportunidades?select=usuario_nome,agente,status,valor,atualizado_em&atualizado_em=gte.${A}`).catch(()=>[]),api(`ligacoes?select=usuario_nome,cliente,analise,criado_em&criado_em=gte.${A}&status=eq.pronto`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
+    const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=v=>String(vAt(String(v||'Sem vendedor').split(/\s+/)[0])||'Sem vendedor');
+    const V={}, vv=k=>V[k]=V[k]||{v:0,v0:0,n:0,oc:0,ov:0,g:0,p:0,op:0,opg:0,lg:0};
+    P.forEach(x=>{if(x.data>=A&&x.data<B){const r=vv(quem(x.vendedor)); r.v+=+x.valor||0; r.n++} else if(x.data>=Z&&x.data<A) vv(quem(x.vendedor)).v0+=+x.valor||0});
+    const mot={}; O.forEach(o=>{const q=quem(o.vend||nm[o.user_id]), c=String(o.criado_em).slice(0,10), u=String(o.atualizado_em).slice(0,10), st=stOf(o); if(c>=A&&c<B){const r=vv(q); r.oc++; r.ov+=+o.total||0}
+      if(u>=A&&u<B){if(st==='transmitido') vv(q).g++; else if(st==='cancelado') vv(q).p++} if(st==='cancelado'&&o.mot) mot[o.mot]=(mot[o.mot]||0)+1});
+    OP.forEach(x=>{const r=vv(quem(x.usuario_nome)); r.op++; if(['feita','ganhou'].includes(x.status)) r.opg++});
+    LG.forEach(x=>vv(quem(x.usuario_nome)).lg++);
+    const tot=Object.values(V).reduce((s,x)=>s+x.v,0), tot0=Object.values(V).reduce((s,x)=>s+x.v0,0), dl=tot0?(tot/tot0-1)*100:0;
+    const linhas=Object.entries(V).filter(([k,x])=>x.v||x.v0||x.oc||x.op||x.lg).sort((a,b)=>b[1].v-a[1].v);
+    const motL=Object.entries(mot).sort((a,b)=>b[1]-a[1]);
+    const fatos=`Semana ${dbr(A)} a ${dbr(ymdL(new Date(seg.getTime()-864e5)))}. Vendas da equipe ${brl(tot)} (semana anterior ${brl(tot0)}).
+Por vendedor: ${linhas.map(([k,x])=>`${k}: vendeu ${brl(x.v)} em ${x.n} pedidos (antes ${brl(x.v0)}); ${x.oc} orçamentos novos (${brl(x.ov)}); ${x.g} ganhos e ${x.p} perdidos; ${x.op} oportunidades dos agentes tratadas (${x.opg} feitas/ganhas); ${x.lg} ligações analisadas`).join(' | ')}.
+Motivos de perda (30 dias): ${motL.map(([m,n])=>`${m}: ${n}`).join('; ')||'nenhum registrado'}.
+Ligações analisadas pela IA: ${LG.slice(0,25).map(l=>{const a=l.analise||{}, f=a.feedback||{}; return `[${quem(l.usuario_nome)} · ${l.cliente||''}] resultado ${a.resultado||'?'}; melhorar: ${(f.melhorar||[]).join('; ')}; alertas: ${(a.alertas||[]).join('; ')}`}).join(' || ')||'nenhuma nesta semana'}.`;
+    const cache=L('agRes'); let IA=cache&&cache.w===wk?cache.r:null, nota='';
+    const draw=()=>{if(!box.isConnected) return; const seta=dl>=0?'▲':'▼';
+      box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b>📋 Resumo da semana · gestor</b><button class="chip" data-rsab>${ab?'Recolher ▴':'Ampliar ▾'}</button></div>
+       <div class="hint" style="font-size:13px">${dbr(A)} a ${dbr(ymdL(new Date(seg.getTime()-864e5)))} · vendas <b>${brl(tot)}</b> <span class="${dl>=0?'ok':'bad'}">${seta} ${Math.abs(dl).toFixed(0)}%</span> vs semana anterior${nota?' · '+esc(nota):''}</div>
+       ${ab?`${IA&&IA.resumo?`<div style="font-size:14px">${esc(IA.resumo)}</div>`:''}${IA&&IA.acoes&&IA.acoes.length?`<div><b style="font-size:14px">3 ações para esta semana</b><ol style="margin:4px 0 0 18px;padding:0;font-size:14px">${IA.acoes.map(a=>`<li>${esc(a)}</li>`).join('')}</ol></div>`:''}
+        <div style="overflow-x:auto"><table class="t tcards"><tr><th>Vendedor</th><th class="n">Vendas</th><th class="n">Orçamentos</th><th class="n">Ganhos / perdidos</th><th class="n">Agentes</th><th class="n">Ligações</th></tr>${linhas.map(([k,x])=>`<tr><td>${esc(k)}</td><td class="n" data-l="Vendas">${brl(x.v)}<br><small class="${x.v>=x.v0?'ok':'bad'}">${x.v0?((x.v/x.v0-1)*100).toFixed(0)+'%':'—'}</small></td><td class="n" data-l="Orçamentos">${x.oc}<br><small class="hint">${brl(x.ov)}</small></td><td class="n" data-l="Ganhos / perdidos"><span class="ok">${x.g}</span> / <span class="bad">${x.p}</span></td><td class="n" data-l="Agentes">${x.opg}/${x.op}</td><td class="n" data-l="Ligações">${x.lg}</td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem movimento na semana.</td></tr>'}</table></div>
+        ${motL.length?`<div class="hint" style="font-size:13px"><b>Motivos de perda (30 dias):</b> ${motL.slice(0,5).map(([m,n])=>`${esc(m)} (${n})`).join(' · ')}</div>`:''}
+        <div><b style="font-size:14px">🎙 Coach das ligações</b>${IA&&IA.coach&&IA.coach.length?IA.coach.map(c=>`<div style="font-size:13px"><b>${esc(c.vendedor||'')}</b>: ${esc(c.ponto||'')}</div>`).join(''):`<div class="hint" style="font-size:13px">${LG.length?'Aguardando a IA…':'Nenhuma ligação analisada na semana passada. Use o botão 🎙 na ficha do cliente.'}</div>`}</div>
+        <div class="hint" style="font-size:12px">"Agentes" = oportunidades do "Hoje para você" feitas ou ganhas / tratadas.</div>`:''}</div>`};
+    draw(); box.onclick=e=>{if(e.target.closest('[data-rsab]')){marca(!ab); draw()}};
+    if(!IA&&!(cache&&cache.w===wk&&cache.tent)){LS('agRes',{w:wk,tent:1}); nota='a IA está escrevendo o resumo…'; draw();
+      try{const tk=await token(); const r=await fetch(SB+'/functions/v1/agentes-ia',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(tk||KEY),'Content-Type':'application/json'},body:JSON.stringify({modo:'resumo',fatos})});
+        const j=await r.json().catch(()=>({})); if(r.ok&&!j.erro){IA=j; LS('agRes',{w:wk,r:j}); nota=''} else nota='resumo da IA indisponível agora'}catch(e){nota='resumo da IA indisponível agora'} draw()}}
+  catch(e){box.innerHTML=''}}
+/*AGENTES-FIM*/
+/*ESTRATEGIA-INICIO*/
+/* Estratégia do dia (02/11): cada vendedor vê, numa aba própria, quem abordar hoje, por quê, como e com qual mensagem — aprova, muda ou pula.
+   Réguas de reativação por e-mail (saem da caixa do vendedor pela função enviar-email), cadência multicanal:
+   toque 1 e-mail → toque 2 ligação/WhatsApp (3 dias úteis depois) → toque 3 e-mail "o que as lojas da região levam" (10 dias) → toque 4 e-mail de despedida com resposta por número (21 dias).
+   A régua para quando o cliente responde, faz orçamento/pedido, ou o vendedor marca. Grandes contas (grupo ≥ EST_GC em 12 meses) ficam fora.
+   Base: rpc estrategia_base / radar_regiao; registros: tabelas reativacao e reativacao_bloqueio (sem elas, guarda neste aparelho). */
+const EST_LIM=30, EST_GC=150000, EST_CAD=[0,0,3,10,21], EST_PAUSA=7, EST_JANELA=45;
+const EST_NOME={esfr:'Esfriando',inat:'Inativo',fab:'Fábrica parada',perd:'Perdido',nunca:'Nunca comprou'}, EST_COR={esfr:'#f2b632',inat:'#f08a24',fab:'#5aa9ff',perd:'#ff7a70',nunca:'#9aa1b8'};
+const EST_TEMA=[null,{s:'esfr',t:'Segunda da reposição',d:'Foco em quem está esfriando (91 a 180 dias): lembrar antes de perder, com os itens que ele sempre leva.'},
+  {s:'inat',t:'Terça da reativação',d:'Foco nos inativos (6 a 12 meses): abrir conversa perguntando o que mudou e mostrar o que gira na região.'},
+  {s:'fab',t:'Quarta da venda cruzada',d:'Foco em quem ainda compra com a gente mas parou uma fábrica: descobrir o motivo e recuperar a linha.'},
+  {s:'perd',t:'Quinta da reconquista',d:'Foco nos perdidos (mais de 1 ano) e em quem nunca comprou: reapresentar a Chamaê e achar o comprador certo.'},
+  {s:'esfr',t:'Sexta de fechar a semana',d:'Menos e-mails novos, mais ligações: retorne quem recebeu e-mail na semana e transforme resposta em orçamento.'}];
+let ESTB=null, ESTTAB=null;
+const estCn=s=>String(s||'').replace(/\D/g,'');
+const estPrim=s=>{const w=String(s||'').replace(/^(prezad[oa]s?|sr\.?|sra\.?|dr\.?|dra\.?)\s+/i,'').trim().split(/\s+/)[0]||''; return w.length>1&&!/@|\d/.test(w)?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():''};
+const estTit=s=>String(s||'').toLowerCase().replace(/(^|\s)(\S)/g,(a,b,c)=>b+c.toUpperCase()).replace(/\b(Ltda|Me|Epp|Eireli|S\/?a)\b\.?/gi,'').replace(/\s+-\s*$/,'').trim();
+const estMes=d=>{if(!d) return ''; const [y,m]=String(d).split('-'); return ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][+m-1]+(y!=String(new Date().getFullYear())?' de '+y:'')};
+const estCurto=s=>String(s||'').replace(/\s+/g,' ').trim().slice(0,46);
+async function estCfg(){const d={lim:EST_LIM,gc:EST_GC}; try{const r=await api('reativacao_bloqueio?select=obs&cnpj=eq._cfg'); if(r[0]&&r[0].obs) return {...d,...JSON.parse(r[0].obs)}}catch(e){} return {...d,...(L('estCfg')||{})}}
+async function estBase(force){if(ESTB&&!force&&Date.now()-ESTB.t<10*6e4) return ESTB.d; const a180=agMais(-180);
+  const [B,R,H,BL,CT,TG,cfg]=await Promise.all([api('rpc/estrategia_base',{method:'POST',body:'{}'}).catch(()=>null),api('rpc/radar_regiao',{method:'POST',body:'{}'}).catch(()=>[]),
+    api(`reativacao?select=*&criado_em=gte.${a180}&order=criado_em.desc&limit=5000`).then(r=>{ESTTAB=true; return r}).catch(()=>{ESTTAB=false; return null}),
+    api('reativacao_bloqueio?select=*').catch(()=>null),apiAll(`contatos?select=cnpj,criado_em,tipo&criado_em=gte.${agMais(-30)}`).catch(()=>[]),
+    apiAll('clientes?select=cnpj,tags,uf&tags=not.is.null').catch(()=>[]),estCfg()]);
+  const loc=L('estLoc')||{h:[],b:[]}; const d={B:B||[],semBase:!B,R:R||[],H:H||loc.h,BL:(BL||[]).concat(BL?[]:loc.b),CT,TG,cfg}; ESTB={t:Date.now(),d}; return d}
+async function estGravar(reg){reg={...reg,atualizado_em:new Date().toISOString()};
+  if(ESTTAB!==false){try{if(reg.id){const id=reg.id; delete reg.id; await api(`reativacao?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(reg)}); return id}
+    const [r]=await api('reativacao',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(reg)}); ESTTAB=true; return r.id}catch(e){ESTTAB=false}}
+  const loc=L('estLoc')||{h:[],b:[]}; if(reg.id){const i=loc.h.findIndex(x=>x.id===reg.id); if(i>=0) loc.h[i]={...loc.h[i],...reg}} else {reg.id='L'+Date.now()+Math.random().toString(36).slice(2,5); reg.criado_em=reg.criado_em||new Date().toISOString(); reg.dia=reg.dia||ymdL(new Date()); loc.h.unshift(reg); loc.h=loc.h.slice(0,600)} LS('estLoc',loc); return reg.id}
+async function estBloquear(cnpj,motivo,obs){const b={cnpj,motivo,obs:obs||null,por:meuNome()}; try{await api('reativacao_bloqueio?on_conflict=cnpj',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(b)})}catch(e){const loc=L('estLoc')||{h:[],b:[]}; loc.b=loc.b.filter(x=>x.cnpj!==cnpj).concat([b]); LS('estLoc',loc)} if(ESTB) ESTB.d.BL=ESTB.d.BL.filter(x=>x.cnpj!==cnpj).concat([b])}
+/* monta a estratégia de um vendedor para hoje */
+async function estPlano(vend){const [C,D,R0]=await Promise.all([clientes(),estBase(),reps().catch(()=>[])]); const hoje=ymdL(new Date()), dw=new Date().getDay(), tema=EST_TEMA[dw]||null, cfg=D.cfg;
+  const byB={}; D.B.forEach(b=>byB[estCn(b.cnpj)]=b); const bl={}; D.BL.forEach(b=>bl[b.cnpj]=b.motivo); const tg={}; D.TG.forEach(t=>tg[estCn(t.cnpj)]=t);
+  const ult={}; D.CT.forEach(c=>{const k=estCn(c.cnpj); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
+  const hist={}; D.H.forEach(h=>(hist[h.cnpj]=hist[h.cnpj]||[]).push(h)); Object.values(hist).forEach(a=>a.sort((x,y)=>String(y.criado_em).localeCompare(String(x.criado_em))));
+  const radar={}; D.R.forEach(r=>(radar[r.uf+'|'+r.rep]=radar[r.uf+'|'+r.rep]||[]).push(r));
+  const ativas=(R0||[]).filter(r=>r.ativa).map(r=>r.nome);
+  const mine=v=>!vend||norm(v||'').startsWith(vend);
+  const out={novos:[],toques:[],ligar:[],fora:{gc:0,sem:0,blq:0,rec:0,ina:0},tema,hoje};
+  if(D.semBase){out.emails=[]; out.restam=0; out.lim=0; out.jaHoje=0; return out} /* sem a consulta do banco não dá para saber quem parou: não sugere nada */
+  C.forEach(c=>{if(!mine(c.v)) return; const cn=estCn(c.cnpj); if(!cn) return; const b=byB[cn]||{reps:[],top:[],emails:[]}, t=tg[cn]||{}, tags=(t.tags||[]).map(x=>norm(x));
+    if(bl[cn]==='grande_conta'||(bl[cn]!=='liberado'&&(+b.vgrupo12||0)>=cfg.gc)){out.fora.gc++; return}
+    if(bl[cn]&&bl[cn]!=='liberado'){out.fora.blq++; return} if(tags.includes('INATIVO')||tags.includes('NAO ENVIAR')){out.fora.ina++; return}
+    const em=(b.emails||[]).filter(e=>e&&e.e); if(!em.length&&c.em&&/@/.test(c.em)) String(c.em).split(/[;,\s]+/).filter(e=>/@.+\./.test(e)&&!/@chamae\.com\.br$/i.test(e)).forEach(e=>em.push({e:e.toLowerCase(),n:''}));
+    const uf=String(t.uf||(c.cid||'').split('/')[1]||'').toUpperCase().trim()||'?';
+    const H=hist[cn]||[]; const env=H.filter(h=>h.canal==='email'&&h.status==='enviado'); const ue=env[0];
+    const base={cnpj:cn,c,b,n:estTit(c.fa||c.n),razao:c.n,cid:c.cid||'',uf,em,tel:c.tel||'',H};
+    /* régua em andamento */
+    const ab=H.find(h=>h.etapa===1&&h.status==='enviado'&&dias(String(h.enviado_em||h.criado_em).slice(0,10))<=60);
+    if(ab){const d0=String(ab.enviado_em||ab.criado_em).slice(0,10), dep=H.filter(h=>h.criado_em>=ab.criado_em);
+      if(dep.some(h=>['respondeu','sem_interesse','orcamento','pedido','fim'].includes(h.status))) return;
+      const feitos=new Set(dep.filter(h=>['enviado','feito'].includes(h.status)).map(h=>h.etapa)); const prox=[2,3,4].find(e=>!feitos.has(e)); if(!prox) return;
+      const quando=agUtilMais(d0,EST_CAD[prox]); if(quando>hoje) {out.fora.rec++; return}
+      if(H.some(h=>h.etapa===prox&&['adiado','pulado'].includes(h.status)&&String(h.motivo||'')>=hoje)) return;
+      const x={...base,seg:ab.gatilho,rep:ab.rep,etapa:prox,ref:ab.id,d0,v:+b.v12||+b.vtot/3||0}; x.sc=1e9+x.v; estMontar(x,radar,ativas); if(prox===2) out.ligar.push(x); else if(em.length) out.toques.push(x); else out.ligar.push(x); return}
+    if(H.some(h=>['respondeu','sem_interesse','orcamento','pedido'].includes(h.status)&&dias(String(h.criado_em).slice(0,10))<30)) return;
+    if(!em.length){out.fora.sem++; return}
+    if(ue&&dias(String(ue.enviado_em||ue.criado_em).slice(0,10))<90&&ue.etapa===4) {out.fora.rec++; return} /* acabou uma régua há pouco: descansa 90 dias */
+    if(ue&&dias(String(ue.enviado_em||ue.criado_em).slice(0,10))<EST_PAUSA){out.fora.rec++; return}
+    if(ult[cn]&&dias(ult[cn].slice(0,10))<EST_PAUSA){out.fora.rec++; return}
+    if(H.some(h=>h.etapa===1&&['adiado','pulado'].includes(h.status)&&String(h.motivo||'')>=hoje)) return;
+    const du=b.ultimo?dias(b.ultimo):null; let seg, rep=(b.reps[0]||{}).rep||'';
+    if(du==null) seg='nunca'; else if(du<=90){const par=(b.reps||[]).filter(r=>r.n>=2&&dias(r.ultimo)>150&&dias(r.ultimo)<=540&&ativas.includes(r.rep)).sort((a,b2)=>b2.v-a.v)[0]; if(!par) return; seg='fab'; rep=par.rep}
+    else if(du<=180) seg='esfr'; else if(du<=365) seg='inat'; else seg='perd';
+    const v=Math.max(+b.v12||0,(+b.vtot||0)/Math.max(1,Math.min(3,(du||365)/365)),seg==='nunca'?300:500);
+    const w={esfr:1,inat:.85,fab:.8,perd:.5,nunca:.25}[seg]*(tema&&tema.s===seg?1.6:1)*(tema&&dw===4&&seg==='nunca'?2:1)*(em.some(e=>e.p)?1.1:1);
+    const x={...base,seg,rep,etapa:1,du,v,sc:v*w}; estMontar(x,radar,ativas); out.novos.push(x)});
+  /* cota do dia: toques da régua primeiro, depois os novos (máx. por segmento para variar a carteira) */
+  const lim=Math.max(0,(cfg.lim||EST_LIM)-(dw===5?10:0)), jaHoje=D.H.filter(h=>h.canal==='email'&&h.status==='enviado'&&String(h.enviado_em||'').slice(0,10)===hoje&&mine(h.vendedor)).length;
+  const cab=Math.max(0,lim-jaHoje); out.toques.sort((a,b)=>b.v-a.v); const T=out.toques.slice(0,cab);
+  const cap={esfr:12,inat:9,fab:6,perd:6,nunca:4}; if(tema) cap[tema.s]+=8; if(dw===4) cap.nunca+=6; const n={}; out.novos.sort((a,b)=>b.sc-a.sc);
+  const N=[]; out.novos.forEach(x=>{if(T.length+N.length>=cab) return; n[x.seg]=(n[x.seg]||0)+1; if(n[x.seg]<=cap[x.seg]) N.push(x)});
+  out.novos.forEach(x=>{if(T.length+N.length<cab&&!N.includes(x)) N.push(x)});
+  out.emails=[...T,...N]; out.restam=out.novos.length-N.length; out.lim=lim; out.jaHoje=jaHoje; out.ligar.sort((a,b)=>b.v-a.v); return out}
+/* conteúdo: por quê, abordagem, itens, e-mail e WhatsApp — escrito pensando em como o comprador gostaria de receber */
+function estMontar(x,radar,ativas){const b=x.b, nome=estPrim((x.em[0]||{}).n), oi=nome?`Olá ${nome}, tudo bem?`:'Olá, tudo bem?', loja=x.n, rep=x.rep||'', vend=estTit(meuNome());
+  const its=(b.top||[]).filter(i=>!rep||i.rep===rep).slice(0,3), itsT=its.map(i=>`• ${estCurto(i.ds)} (cód. ${i.cod})`).join('\n');
+  const tem=new Set((b.top||[]).map(i=>i.cod)), rad=(radar[x.uf+'|'+rep]||[]).filter(r=>!tem.has(r.cod)).slice(0,3), radT=rad.map(r=>`• ${estCurto(r.ds)} (${r.nclientes} lojas de ${x.uf} compraram)`).join('\n');
+  const outras=ativas.filter(r=>r!==rep).slice(0,5).join(', '), up=(b.reps||[]).find(r=>r.rep===rep)||{}, outraAtiva=(b.reps||[]).find(r=>r.rep!==rep&&dias(r.ultimo)<=90);
+  const ass=(perfil&&perfil.assinatura)||`${vend}\nChamaê Representações`, rod=`\n\n${ass}\n\n—\nSe preferir não receber mais estes e-mails, é só responder SAIR.`;
+  x.rad=rad; x.its=its; x.vend=vend; let A=[], txt='', porque='', como='';
+  const fato=x.seg==='nunca'?'Não tem pedido registrado no Sistema.':`Último pedido${rep?' '+rep:''} em ${dbr(up.ultimo||b.ultimo)} (há ${dias(up.ultimo||b.ultimo)} dias)${+b.v12?` · comprou ${brl(b.v12)} nos últimos 12 meses`:+b.vtot?` · já comprou ${brl(b.vtot)} com a gente`:''}.`;
+  if(x.etapa===1){
+    if(x.seg==='esfr'){porque=`Está passando do ritmo normal de compra. ${fato}`; como='Lembrete útil, não cobrança: entregue a reposição pronta e peça só um "sim".';
+      A=[`${nome||loja}, reposição de ${estCurto((its[0]||{}).ds||rep).toLowerCase()}?`,`${loja}: separei seus itens ${rep}`];
+      txt=`${oi}\n\nSeu último pedido ${rep} foi em ${estMes(up.ultimo||b.ultimo)}. Para te poupar tempo, já separei os itens que vocês mais levam:\n\n${itsT||'• os mesmos itens do último pedido'}\n\nQuer que eu monte o orçamento com as quantidades de sempre? Responda com "sim" que eu te mando ainda hoje.`}
+    else if(x.seg==='inat'){porque=`Parou de comprar há mais de 6 meses. ${fato}`; como='Pergunte antes de oferecer: o que mudou (preço, prazo, giro, outro fornecedor)? Use o que gira na região como prova.';
+      A=[`${nome||loja}, o que mudou por aí?`,`Novidades ${rep} para a ${loja}`];
+      txt=`${oi}\n\nFaz alguns meses que não conversamos e queria entender como estão as vendas de ${rep||'nossas linhas'} aí na ${loja}.${radT?`\n\nPor aqui, as lojas de ${x.uf} estão girando bem:\n\n${radT}`:''}\n\nSe fizer sentido, preparo uma proposta de retorno com condição especial. Prefere que eu te ligue ou mando por aqui?`}
+    else if(x.seg==='fab'){porque=`Ainda compra ${outraAtiva?outraAtiva.rep:'outras fábricas'} com a gente, mas parou ${rep}. ${fato}`; como='Cliente ativo: a confiança já existe. Pergunte o motivo da linha parada e ofereça resolver.';
+      A=[`${nome||loja}, e a linha ${rep}?`,`${loja}: posso ajudar com ${rep}?`];
+      txt=`${oi}\n\nObrigado por seguir com a gente${outraAtiva?' na '+outraAtiva.rep:''}. Notei que a ${rep} parou desde ${estMes(up.ultimo)} e fiquei com a dúvida: aconteceu algo com preço, prazo ou giro?\n\n${itsT?`O que vocês costumavam levar:\n\n${itsT}\n\n`:''}Me conta que eu tento ajustar. Se quiser, já incluo no seu próximo pedido.`}
+    else if(x.seg==='perd'){porque=`Mais de 1 ano sem comprar. ${fato}`; como='Reapresente sem pressão e confirme quem é o comprador hoje. Meta: uma resposta, não uma venda.';
+      A=[`${loja} e Chamaê: ainda faz sentido?`,`${nome||loja}, você ainda cuida das compras?`];
+      txt=`${oi}\n\nJá trabalhamos juntos${rep?' com '+rep:''} e quero entender se ainda posso ajudar a ${loja}. Hoje representamos ${[rep,outras].filter(Boolean).join(', ')}.\n\nVocê ainda cuida das compras aí? Se não for você, me indica a pessoa certa? Assim eu não te incomodo à toa.`}
+    else {porque='Cadastrado, mas sem nenhum pedido no Sistema (a maioria veio do sistema antigo).'; como='Primeiro contato: apresente-se em 3 linhas, ofereça uma escolha simples (qual marca interessa).';
+      A=[`${nome||loja}, fornecedores para a ${loja}`,`Tabela de preços para a ${loja}?`];
+      txt=`${oi}\n\nSou ${vend}, da Chamaê Representações. Atendemos lojas${x.cid?' de '+x.cid:''} com ${ativas.slice(0,6).join(', ')}.\n\nPosso te mandar a tabela de alguma dessas marcas? É só responder com o nome da marca.`}}
+  else if(x.etapa===3){porque=`3º toque da régua "${EST_NOME[x.seg]||x.seg}" (1º e-mail em ${dbr(x.d0)}, sem resposta). ${fato}`; como='Prova social: mostre o que lojas parecidas estão comprando. Uma pergunta só.';
+    A=[`O que as lojas de ${x.uf} mais estão levando`,`${nome||loja}, uma ideia para o seu mix`];
+    txt=`${oi}\n\nTe escrevi há alguns dias e imagino que a rotina esteja corrida. Separei o que mais saiu${rep?' da '+rep:''} nas lojas de ${x.uf} nos últimos meses:\n\n${radT||itsT||'• itens de maior giro da região'}\n\nQuer que eu inclua algum desses no seu próximo pedido?`}
+  else if(x.etapa===4){porque=`Último toque da régua (1º e-mail em ${dbr(x.d0)}). ${fato}`; como='E-mail de despedida: respeita o tempo do cliente e costuma ter a maior taxa de resposta. Resposta por número.';
+    A=[`Posso encerrar por aqui, ${nome||loja}?`,`${nome||loja}, último recado`];
+    txt=`${oi}\n\nNão quero lotar sua caixa de e-mails. Me responde só com um número que eu sigo do jeito que for melhor para você:\n\n1 - Tenho interesse, me liga\n2 - Agora não, me procura daqui a 3 meses\n3 - Já compro de outro fornecedor\n4 - Não sou eu que compro (me indica quem?)`}
+  else {porque=`2º toque: e-mail enviado em ${dbr(x.d0)} sem resposta. ${fato}`; como='Ligue ou mande WhatsApp curto citando o e-mail. Objetivo: ouvir o cliente.';}
+  x.porque=porque; x.como=como; x.assuntos=A; x.assunto=A[(+x.cnpj.slice(-1))%2]||A[0]||''; x.texto=txt?txt+rod:'';
+  x.zap=`${oi.replace('Olá','Oi')} Aqui é o ${vend}, da Chamaê. ${x.etapa===2?`Te mandei um e-mail na ${['domingo','segunda','terça','quarta','quinta','sexta','sábado'][new Date(x.d0+'T12:00:00').getDay()]} sobre ${rep||'nossas linhas'}. Conseguiu ver?`:`Separei umas sugestões ${rep} para a ${loja}.`} Posso te mandar por aqui?`;
+  x.roteiro=x.etapa===2?`"${oi.replace('Olá','Oi')} Aqui é o ${vend}, da Chamaê. Te mandei um e-mail sobre ${rep||'nossas linhas'} e quis ligar para ouvir você: como estão as vendas${rep?' de '+rep:''} aí?" → escute → "O que faria você voltar a comprar com a gente?" → ofereça montar o orçamento na hora.`:'';
+  x.para=x.em.slice(0,1).map(e=>e.e); return x}
+/* arte 1080×1080 para e-mail e WhatsApp, com a cor e o logo da fábrica */
+async function estArte(x,o){o=o||{}; const R=(REPS||[]).find(r=>r.nome===x.rep)||{}, cor=R.cor||'#2a3157', cv=document.createElement('canvas'); cv.width=cv.height=1080; const g=cv.getContext('2d');
+  const gr=g.createLinearGradient(0,0,1080,1080); gr.addColorStop(0,cor); gr.addColorStop(1,'#111522'); g.fillStyle=gr; g.fillRect(0,0,1080,1080);
+  g.globalAlpha=.08; g.fillStyle='#fff'; g.beginPath(); g.arc(980,120,260,0,7); g.fill(); g.beginPath(); g.arc(80,1000,200,0,7); g.fill(); g.globalAlpha=1;
+  const rr=(X,Y,W,H,r)=>{g.beginPath(); g.moveTo(X+r,Y); g.arcTo(X+W,Y,X+W,Y+H,r); g.arcTo(X+W,Y+H,X,Y+H,r); g.arcTo(X,Y+H,X,Y,r); g.arcTo(X,Y,X+W,Y,r); g.closePath()};
+  const lg=R.regras&&R.regras.logo; if(lg){try{const im=await new Promise((ok,er)=>{const i=new Image(); i.onload=()=>ok(i); i.onerror=er; i.src=lg}); const h=120, w=Math.min(420,im.width*h/im.height); g.fillStyle='#fff'; rr(70,70,w+40,h+30,22); g.fill(); g.drawImage(im,90,85,w,h)}catch(e){}}
+  else {g.fillStyle='#fff'; g.font='bold 64px system-ui,sans-serif'; g.fillText(x.rep||'Chamaê Representações',80,150)}
+  const wrap=(t,X,Y,W,lh,max)=>{const ls=[]; let l=''; String(t).split(' ').forEach(w=>{const tt=l?l+' '+w:w; if(g.measureText(tt).width>W&&l){ls.push(l); l=w} else l=tt}); if(l) ls.push(l); if(ls.length>max){ls.length=max; ls[max-1]+='…'} ls.forEach((s,i)=>g.fillText(s,X,Y+i*lh)); return ls.length};
+  const tit=o.titulo||{esfr:`Sua reposição ${x.rep} está pronta`,inat:`O que está girando em ${x.uf}`,fab:`Vamos retomar a linha ${x.rep}?`,perd:'Vamos voltar a trabalhar juntos?',nunca:'Marcas que sua loja pode vender'}[x.seg]||'Separamos para você';
+  g.fillStyle='#fff'; g.font=`bold ${tit.length>34?64:76}px system-ui,sans-serif`; const nl=wrap(tit,80,330,920,tit.length>34?76:88,3);
+  g.font='36px system-ui,sans-serif'; g.globalAlpha=.85; g.fillText(`Para ${String(x.n).slice(0,40)}`,80,330+nl*88+10); g.globalAlpha=1;
+  const lis=(o.itens||(x.etapa===3||x.seg==='inat'?(x.rad.length?x.rad:x.its):(x.its.length?x.its:x.rad))).slice(0,4); let y=330+nl*88+70;
+  if(x.seg==='nunca'&&!lis.length){const at=(REPS||[]).filter(r=>r.ativa).slice(0,8); g.font='bold 40px system-ui,sans-serif'; at.forEach((r,i)=>{const X=80+(i%2)*470, Y=y+Math.floor(i/2)*110; g.fillStyle='rgba(255,255,255,.95)'; rr(X,Y,440,90,18); g.fill(); g.fillStyle=r.cor||'#222'; g.fillText(r.nome,X+28,Y+60)}); y+=Math.ceil(at.length/2)*110}
+  lis.forEach(i=>{g.fillStyle='rgba(255,255,255,.95)'; rr(80,y,920,110,20); g.fill(); g.fillStyle='#14182a'; g.font='bold 36px system-ui,sans-serif'; g.fillText(estCurto(i.ds).slice(0,40),110,y+50); g.font='28px system-ui,sans-serif'; g.fillStyle='#555'; g.fillText(i.nclientes?`${i.nclientes} lojas de ${x.uf} compraram`:`cód. ${i.cod}${i.n?` · vocês já levaram ${i.n}×`:''}`,110,y+88); y+=128});
+  if(o.oferta){g.fillStyle='#ffd166'; rr(80,Math.min(y+10,850),920,80,40); g.fill(); g.fillStyle='#111'; g.font='bold 38px system-ui,sans-serif'; g.fillText(String(o.oferta).slice(0,44),115,Math.min(y+10,850)+53)}
+  g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(0,950,1080,130); g.fillStyle='#fff'; g.font='bold 36px system-ui,sans-serif'; g.fillText(`${x.vend} · Chamaê Representações`,80,1005); g.font='30px system-ui,sans-serif'; g.globalAlpha=.85; g.fillText('Responda este e-mail ou chame no WhatsApp',80,1050); g.globalAlpha=1;
+  return cv.toDataURL('image/png')}
+function estHtml(texto,cid){const p=String(texto).split(/\n{2,}/).map(b=>`<p style="margin:0 0 14px">${esc(b).replace(/\n/g,'<br>')}</p>`); if(cid) p.splice(Math.min(2,p.length-1),0,`<p style="margin:0 0 14px"><img src="cid:${cid}" alt="" width="480" style="max-width:100%;border-radius:12px;display:block"></p>`);
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#222;max-width:560px">${p.join('')}</div>`}
+async function estEnviar(x){const tk=await token(); const body={para:x.para,cc:[],assunto:x.assunto,texto:x.texto,anexo:null,ref:{tipo:'reativacao',id:null,cnpj:x.cnpj}};
+  if(x.arteOn){try{const png=x.arteUrl||await estArte(x,x.arteOpt); body.html=estHtml(x.texto,'arte'); body.imagens=[{nome:'chamae.png',cid:'arte',base64:png.split(',')[1]}]}catch(e){}}
+  const reg={dia:ymdL(new Date()),cnpj:x.cnpj,cliente:x.razao||x.n,vendedor:x.c.v||meuNome(),gatilho:x.seg,etapa:x.etapa,canal:'email',assunto:x.assunto,texto:x.texto,para:x.para,rep:x.rep||null};
+  try{const r=await fetch(SB+'/functions/v1/enviar-email',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.erro||('HTTP '+r.status));
+    await estGravar({...reg,status:'enviado',enviado_em:new Date().toISOString()});
+    api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj:x.cnpj,tipo:'email',texto:`📧 E-mail de reativação (${EST_NOME[x.seg]||x.seg}, toque ${x.etapa}): ${x.assunto}`,usuario_nome:meuNome()})}).catch(()=>{}); return true}
+  catch(e){await estGravar({...reg,status:'erro',motivo:String(e.message||e).slice(0,200)}); throw e}}
+/* origem do orçamento: e-mail de reativação enviado até EST_JANELA dias antes */
+async function estOrigem(o){if(o.orig_chk||!o.cli||!o.cli.cnpj) return; o.orig_chk=1; try{const r=await api(`reativacao?select=id,gatilho,etapa,enviado_em,canal&cnpj=eq.${estCn(o.cli.cnpj)}&status=in.(enviado,feito,respondeu)&criado_em=gte.${agMais(-EST_JANELA)}&order=criado_em.desc&limit=1`);
+  if(r[0]&&!o.orig_camp) o.orig_camp={id:r[0].id,gatilho:r[0].gatilho,etapa:r[0].etapa,canal:r[0].canal,data:String(r[0].enviado_em||'').slice(0,10)}}catch(e){}}
+async function estLigarOrc(o,id,total){const oc=o.orig_camp; if(!oc||!oc.id||oc.lig===id||String(oc.id).startsWith('L')) return; oc.lig=id; try{await api(`reativacao?id=eq.${oc.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({orc_id:id,orc_valor:Math.round(total*100)/100,atualizado_em:new Date().toISOString()})})}catch(e){}}
+const estSelo=d=>d&&d.orig_camp?`<span class="tg" style="background:#ffd166;color:#111" title="Cliente veio do e-mail de reativação de ${fmtDt(d.orig_camp.data)}">📧 Reativação</span>`:'';
+/* resultados: enviados → respondidos → orçamentos → pedidos (até 45 dias depois do 1º e-mail) */
+async function estResultados(vend){const D=await estBase(), P=await agPedidos().catch(()=>[]), a30=agMais(-30); const mine=v=>!vend||norm(v||'').startsWith(vend);
+  const H=D.H.filter(h=>mine(h.vendedor)&&String(h.criado_em).slice(0,10)>=a30); const env=H.filter(h=>h.status==='enviado'&&h.canal==='email'); const cl=new Set(env.map(h=>h.cnpj));
+  const resp=new Set(H.filter(h=>['respondeu','orcamento','pedido'].includes(h.status)).map(h=>h.cnpj)); const orc=H.filter(h=>h.orc_id); const pr1={}; env.forEach(h=>{const d=String(h.enviado_em||h.criado_em).slice(0,10); if(!pr1[h.cnpj]||d<pr1[h.cnpj]) pr1[h.cnpj]=d});
+  const ped=P.filter(p=>{const d0=pr1[estCn(p.cnpj)]; return d0&&p.data>=d0&&dias(d0)-dias(p.data)<=EST_JANELA}); const vp=ped.reduce((s,p)=>s+(+p.valor||0),0);
+  const porG={}; env.forEach(h=>{const g=porG[h.gatilho]=porG[h.gatilho]||{e:0,p:new Set()}; g.e++}); ped.forEach(p=>{const h=env.find(x=>x.cnpj===estCn(p.cnpj)); if(h) porG[h.gatilho].p.add(h.cnpj)});
+  return {env:env.length,cl:cl.size,resp:resp.size,orc:orc.length,vo:orc.reduce((s,h)=>s+(+h.orc_valor||0),0),ped:new Set(ped.map(p=>estCn(p.cnpj))).size,vp,porG}}
+async function estrategiaView(){const m=$('#main'); const ges=ehGestor(); let vend=ges?(L('estV')??meuVend()):meuVend(); m.innerHTML='<p class="hint">Montando a estratégia do dia…</p>';
+  let P, RS, aberto=null, maisAb=null, sel=new Set();
+  const carregar=async f=>{if(f) ESTB=null; [P,RS]=await Promise.all([estPlano(vend),estResultados(vend)]); sel=new Set(P.emails.map((x,i)=>i)); desenha()};
+  const chip=x=>`<span class="tag" style="background:${EST_COR[x.seg]||'#999'};color:#111">${EST_NOME[x.seg]||x.seg}</span> <span class="tag" style="background:var(--line)">${x.etapa===1?'1º contato':x.etapa+'º toque'}</span>`;
+  const card=(x,i,k)=>`<div class="card grid" data-ek="${k}" data-ei="${i}" style="border-left:5px solid ${EST_COR[x.seg]||'#999'};gap:6px">
+     <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><div>${chip(x)}<br><b>${esc(x.n)}</b> <span class="hint">· ${esc(x.cid)}${x.rep?' · '+esc(x.rep):''}</span></div>${k==='e'?`<label style="display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" data-esel ${sel.has(i)?'checked':''}> Enviar</label>`:''}</div>
+     <div style="font-size:14px"><b>Por que hoje:</b> ${esc(x.porque)}</div><div class="hint" style="font-size:13px">💡 ${esc(x.como)}</div>
+     ${k==='e'?`<div style="font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px"><div><b>Para:</b> ${esc(x.para.join(', ')||'—')}</div><div><b>Assunto:</b> ${esc(x.assunto)}</div>${aberto===k+i?`<div style="white-space:pre-wrap;margin-top:6px">${esc(x.texto)}</div>`:`<div class="hint" style="margin-top:4px">${esc(x.texto.split('\n').slice(2,4).join(' ').slice(0,150))}…</div>`}${x.arteOn?'<div class="hint">🖼 com arte no e-mail</div>':''}</div>`
+       :`<div style="font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px;white-space:pre-wrap">${x.roteiro?'📞 '+esc(x.roteiro)+'\n\n':''}💬 ${esc(x.zap)}</div>`}
+     <div class="row" style="gap:6px">${k==='e'?`<button class="chip" data-ever>${aberto===k+i?'Ocultar':'Ver'} e-mail</button><button class="chip" data-emud>✎ Mudar</button>`:`${String(x.tel).replace(/\D/g,'').length>=10?`<a class="btn sm" href="tel:+55${String(x.tel).replace(/\D/g,'')}">📞 Ligar</a>`:''}<a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/${String(x.tel).replace(/\D/g,'').length>=10?'55'+String(x.tel).replace(/\D/g,''):''}?text=${encodeURIComponent(x.zap)}">💬 WhatsApp</a><button class="chip" data-efeito>✓ Feito</button>`}
+       <button class="chip" data-earte>🖼 Arte</button><button class="chip" data-eorc>🧾 Orçamento</button><button class="chip" data-emais>${maisAb===k+i?'✕':'⋯ Mais'}</button></div>
+     ${maisAb===k+i?`<div class="row" style="gap:6px"><button class="chip" data-eresp>💬 Respondeu</button><button class="chip" data-eamanha>🕓 Amanhã</button><button class="chip" data-epula>⏭ Pular</button><button class="chip" data-ecli>👤 Ver cliente</button><button class="chip" data-enao>🚫 Não enviar mais</button></div>`:''}</div>`;
+  const desenha=()=>{const t=P.tema, fo=P.fora, nS=[...sel].length;
+    m.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center"><div class="sec" style="margin:0">🎯 Estratégia do dia</div>${ges?`<select id="estV" class="chip">${[['','Equipe toda'],...TIME.map(v=>[v,estTit(v)])].map(([v,l])=>`<option value="${v}" ${v===vend?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
+     <div class="card grid" style="gap:6px"><b>${t?esc(t.t):'Fim de semana'} · ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'})}</b><div class="hint" style="font-size:14px">${t?esc(t.d):'Sem envios no fim de semana: os e-mails saem só em dias úteis.'}</div>
+      <div class="row" style="gap:14px;font-size:14px"><span>📧 <b>${P.emails.length}</b> e-mails para aprovar${P.jaHoje?` (${P.jaHoje} já enviados hoje)`:''}</span><span>📞 <b>${P.ligar.length}</b> ligações/WhatsApp</span><span class="hint">Fora: ${fo.gc} grandes contas · ${fo.sem} sem e-mail · ${fo.rec} contato recente · ${fo.blq+fo.ina} bloqueados</span></div>
+      ${ESTTAB===false?'<div class="hint" style="color:var(--warn)">⚠️ As tabelas da estratégia ainda não existem no banco: o histórico fica só neste aparelho.</div>':''}${ESTB&&ESTB.d.semBase?'<div class="hint" style="color:var(--warn)">⚠️ Falta a consulta estrategia_base no banco (SQL da reativação).</div>':''}</div>
+     <div class="card grid" style="gap:4px"><b>📈 Últimos 30 dias</b><div class="row" style="gap:14px;font-size:14px"><span>${RS.env} e-mails · ${RS.cl} clientes</span><span>💬 ${RS.resp} responderam</span><span>🧾 ${RS.orc} orçamentos (${brl(RS.vo)})</span><span>✅ ${RS.ped} voltaram a comprar · <b>${brl(RS.vp)}</b></span></div></div>
+     ${P.ligar.length?`<div class="sec">📞 Ligar ou mandar WhatsApp hoje</div><div class="hint">Quem recebeu o 1º e-mail há 3 dias úteis e não respondeu. Ligação curta, citando o e-mail.</div>${P.ligar.map((x,i)=>card(x,i,'l')).join('')}`:''}
+     <div class="sec">📧 E-mails para aprovar</div><div class="hint">Confira, mude o que quiser e aprove. Saem da sua caixa de e-mail, um por vez; as respostas chegam para você. ${P.restam>0?`Mais ${P.restam} clientes aguardam os próximos dias.`:''}</div>
+     ${P.emails.length?P.emails.map((x,i)=>card(x,i,'e')).join(''):'<div class="card hint">Nenhum e-mail para hoje. 👏</div>'}
+     ${P.emails.length?(vend===meuVend()?`<div style="position:sticky;bottom:72px;z-index:5;margin-top:10px"><button class="btn" id="estGo" style="width:100%">✓ Aprovar e enviar ${nS} e-mail${nS===1?'':'s'}</button></div>`:'<div class="hint" style="margin-top:10px">👀 Você está vendo a estratégia de outro vendedor. O envio é feito pelo próprio vendedor, da caixa dele.</div>'):''}
+     ${ges?`<details class="card" style="margin-top:14px"><summary><b>⚙️ Regras (gestor)</b></summary><div class="grid" style="gap:8px;margin-top:8px"><label class="f">E-mails por vendedor por dia<input id="estLim" type="number" min="0" max="200" value="${ESTB.d.cfg.lim}"></label><label class="f">Grande conta: grupo (raiz do CNPJ) que comprou nos últimos 12 meses a partir de R$<input id="estGc" type="number" min="0" step="10000" value="${ESTB.d.cfg.gc}"></label><button class="btn sm" id="estCfgS">Salvar regras</button><p class="hint" style="margin:0">Para liberar uma grande conta específica ou bloquear um cliente, use os botões dos cartões ou a ficha do cliente.</p></div></details>`:''}`;
+    const dv=$('#estV'); if(dv) dv.onchange=()=>{vend=dv.value; LS('estV',vend); m.innerHTML='<p class="hint">Montando…</p>'; carregar()}};
+  const pega=e=>{const c=e.target.closest('[data-ek]'); if(!c) return null; const i=+c.dataset.ei; return {i,k:c.dataset.ek,x:(c.dataset.ek==='e'?P.emails:P.ligar)[i]}};
+  const marcar=async(x,status,motivo)=>estGravar({dia:ymdL(new Date()),cnpj:x.cnpj,cliente:x.razao||x.n,vendedor:x.c.v||meuNome(),gatilho:x.seg,etapa:x.etapa,canal:x.etapa===2?'ligacao':'email',status,motivo:motivo||null,rep:x.rep||null});
+  const tira=(k,i)=>{if(k==='e'){P.emails.splice(i,1); sel=new Set(P.emails.map((x,j)=>j))} else P.ligar.splice(i,1); desenha()};
+  m.onchange=e=>{const s=e.target.closest('[data-esel]'); if(s){const p=pega(e); if(s.checked) sel.add(p.i); else sel.delete(p.i); const b=$('#estGo'); if(b) b.textContent=`✓ Aprovar e enviar ${sel.size} e-mail${sel.size===1?'':'s'}`}};
+  m.onclick=async e=>{const t=e.target; if(t.id==='estGo') return enviarTodos(t);
+    if(t.id==='estCfgS'){const c={lim:+$('#estLim').value||0,gc:+$('#estGc').value||0}; LS('estCfg',c); try{await api('reativacao_bloqueio?on_conflict=cnpj',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({cnpj:'_cfg',motivo:'cfg',obs:JSON.stringify(c),por:meuNome()})})}catch(_){} toast('Regras salvas'); return carregar(true)}
+    const p=pega(e); if(!p) return; const {x,i,k}=p;
+    if(t.closest('[data-ever]')){aberto=aberto===k+i?null:k+i; return desenha()}
+    if(t.closest('[data-emais]')){maisAb=maisAb===k+i?null:k+i; return desenha()}
+    if(t.closest('[data-emud]')) return estEditar(x,()=>desenha());
+    if(t.closest('[data-earte]')) return estArteOv(x,()=>desenha());
+    if(t.closest('[data-ecli]')) return painelCliente(x.cnpj,(k==='e'?P.emails:P.ligar).map(y=>y.cnpj));
+    if(t.closest('[data-eorc]')){const lin=(x.its.length?x.its:x.rad).map(i2=>({cod:i2.cod,desc:i2.ds,qt:1})); const rep=x.rep||((x.b.reps||[])[0]||{}).rep; if(!rep||!lin.length) return painelCliente(x.cnpj);
+      const oq=Q()[REPID[rep]]; const ok=await itensParaOrc(rep,{cnpj:x.cnpj,n:x.razao||x.n,fa:x.n,cid:x.cid,tel:x.tel,em:x.para[0]||''},lin,{}); if(ok){const o=Q()[REPID[rep]]; if(o&&!o.orig_camp){const h=(x.H||[]).find(h2=>h2.status==='enviado'); o.orig_camp={id:h?h.id:null,gatilho:x.seg,etapa:x.etapa,canal:h?'email':'estrategia',data:ymdL(new Date())}; o.orig_chk=1; saveQ(o)}} return}
+    if(t.closest('[data-eresp]')){await marcar(x,'respondeu'); toast('Régua parada para este cliente. Bom trabalho! Crie o orçamento a partir da resposta.'); return tira(k,i)}
+    if(t.closest('[data-efeito]')){await marcar(x,'feito'); api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj:x.cnpj,tipo:'ligacao',texto:`📞 2º toque da régua de reativação (${EST_NOME[x.seg]||x.seg})`,usuario_nome:meuNome()})}).catch(()=>{}); toast('Registrado'); return tira(k,i)}
+    if(t.closest('[data-eamanha]')){await marcar(x,'adiado',agMais(1)); toast('Volta amanhã'); return tira(k,i)}
+    if(t.closest('[data-epula]')){const mo=prompt('Por que pular? (opcional: ajuda a melhorar as sugestões)','')??null; if(mo===null) return; await marcar(x,'pulado',agMais(30)); if(mo) estGravar({dia:ymdL(new Date()),cnpj:x.cnpj,cliente:x.n,vendedor:x.c.v,gatilho:x.seg,etapa:x.etapa,canal:'nota',status:'nota',motivo:mo.slice(0,200)}); toast('Pulado por 30 dias'); return tira(k,i)}
+    if(t.closest('[data-enao]')){const gc=confirm('É uma grande conta? (OK = grande conta, Cancelar = não enviar por outro motivo)'); await estBloquear(x.cnpj,gc?'grande_conta':'nao_enviar'); toast('Não recebe mais e-mails automáticos'); return tira(k,i)}};
+  const enviarTodos=async btn=>{const L2=[...sel].sort((a,b)=>a-b).map(i=>P.emails[i]).filter(x=>x&&x.para.length); if(!L2.length) return toast('Nenhum e-mail marcado');
+    if(!confirm(`Enviar ${L2.length} e-mail(s) agora pela sua caixa?`)) return; btn.disabled=true; let ok=0, er=0, ult='';
+    for(const [j,x] of L2.entries()){btn.textContent=`Enviando ${j+1} de ${L2.length}… (${x.n})`; try{await estEnviar(x); ok++}catch(e){er++; ult=e.message} if(j<L2.length-1) await new Promise(r=>setTimeout(r,6000+Math.random()*4000))}
+    toast(`${ok} enviado(s)${er?` · ${er} com erro: ${ult}`:''}`); carregar(true)};
+  await carregar()}
+function estEditar(x,fim){const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="card grid" style="max-width:640px;width:100%;max-height:92vh;overflow:auto;gap:8px"><b>✎ Mudar e-mail · ${esc(x.n)}</b>
+   <label class="f">Para<select id="eeP" multiple size="${Math.min(4,Math.max(2,x.em.length))}">${x.em.map(e=>`<option value="${esc(e.e)}" ${x.para.includes(e.e)?'selected':''}>${esc(e.e)}${e.n?' · '+esc(e.n):''}</option>`).join('')}</select></label>
+   <label class="f">Assunto<input id="eeA" value="${esc(x.assunto)}"></label>${x.assuntos.length>1?`<div class="row" style="gap:6px">${x.assuntos.map((a,j)=>`<button class="chip" data-eea="${j}">Usar: ${esc(a)}</button>`).join('')}</div>`:''}
+   <label class="f">Texto<textarea id="eeT" rows="14">${esc(x.texto)}</textarea></label><label class="row" style="gap:6px"><input type="checkbox" id="eeR" ${x.arteOn?'checked':''}> Incluir a arte no corpo do e-mail</label>
+   <div class="row" style="gap:6px;justify-content:flex-end"><button class="btn sm ghost" id="eeX">Cancelar</button><button class="btn sm" id="eeS">Salvar mudanças</button></div></div>`; document.body.appendChild(ov);
+  ov.onclick=e=>{const t=e.target; if(t===ov||t.id==='eeX') return ov.remove(); const a=t.closest('[data-eea]'); if(a) ov.querySelector('#eeA').value=x.assuntos[+a.dataset.eea];
+    if(t.id==='eeS'){x.para=[...ov.querySelector('#eeP').selectedOptions].map(o=>o.value); x.assunto=ov.querySelector('#eeA').value.trim(); x.texto=ov.querySelector('#eeT').value; x.arteOn=ov.querySelector('#eeR').checked; x.mudou=true; ov.remove(); fim&&fim()}}}
+async function estArteOv(x,fim){const ov=document.createElement('div'); ov.className='ov'; const o=x.arteOpt=x.arteOpt||{}; const draw=async()=>{x.arteUrl=await estArte(x,o); ov.querySelector('#arI').src=x.arteUrl};
+  ov.innerHTML=`<div class="card grid" style="max-width:520px;width:100%;max-height:94vh;overflow:auto;gap:8px"><b>🖼 Arte para ${esc(x.n)}</b><img id="arI" style="width:100%;border-radius:12px;background:#222;aspect-ratio:1">
+    <label class="f">Título<input id="arT" placeholder="(automático)" value="${esc(o.titulo||'')}"></label><label class="f">Faixa de oferta (opcional)<input id="arO" placeholder="Ex.: 5% extra até sexta · frete grátis acima de R$ 1.500" value="${esc(o.oferta||'')}"></label>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip" id="arU">↻ Atualizar</button><a class="btn sm ghost" id="arD" download="arte-${esc(x.cnpj)}.png">⬇ Baixar (WhatsApp)</a><button class="btn sm" id="arE">📧 Usar no e-mail</button><button class="btn sm ghost" id="arX">Fechar</button></div>
+    <p class="hint" style="margin:0">Baixe para mandar no WhatsApp junto com a mensagem, ou inclua no corpo do e-mail.</p></div>`; document.body.appendChild(ov); await draw(); ov.querySelector('#arD').href=x.arteUrl;
+  ov.onclick=async e=>{const t=e.target; if(t===ov||t.id==='arX'){ov.remove(); return fim&&fim()} if(t.id==='arU'){o.titulo=ov.querySelector('#arT').value.trim(); o.oferta=ov.querySelector('#arO').value.trim(); await draw(); ov.querySelector('#arD').href=x.arteUrl}
+    if(t.id==='arE'){o.titulo=ov.querySelector('#arT').value.trim(); o.oferta=ov.querySelector('#arO').value.trim(); await draw(); x.arteOn=true; toast('A arte vai no corpo do e-mail'); ov.remove(); fim&&fim()}}}
+/*ESTRATEGIA-FIM*/
 
 /* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo, agrupados por orçamento */
 let SGAL=null;
@@ -1763,7 +2258,7 @@ const SQL6='Para ativar tarefas e agenda, rode no Supabase o arquivo <b>6_veloci
 const hoje=()=>ymd(new Date(Date.now()-new Date().getTimezoneOffset()*6e4)); const maisDias=n=>ymd(new Date(Date.now()-new Date().getTimezoneOffset()*6e4+n*864e5));
 const TT={ligacao:'📞 Ligação',whatsapp:'💬 WhatsApp',visita:'🚗 Visita',email:'✉️ E-mail',followup:'🔁 Retorno de orçamento',reuniao:'👥 Reunião',tarefa:'✔️ Tarefa'};
 async function novaTarefa(t){return api('tarefas',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({responsavel:sess.uid,responsavel_nome:meuNome(),feita:false,...t})})}
-async function contaTarefas(){try{const r=await api(`tarefas?select=id&feita=eq.false&vence=lte.${hoje()}&or=(responsavel.eq.${sess.uid},responsavel.is.null)`); const b=$('#tn'); if(b){b.hidden=!r.length; b.textContent=r.length}}catch(e){}}
+async function contaTarefas(){try{const r=await api(`tarefas?select=id&feita=eq.false&vence=lte.${hoje()}&or=(responsavel.eq.${sess.uid},responsavel.is.null)`); ['#tn','#tnHome'].forEach(s=>{const b=$(s); if(b){b.hidden=!r.length; b.textContent=r.length}})}catch(e){}}
 /* agenda (estilo Pipedrive): horários com duração, visão dia/semana e aviso de conflito no mesmo horário */
 const p2=n=>String(n).padStart(2,'0'), isoD=x=>x.getFullYear()+'-'+p2(x.getMonth()+1)+'-'+p2(x.getDate());
 const addD=(d,n)=>{const x=new Date(d+'T12:00'); x.setDate(x.getDate()+n); return isoD(x)};
@@ -1790,7 +2285,7 @@ async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje
     const nv=t.closest('[data-nav]'); if(nv){AG.dia=+nv.dataset.nav?addD(AG.dia,+nv.dataset.nav*passo):hoje(); return tarefasView()}
     const gd=t.closest('[data-agdia]'); if(gd){AG.dia=gd.dataset.agdia; f.modo='dia'; LS('tarF',f); return tarefasView()}
     if(t.id==='tnova') return formTarefa(ag?{vence:AG.dia<hoje()?hoje():AG.dia}:{});
-    const ck=t.closest('[data-tok]'); if(ck){const res=prompt('Resultado (opcional):','')??''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
+    const ck=t.closest('[data-tok]'); if(ck){const fr=await formulario('Concluir tarefa',[{k:'r',l:'Como foi? (opcional)',ph:'ex.: pediu orçamento, ligar semana que vem'}],'Concluir'); if(!fr) return; const res=fr.r||''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
     const ad=t.closest('[data-tadia]'); if(ad){await api(`tarefas?id=eq.${ad.dataset.tadia}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+ad.dataset.d)})}); toast('Reagendada'); contaTarefas(); return tarefasView()}
     const cl=t.closest('[data-tcli]'); if(cl) return go('cli',{cnpj:cl.dataset.tcli});
     const oo=t.closest('[data-torc]'); if(oo){const tt=(rows||[]).find(x=>x.id==oo.closest('[data-tid]').dataset.tid); return detOrc(tt.orcamento_id)}
@@ -1867,9 +2362,11 @@ async function fecharFollowUps(sid,res){try{await api(`tarefas?orcamento_id=eq.$
 /* ================= Bater carteira: painel rápido do cliente ================= */
 /* etiquetas de fábrica: nome curto + dias desde a última compra (verde até 30, amarelo até 90, vermelho acima) */
 const RCURTO={'Sigma Tools':'Sigma','ZM Bombas':'ZM','Chemicals 4U':'Chemicals'};
+const diasTxt=d=>d===0?'hoje':d===1?'1 dia':d+' dias';
+const LEG_DIAS='<p class="hint leg-dias" style="margin:0">Última compra em cada fábrica: <span class="tag rt ok">até 30 dias</span> <span class="tag rt warn">31 a 90 dias</span> <span class="tag rt bad">mais de 90 dias</span></p>';
 const corDias=d=>d==null?'':d<=30?'ok':d<=90?'warn':'bad';
 function repTags(c,max){const rs=Object.entries(c.reps||{}).map(([r,x])=>({r,d:x&&x.ultimo?dias(x.ultimo):null})).sort((a,b)=>(a.d??1e9)-(b.d??1e9)); const v=max?rs.slice(0,max):rs;
-  return v.map(x=>`<span class="tag rt ${corDias(x.d)}" title="${esc(x.r)}${x.d!=null?' · última compra há '+x.d+' dias':''}">${esc(RCURTO[x.r]||x.r)} ${x.d!=null?x.d+'d':'—'}</span>`).join('')+(max&&rs.length>max?`<span class="tag">+${rs.length-max}</span>`:'')}
+  return v.map(x=>`<span class="tag rt ${corDias(x.d)}" title="${esc(x.r)}${x.d!=null?' · última compra há '+x.d+' dias':''}">${esc(RCURTO[x.r]||x.r)} · ${x.d!=null?diasTxt(x.d):'nunca'}</span>`).join('')+(max&&rs.length>max?`<span class="tag">+${rs.length-max}</span>`:'')}
 const descCurta=i=>String(i.desc||'').replace(String(i.cod)+' - ','').split(' | ').slice(0,2).join(' · ');
 /* itens (repetir pedido / mais comprados) viram orçamento: catálogo do sistema com preço atual; Marluvas/Medix viram rascunho no conversor */
 async function itensParaOrc(repNome,c,lin,ex){ex=ex||{}; const rep=REPID[repNome]; if(!rep){toast(repNome+' não tem orçamento no sistema'); return false}
@@ -2046,16 +2543,19 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     <select id="cfc"><option value="">Todas as cidades</option>${cids.map(c=>`<option${c===f.cid?' selected':''}>${esc(c)}</option>`).join('')}</select>
     <select id="cfo"><option value="ret"${f.ord==='ret'?' selected':''}>Ordem: retornos e mais tempo sem comprar</option><option value="val"${f.ord==='val'?' selected':''}>Ordem: quem mais comprou (12 meses)</option><option value="az"${f.ord==='az'?' selected':''}>Ordem: A–Z</option></select></div>
    <div class="row">${[['','Todos'],['30','30–59 dias'],['60','60–89'],['90','90–179'],['180','180+'],['n','Nunca comprou'+(f.rep?' '+f.rep:'')]].map(([k,l])=>`<button class="chip${f.fx===k?' on':''}" data-fx="${k}">${l}</button>`).join('')}</div>
-   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>
-   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${repTags(c,4)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}">${u?dias(u)+'d':'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
+   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>${LEG_DIAS}
+   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${repTags(c,4)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}" style="white-space:nowrap">${u?'há '+diasTxt(dias(u)):'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
   const sv=(pg)=>{f.pg=pg||0; LS('cartF',f); carteira(box)};
   box.onchange=e=>{const id=e.target.id; if(id==='cfv') f.vend=e.target.value; else if(id==='cfr') f.rep=e.target.value; else if(id==='cfc') f.cid=e.target.value; else if(id==='cfo') f.ord=e.target.value; else return; sv()};
   let tt; const qi=box.querySelector('#cfq'); qi.oninput=e=>{clearTimeout(tt); tt=setTimeout(()=>{f.q=e.target.value; f.pg=0; LS('cartF',f); carteira(box).then(()=>{const n=box.querySelector('#cfq'); n.focus(); n.setSelectionRange(n.value.length,n.value.length)})},350)};
   box.onclick=e=>{const pgb=e.target.closest('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=e.target.closest('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=e.target.closest('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
 
 /* ================= Mais ================= */
-function mais(){const m=$('#main'); const it=[['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🎯','Metas do mês'],['reps','🏭','Representadas'],['busca','🔍','Buscar'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['aj','⚙️','Ajustes'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos']]:[])];
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div><div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
+function mais(){const m=$('#main'); const dia=[['estr','📬','Estratégia do dia (e-mails de reativação)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
+  const adm=[['reps','🏭','Representadas'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos']]:[])];
+  const grade=it=>`<div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div>
+   <div class="sec" style="font-size:17px;margin-top:14px">Dia a dia</div>${grade(dia)}<div class="sec" style="font-size:17px;margin-top:22px">Cadastros e administração</div>${grade(adm)}`;
   m.onclick=e=>{if(e.target.closest('[data-navedit]')) return navEditar(); const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
 
 /* ================= botão Sincronizar Reprio ================= */
@@ -2382,6 +2882,7 @@ async function relConversao(box,repF){box.innerHTML='<p class="hint">Calculando�
    <div class="card"><b>Taxa de conversão (orçamentos que viraram pedido)</b><div class="cbar">${rows.map(r=>`<div title="${r.lbl}: ${r.taxa.toFixed(1)}%"><span style="height:${r.taxa/mx*100}%"></span><small>${r.taxa.toFixed(0)}%</small><small>${r.lbl}</small></div>`).join('')}</div></div>
    <div class="card" style="overflow-x:auto;margin-top:12px"><table class="t"><tr><th>Mês</th><th class="n">Orçamentos</th><th class="n">Fechados</th><th class="n">Perdidos</th><th class="n">Em aberto</th><th class="n">Conversão</th><th class="n">Positivação</th><th class="n">Faturamento</th></tr>${rows.slice().reverse().map(r=>`<tr><td>${r.lbl}</td><td class="n">${r.tot}</td><td class="n ok">${r.ganho}</td><td class="n bad">${r.perd}</td><td class="n">${r.ab}</td><td class="n"><b>${r.taxa.toFixed(1)}%</b></td><td class="n">${r.pos}</td><td class="n">${brl(r.fat)}</td></tr>`).join('')}</table>
    <p class="hint">Conversão = fechados ÷ (fechados + perdidos + em aberto) dos orçamentos do mês (Reprio + sistema).</p></div>`;
+  const cq=document.createElement('div'); box.appendChild(cq); convPorQuem(cq,repF)
   box._csv=[['Mês','Orçamentos','Fechados','Perdidos','Em aberto','Conversão %','Positivação','Faturamento'],...rows.map(r=>[r.lbl,r.tot,r.ganho,r.perd,r.ab,r.taxa.toFixed(1),r.pos,r.fat])]}
 
 /* ================= tarefa: abrir, ver, ir para orçamento/cliente ================= */
@@ -2398,6 +2899,80 @@ async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?
       if(x.closest('[data-tok]')){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:ov.querySelector('#tres').value.trim()||null})}); toast('Tarefa concluída'); return fim()}
       const a=x.closest('[data-ad]'); if(a){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+a.dataset.ad)})}); toast('Reagendada'); return fim()}
       if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); if(h){const c=await conflitos(d||t.vence,h,+t.duracao||30,t.responsavel,t.id); if(c.bate.length&&!confirm(`Esse horário já tem: ${c.bate.map(x=>x.hora+' '+x.titulo).join('; ')}. Reagendar mesmo assim?`)) return} await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}
+
+/* ================= ajuda: tutoriais passo a passo, botão ? de cada tela e central de ajuda (nov/2026) ================= */
+const TUT={
+ inicio:{t:'Primeiros passos',d:'Um passeio rápido pelo Início e pela barra de baixo.',r:'home',p:[
+  ['#faz','Aqui começa o seu dia: faça um orçamento novo, bata a carteira ou veja as tarefas para hoje.'],
+  ['.iblks','O resto do Início fica em blocos. Toque no título para abrir ou fechar: "Fábricas" tem o catálogo de cada representada, "Hoje" mostra quem merece atenção e "Minha semana" mostra a meta. O sistema lembra o que você deixou aberto.'],
+  ['#nav','Esta barra leva às telas principais. Em Mais › Escolher atalhos você decide quais aparecem.'],
+  ['#srchBtn','Buscar acha cliente, pedido ou produto de qualquer tela.'],
+  ['#ajudaBtn','Ficou com dúvida? Toque no ? em qualquer tela e aparece o passo a passo dela.']]},
+ orc:{t:'Fazer um orçamento',d:'Da escolha da fábrica até mandar o PDF pelo WhatsApp.',r:'orc',c:{ot:'novo'},p:[
+  ['.otabs','"Novo" começa um orçamento. "Continuar" volta para o que ficou pela metade. "Salvos" guarda os que você já salvou.'],
+  ['#opane .reps','Passo 1: toque na fábrica do orçamento.'],
+  [null,'Passo 2: busque o cliente pelo nome, CNPJ ou cidade. A tabela de preço e o prazo do cliente entram sozinhos.'],
+  [null,'Passo 3: em "2. Itens", toque em "+ Adicionar do catálogo". Se o cliente mandou a lista por escrito, use "Colar pedido do cliente".'],
+  [null,'Passo 4: confira o total e toque em "Salvar orçamento". Depois de salvar aparecem PDF, WhatsApp, e-mail e follow-up.'],
+  [null,'Dica: vendedor, situação, OC e observações ficam em "Mais opções", logo abaixo do prazo.']]},
+ cli:{t:'Bater carteira',d:'Quem ligar hoje e como registrar o contato.',r:'cli',p:[
+  ['[data-cm]','"Bater carteira" mostra quem ligar. "Lista e filtros" mostra todos os clientes.'],
+  ['.leg-dias','As cores mostram há quanto tempo o cliente não compra de cada fábrica: verde até 30 dias, amarelo até 90, vermelho mais que isso.'],
+  ['[data-fx]','Filtre por tempo sem comprar para achar quem está esfriando.'],
+  ['[data-pc]','Toque no cliente para abrir a ficha: Ligar, WhatsApp, último contato e último pedido. Registre como foi e passe para o próximo.']]},
+ ficha:{t:'Ficha do cliente',d:'Tudo o que você precisa antes de ligar.',r:'cli',p:[
+  [null,'Abra a ficha tocando no nome do cliente em Clientes ou no resultado de Buscar.'],
+  [null,'No topo ficam Ligar, WhatsApp, E-mail e "Enviar ligação" (para a gravação virar resumo).'],
+  [null,'"Último contato" e "Último pedido por fábrica" mostram onde a conversa parou.'],
+  [null,'"Mais comprados" vira orçamento com um toque. Em Contatos você escolhe quem aparece no PDF.']]},
+ tar:{t:'Tarefas e agenda',d:'Retornos, visitas e ligações do dia.',r:'tar',p:[
+  ['[data-modo]','Veja o Dia, a Semana ou a Lista de tarefas.'],
+  ['#tnova','"+ Nova atividade" marca uma ligação, visita ou retorno. No Dia, tocar num horário vazio também marca.'],
+  ['[data-ab="atr"]','Atrasadas aparecem em vermelho. Abra para concluir ou adiar.'],
+  ['[data-quem]','"Minhas" mostra só as suas; "Equipe" mostra as de todos.']]},
+ ped:{t:'Pedidos e situação',d:'Achar um pedido e entender cada situação.',r:'ped',p:[
+  ['[data-tp]','"Orçamentos" são os feitos no Sistema e no Reprio. "Pedidos faturados" é o histórico que a fábrica faturou.'],
+  ['#balls','Cada cartão é uma situação: toque para ver só aquela. Orçamento → aguardando aprovação → aprovado para transmissão → transmitido na fábrica.'],
+  ['.pfil','Busque pelo nº do pedido, OC, cliente, CNPJ ou código de produto, e escolha o período.'],
+  ['#pres','Toque num pedido para ver os itens, mudar a situação ou gerar o PDF.']]},
+ tec:{t:'Busca técnica',d:'Achar o produto pela descrição que o cliente mandou.',r:'tec',p:[
+  ['#tq','Cole aqui o pedido do cliente (WhatsApp, e-mail, edital) ou escreva o que ele quer: material, cor, tamanho, CA.'],
+  ['#trep','Se quiser, escolha uma fábrica só.'],
+  ['#tgo','Toque em "Encontrar produtos". Confira as sugestões e mande para o orçamento.']]},
+ conv:{t:'Marluvas e Medix',d:'Converter CA, refinar e nível de comissão.',r:'home',p:[
+  [null,'No bloco "Fábricas" do Início, toque no cartão Marluvas ou Medix. Eles funcionam como as outras fábricas, com catálogo e orçamento.'],
+  [null,'"Converter CA" acha o produto equivalente a partir do CA de outra marca. "Refinar" ajusta a busca.'],
+  [null,'Na Medix, cada item tem o nível de comissão (botões 1 a 5) no próprio cartão.']]},
+ gestor:{t:'Para o gestor',d:'Acessos, metas e tabelas de preço.',r:'mais',p:[
+  [null,'Mais › Equipe e acessos: aprove quem criou acesso e defina quem é gestor.'],
+  [null,'Mais › Metas do mês: meta por vendedor e por fábrica. Ela aparece no Início e no Painel do mês.'],
+  [null,'Mais › Tabelas de preço e produtos: importe as planilhas de preço de cada fábrica.'],
+  [null,'No Início, o "Resumo da semana" compara vendas, orçamentos e ligações de cada vendedor.']]}};
+const TUT_ROTA={home:'inicio',orc:'orc',rep:'orc',cli:'cli',tar:'tar',ped:'ped',tec:'tec'};
+const visivel=el=>{if(!el) return false; const r=el.getBoundingClientRect(); return r.width>0&&r.height>0};
+async function tutorial(k){const T=TUT[k]; if(!T) return; $('#umenu')&&$('#umenu').remove(); if(route!==T.r||T.c) go(T.r,T.c); await new Promise(r=>setTimeout(r,900));
+  document.querySelectorAll('.tour-ov').forEach(x=>x.remove()); let i=0; const ov=document.createElement('div'); ov.className='tour-ov'; ov.innerHTML='<div class="tour-spot" hidden></div><div class="tour-card" role="dialog" aria-live="polite"></div>'; document.body.appendChild(ov);
+  const spot=ov.querySelector('.tour-spot'), card=ov.querySelector('.tour-card');
+  const passo=()=>{const [sel,txt]=T.p[i]; const el=sel?[...document.querySelectorAll(sel)].find(visivel):null;
+    if(el){el.scrollIntoView({block:'center',behavior:'instant'}); const r=el.getBoundingClientRect(), pd=6; Object.assign(spot.style,{top:(r.top-pd)+'px',left:(r.left-pd)+'px',width:(r.width+pd*2)+'px',height:Math.min(r.height+pd*2,innerHeight*.6)+'px'}); spot.hidden=false; card.classList.toggle('topo',r.top>innerHeight*.5)} else {spot.hidden=true; card.classList.remove('topo')}
+    ov.classList.toggle('escuro',!el);
+    card.innerHTML=`<div class="hint">${esc(T.t)} · passo ${i+1} de ${T.p.length}</div><p style="margin:8px 0 12px;font-size:16px;line-height:1.4">${esc(txt)}</p><div class="row" style="justify-content:space-between"><button class="chip" data-tx>Fechar</button><div class="row">${i?'<button class="btn ghost sm" data-tv>‹ Voltar</button>':''}<button class="btn sm" data-tn>${i===T.p.length-1?'Concluir ✓':'Próximo ›'}</button></div></div>`};
+  ov.onclick=e=>{if(e.target.closest('[data-tx]')) return ov.remove(); if(e.target.closest('[data-tv]')){i--; return passo()} if(e.target.closest('[data-tn]')){if(i===T.p.length-1){ov.remove(); return toast('Pronto! O ? no topo mostra o passo a passo de cada tela.')} i++; return passo()}};
+  passo()}
+function ajudaDaTela(){const k=TUT_ROTA[route]; if(k) return tutorial(k); go('ajuda')}
+function ajudaView(){const m=$('#main');
+  const FAQ=[['Esqueci a senha. E agora?','Fale com o gestor. Ele confere seu acesso em Mais › Equipe e acessos.'],
+   ['Fiz um orçamento e sumiu.','Veja em Orçamento › Continuar (os que estão pela metade) ou Orçamento › Salvos. Pedidos também lista todos os orçamentos do mês.'],
+   ['O preço não apareceu no produto.','O produto não está na tabela escolhida. Troque a tabela no passo 1 do orçamento ou avise o gestor.'],
+   ['Como mando o orçamento pelo WhatsApp?','Depois de "Salvar orçamento" aparece a janela com PDF, WhatsApp, e-mail e copiar texto.'],
+   ['O que são as cores nos clientes?','Tempo desde a última compra em cada fábrica: verde até 30 dias, amarelo de 31 a 90, vermelho mais de 90.'],
+   ['Apareceu uma mensagem de erro.','Leia a frase e tente de novo. Se repetir, toque em "Detalhe técnico", tire um print e mande para o gestor.'],
+   ['Como escolho os botões da barra de baixo?','Mais › Escolher atalhos da barra. Vale só para o seu usuário.']];
+  m.innerHTML=`<div class="sec">❓ Ajuda e tutoriais</div><p class="hint">Cada tutorial abre a tela certa e mostra, passo a passo, onde tocar. O botão <b>?</b> no topo mostra o tutorial da tela em que você está.</p>
+   <div class="grid tut-lista">${Object.entries(TUT).filter(([k])=>k!=='gestor'||ehGestor()).map(([k,t])=>`<button class="card tut-b" data-tut="${k}"><b>${esc(t.t)}</b><span class="hint">${esc(t.d)}</span><span class="tut-go">▶ Ver passo a passo</span></button>`).join('')}</div>
+   <div class="sec" style="margin-top:22px;font-size:18px">Perguntas frequentes</div><div class="grid">${FAQ.map(([q,a])=>`<details class="card faq"><summary><b>${esc(q)}</b></summary><p style="margin:8px 0 0">${esc(a)}</p></details>`).join('')}</div>
+   <p class="hint" style="margin-top:16px">Ainda com dúvida? Fale com o gestor.</p>`;
+  m.onclick=e=>{const b=e.target.closest('[data-tut]'); if(b) tutorial(b.dataset.tut)}}
 
 /* ================= lembretes de tarefas (pop-up no canto da tela) ================= */
 const AVISADAS=new Set(L('avisadas')||[]);
@@ -2502,8 +3077,7 @@ async function finLista(box){const tp=FST.ab, de=mesIni(FST.y,FST.mo), ate=mesFi
       try{for(const l of P) await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'pago',valor_pago:l.valor,pago_em:hoje()})}); toast('Baixas registradas'); return finLista(box)}catch(err){return toast('Erro: '+err.message)}}
     const b=t.closest('[data-fbx]'); if(b){const l=L1.find(x=>x.id==b.dataset.fbx); return finBaixa(l)}
     const r=t.closest('[data-fl]'); if(r) return finForm(L1.find(x=>x.id==r.dataset.fl))}}
-async function finBaixa(l){const v=prompt(`Valor ${l.tipo==='R'?'recebido':'pago'} (R$):`,String(l.valor).replace('.',',')); if(v===null) return; const vp=lerNumBR(v); if(!(vp>=0)) return toast('Valor inválido');
-  const dt=prompt('Data (dd/mm/aaaa):',dbr(hoje())); if(dt===null) return; const [d,mo,y]=dt.split('/'); const pe=y&&mo&&d?`${y.length===2?'20'+y:y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`:hoje();
+async function finBaixa(l){const fv=await formulario('Registrar baixa',[{k:'v',l:`Valor ${l.tipo==='R'?'recebido':'pago'} (R$)`,val:String(l.valor).replace('.',','),mode:'decimal',req:true},{k:'d',l:'Data',type:'date',val:hoje(),req:true}],'Registrar'); if(!fv) return; const vp=lerNumBR(fv.v); if(!(vp>=0)) return toast('Valor inválido'); const pe=fv.d||hoje();
   const conta=FIN.contas.filter(c=>c.ativa); let cid=l.conta_id||null; if(!cid&&conta.length===1) cid=conta[0].id;
   try{await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'pago',valor_pago:vp,pago_em:pe,conta_id:cid})}); toast('Baixa registrada'); finView()}catch(err){toast('Erro: '+err.message)}}
 async function finForm(l0){if(!l0) return; const l={tipo:'P',status:'aberto',vencimento:hoje(),...l0}, novo=!l.id, tp=l.tipo;
@@ -2928,5 +3502,5 @@ async function caCard(ca,box){if(!box) return; box.innerHTML='<div class="card">
 /* ---------- início ---------- */
 badge();
 /* já tem login salvo: abre direto e confere em segundo plano (a tela de login só aparece se o acesso tiver expirado de verdade) */
-if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent=meuNome()||sess.email; w.onclick=()=>go('aj'); window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
+if(sess){if(perfil&&perfil.aprovado!==false){$('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent='👤 '+(meuNome()||sess.email); w.onclick=menuUsuario; window._bootCedo=true; go(L('route')||'home')} afterLogin()} else showLock();
 })();

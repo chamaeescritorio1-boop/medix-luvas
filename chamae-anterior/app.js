@@ -165,9 +165,9 @@ function navEditar(){let sel=navSel(); const ov=document.createElement('div'); o
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
   const q=Q(); m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div><button class="chip" data-go2="reps">Gerenciar ›</button></div><div class="reps" style="margin-top:10px">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
      return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}</div>
-   <div id="semana"></div>
+   <div id="agHoje" style="margin-top:20px"></div><div id="semana"></div>
    <div class="sec" style="margin-top:20px">Atalhos</div><div class="row"><button class="btn ghost" data-go2="orc">＋ Novo orçamento</button><button class="btn ghost" data-go2="cli">📞 Bater carteira</button><button class="btn ghost" data-go2="tar">✔️ Tarefas</button><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; minhaSemana($('#semana'),true)}
+  m.onclick=e=>{const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2)}; agHoje($('#agHoje')); minhaSemana($('#semana'),true)}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -1271,6 +1271,103 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
       const c=e.target.closest('[data-pc]'); if(c){e.stopPropagation(); return painelCliente(c.dataset.pc,(c.dataset.pl?VI.L.filter(x=>!viR||x.rep===viR):NH).map(x=>x.cnpj))}
       const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
   catch(e){box.innerHTML=''}}
+
+/*AGENTES-INICIO*/
+/* Agentes de IA — Fase 1 (01/11): cartão "🤖 Hoje para você" no Início.
+   1 Carteira parada: cliente × fábrica que passou do seu ritmo de compra (mediana dos intervalos, 18 meses, ≥3 datas).
+   3 Orçamento sem retorno: orçamento aberto há AG_ORC_DIAS dias úteis ou mais, sem pedido e sem contato depois.
+   4 Ritmo da meta: meta do mês × vendido até hoje por fábrica; fábrica atrasada pesa mais na prioridade.
+   Os números saem das regras (grátis). A IA grátis (função agentes-ia, Groq) só escreve porquê / o que falar / WhatsApp, 1 vez por dia.
+   Feito / Amanhã / Não faz sentido ficam na tabela `oportunidades` (se ela não existir, ficam só neste aparelho). */
+const AG_MAX=10, AG_ORC_DIAS=5, AG_ON=true;
+const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno'}, AG_COR={parada:'#f08a24',orc:'#f2b632'};
+const agMais=n=>{const d=new Date(); d.setDate(d.getDate()+n); return ymdL(d)};
+const agUteis=(a,b)=>{let n=0; const d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<e){d.setDate(d.getDate()+1); if(diaUtil(d)) n++} return n};
+let AGP=null, AGTAB=null;
+async function agPedidos(){if(AGP&&Date.now()-AGP.t<5*6e4) return AGP.d; const a=new Date(); a.setMonth(a.getMonth()-18);
+  const d=semDupLeg(vAtL(await apiAll(`pedidos?select=id,num,origem,cnpj,representada,valor,vendedor,data:data_ref&data_ref=gte.${ymdL(a)}&or=(status.is.null,status.in.(finalizado,para_transmitir),status.ilike.aprovado*)`))); AGP={t:Date.now(),d}; return d}
+async function agEstados(){const loc=L('agSt')||{}; if(AGTAB===false) return loc; try{const r=await api(`oportunidades?select=k,status,ate&user_id=eq.${sess.uid}&ate=gte.${ymdL(new Date())}`); AGTAB=true; const o={...loc}; r.forEach(x=>o[x.k]={s:x.status,ate:x.ate}); return o}catch(e){AGTAB=false; return loc}}
+async function agMarcar(it,status,dias,obs){const ate=agMais(dias), m=L('agSt')||{}; Object.keys(m).forEach(k=>{if(m[k].ate<ymdL(new Date())) delete m[k]}); m[it.k]={s:status,ate}; LS('agSt',m);
+  if(AGTAB!==false){try{await api('oportunidades?on_conflict=k,user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({k:it.k,user_id:sess.uid,usuario_nome:meuNome(),agente:it.ag,cnpj:it.cnpj||null,cliente:it.n,rep:it.rep,valor:Math.round(it.v||0),status,ate,obs:obs||null,atualizado_em:new Date().toISOString()})}); AGTAB=true}catch(e){AGTAB=false}}}
+/* regras → lista de oportunidades */
+function agParadas(P,C,mine,ult){const G={}, hoje=ymdL(new Date()), a12=agMais(-365);
+  P.forEach(x=>{const k=String(x.cnpj||'').replace(/\D/g,''); if(!k||!x.data||x.data>hoje) return; const g=G[k+'|'+x.representada]=G[k+'|'+x.representada]||{cnpj:k,rep:x.representada,dv:{},v:''}; g.dv[x.data]=(g.dv[x.data]||0)+(+x.valor||0); if(!g.u||x.data>=g.u){g.u=x.data; g.v=x.vendedor||''}});
+  const byC={}; C.forEach(c=>byC[c.cnpj]=c); const out=[];
+  Object.values(G).forEach(g=>{const ds=Object.keys(g.dv).sort(); if(ds.length<3||!mine(g.v)) return; const gap=[]; for(let i=1;i<ds.length;i++) gap.push(Math.round((new Date(ds[i])-new Date(ds[i-1]))/864e5));
+    gap.sort((a,b)=>a-b); const ciclo=gap[gap.length>>1]; if(ciclo<7||ciclo>180) return; const d=dias(g.u), r=d/ciclo; if(r<1.3||d>Math.max(4*ciclo,120)||d>365) return;
+    const uc=ult[g.cnpj]; if(uc&&dias(uc.slice(0,10))<7) return; /* já falou com o cliente esta semana */
+    const vs=ds.filter(x=>x>=a12).map(x=>g.dv[x]), tk=(vs.length?vs:ds.map(x=>g.dv[x])).reduce((a,b)=>a+b,0)/(vs.length||ds.length); const c=byC[g.cnpj]||{};
+    out.push({k:`parada|${g.cnpj}|${g.rep}`,ag:'parada',cnpj:g.cnpj,n:c.fa||c.n||g.cnpj,razao:c.n||'',tel:c.tel||'',rep:g.rep,v:tk,ciclo,d,ultimo:g.u,
+      sc:tk*(r<=2?1:r<=3?.8:.5),fatos:`Compra ${g.rep} a cada ~${ciclo} dias (mediana); último pedido em ${g.u.split('-').reverse().join('/')}, há ${d} dias; ticket médio ${brl(tk)}; ${ds.length} compras em 18 meses.`})});
+  return out}
+function agOrcs(O,P,C,so,ult){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const hoje=ymdL(new Date()), out=[];
+  O.forEach(o=>{if(so&&o.user_id!==sess.uid) return; const st=stOf(o); if(!['orcamento','aguardando_aprovacao','aguardando_atg'].includes(st)) return; const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn||!(+o.total>0)) return;
+    const d0=String(o.atualizado_em||'').slice(0,10); if(!d0) return; const u=agUteis(d0,hoje), d=dias(d0); if(u<AG_ORC_DIAS||d>60) return;
+    const rn=HIST_REP[o.app]||repName(o.app); if(P.some(x=>String(x.cnpj||'').replace(/\D/g,'')===cn&&x.representada===rn&&x.data>=d0)) return; /* virou pedido */
+    const uc=ult[cn]; if(uc&&uc>=String(o.atualizado_em)) return; /* teve contato depois */
+    const c=byC[cn]||{}; out.push({k:`orc|${o.id}`,ag:'orc',oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,
+      sc:(+o.total)*(u<=10?1.2:u<=20?1:.7),fatos:`Orçamento ${rn} de ${brl(o.total)} (${(STATUS.find(s=>s[0]===st)||[,st])[1]}), parado há ${u} dias úteis (${d} corridos), sem pedido e sem contato registrado depois.`})});
+  return out}
+function agMeta(M,P,mine,so,eu){const hj=new Date(), y=hj.getFullYear(), mo=hj.getMonth(), ini=ymdL(new Date(y,mo,1)), hoje=ymdL(hj);
+  const meta={}; (M||[]).filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; meta[r]=(meta[r]||0)+(+x.valor||0)});
+  const vend={}; P.forEach(x=>{if(x.data>=ini&&x.data<=hoje&&mine(x.vendedor)) vend[x.representada]=(vend[x.representada]||0)+(+x.valor||0)});
+  const U=uteisMes(y,mo); let pas=0; for(const d=new Date(y,mo,1);d<=hj;d.setDate(d.getDate()+1)) if(diaUtil(d)) pas++; const rest=Math.max(1,U-pas+(diaUtil(hj)?1:0));
+  const L2=Object.keys(meta).filter(r=>meta[r]>0).map(r=>{const m=meta[r], v=vend[r]||0, esp=m*pas/U; return {rep:r,m,v,esp,falta:Math.max(0,m-v),dia:Math.max(0,m-v)/rest,atr:v<esp*.95}}).sort((a,b)=>b.falta-a.falta);
+  const mT=L2.reduce((s,x)=>s+x.m,0), vT=L2.reduce((s,x)=>s+x.v,0); return {L:L2,mT,vT,esp:mT*pas/U,rest,atr:new Set(L2.filter(x=>x.atr).map(x=>x.rep))}}
+async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ges||L('agSo')!==false, eu=meuVend(), mine=v=>!so||!eu||norm(v||'').startsWith(eu); let aberto=null;
+  box.innerHTML='<div class="card grid ag"><b>🤖 Hoje para você</b><p class="hint" style="margin:0">Os agentes estão olhando sua carteira…</p></div>';
+  try{const hj=new Date(); const [C,P,O,CT,M,ST]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
+      apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-75)}`).catch(()=>[]),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[]),agEstados()]);
+    const ult={}; CT.forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
+    const MT=agMeta(M,P,mine,so,eu), hoje=ymdL(hj);
+    const todos=[...agParadas(P,C,mine,ult),...agOrcs(O,P,C,so,ult)].filter(x=>{const s=ST[x.k]; return !(s&&s.ate>=hoje)});
+    todos.forEach(x=>{if(MT.atr.has(x.rep)) {x.sc*=1.5; x.meta=true}});
+    /* um cliente aparece uma vez só (fica a oportunidade de maior peso) */
+    const vis=new Set(), L2=todos.sort((a,b)=>b.sc-a.sc).filter(x=>{if(vis.has(x.cnpj)) return false; vis.add(x.cnpj); return true}).slice(0,AG_MAX);
+    const IA=agCache(so); const metaTx=MT.L.length?MT.L.map(x=>`${x.rep}: meta ${brl(x.m)}, vendido ${brl(x.v)}, esperado até hoje ${brl(x.esp)}${x.atr?' (ATRASADA)':''}, falta ${brl(x.falta)} = ${brl(x.dia)} por dia útil`).join('\n'):'';
+    const soma=r=>L2.filter(x=>x.rep===r).reduce((s,x)=>s+x.v,0);
+    const metaHtml=()=>{if(!MT.L.length) return ''; const pc=MT.mT?MT.vT/MT.mT*100:0, at=MT.L.filter(x=>x.atr);
+      return `<div class="agm"><div class="row" style="justify-content:space-between"><span>🎯 <b>Ritmo da meta</b> · ${brl(MT.vT)} de ${brl(MT.mT)}</span><b class="${MT.vT>=MT.esp?'ok':'warn'}">${pc.toFixed(0)}%</b></div><div class="mbar"><i style="width:${Math.min(100,pc)}%${MT.vT>=MT.esp?'':';background:var(--warn)'}"></i></div>
+       ${at.length?at.slice(0,4).map(x=>`<div class="hint" style="font-size:13px">⚠️ <b>${esc(x.rep)}</b> atrasada: falta ${brl(x.falta)} (${brl(x.dia)}/dia útil)${soma(x.rep)?` · as oportunidades abaixo somam ${brl(soma(x.rep))}`:''}</div>`).join(''):`<div class="hint" style="font-size:13px">Todas as fábricas no ritmo ou à frente. 👏</div>`}</div>`};
+    const texto=x=>IA.m[x.k]||agPadrao(x);
+    const item=(x,i)=>{const t=texto(x), ph=String(x.tel||'').replace(/\D/g,''), wa=(ph.length>=10?`https://wa.me/55${ph}`:'https://wa.me/')+'?text='+encodeURIComponent(t.whatsapp||'');
+      return `<div class="agi" data-agi="${i}" style="border-left:4px solid ${AG_COR[x.ag]};padding:6px 0 6px 10px;display:grid;gap:6px;margin-top:4px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><div><span class="tag" style="background:${AG_COR[x.ag]};color:#111">${AG_NOME[x.ag]}</span>${x.meta?' <span class="tag" style="background:var(--warn);color:#111">meta atrasada</span>':''}<br><b>${esc(x.n)}</b> <span class="hint">· ${esc(x.rep)} · ${brl(x.v)}</span></div>${t.prioridade===1?'<span title="Prioridade">🔥</span>':''}</div>
+        <div style="font-size:14px">${esc(t.porque)}</div>${t.falar?`<div class="hint" style="font-size:13px">💡 ${esc(t.falar)}</div>`:''}
+        ${aberto===i?`<div class="hint" style="font-size:13px;white-space:pre-wrap;border:1px dashed var(--line);border-radius:8px;padding:6px">💬 ${esc(t.whatsapp||'')}</div>`:''}
+        <div class="row" style="gap:6px">${ph?`<a class="btn sm" href="tel:+55${ph}" data-agl="${i}">📞 Ligar</a>`:''}<a class="btn sm ghost" target="_blank" rel="noopener" href="${wa}" data-agw="${i}">💬 WhatsApp</a><button class="chip" data-agv="${i}">${aberto===i?'Ocultar':'Ver'} mensagem</button>
+         <button class="chip" data-agc="${i}">Ver cliente</button>${x.oid?`<button class="chip" data-ago="${i}">Abrir orçamento</button>`:''}<button class="chip" data-agt="${i}">＋ Tarefa</button>
+         <button class="chip" data-agf="${i}" title="Já cuidei disso">✓ Feito</button><button class="chip" data-aga="${i}">Amanhã</button><button class="chip" data-agn="${i}">✕ Não faz sentido</button></div></div>`};
+    /* recolhido (padrão): só o resumo e as 3 primeiras em uma linha; "Ampliar" mostra tudo (fica lembrado no aparelho) */
+    const metaCurta=()=>{if(!MT.L.length) return ''; const pc=MT.mT?MT.vT/MT.mT*100:0, at=MT.L.filter(x=>x.atr).map(x=>x.rep); return `<div class="hint" style="font-size:13px">🎯 Meta do mês <b class="${MT.vT>=MT.esp?'ok':'warn'}">${pc.toFixed(0)}%</b>${at.length?` · atrasada: ${esc(at.slice(0,3).join(', '))}${at.length>3?'…':''}`:' · no ritmo 👏'}</div>`};
+    const linha=(x,i)=>{const t=texto(x); return `<button class="chip" style="text-align:left;border-left:4px solid ${AG_COR[x.ag]}" data-agx="${i}">${t.prioridade===1?'🔥 ':''}<b>${esc(x.n)}</b> · ${esc(x.rep)} · ${brl(x.v)}<br><span class="hint" style="font-size:12px">${esc(AG_NOME[x.ag])} · ${esc(t.porque)}</span></button>`};
+    const draw=(nota)=>{if(!box.isConnected) return; const tot=L2.reduce((s,x)=>s+x.v,0), ab=L('agAb')===true;
+      box.innerHTML=`<div class="card grid ag"><div class="row" style="justify-content:space-between"><b>🤖 Hoje para você</b><div class="row" style="gap:6px">${ab&&ges?`<button class="chip${so?' on':''}" data-ags="1">Só meus</button><button class="chip${so?'':' on'}" data-ags="0">Equipe toda</button>`:''}${L2.length||MT.L.length?`<button class="chip" data-agab>${ab?'Recolher ▴':'Ampliar ▾'}</button>`:''}</div></div>
+        ${ab?metaHtml():metaCurta()}${L2.length?`<p class="hint" style="margin:0">${L2.length} ${L2.length>1?'oportunidades':'oportunidade'} · ${brl(tot)} em jogo${nota?' · '+esc(nota):''}</p>${ab?L2.map(item).join(''):L2.slice(0,3).map(linha).join('')+(L2.length>3?`<button class="chip" data-agab style="justify-self:start">Ver mais ${L2.length-3}</button>`:'')}`:'<p class="hint" style="margin:0">Nada pendente na sua carteira hoje. 👏</p>'}</div>`};
+    draw(IA.pend(L2)?'a IA está escrevendo as mensagens…':'');
+    if(IA.pend(L2)) agIA(L2,metaTx,IA,so).then(e=>draw(e||'')).catch(()=>draw(''));
+    box.onclick=async e=>{const g=s=>e.target.closest(s), n=s=>{const b=g(s); return b?L2[+b.dataset[Object.keys(b.dataset)[0]]]:null}; let x;
+      const s=g('[data-ags]'); if(s){LS('agSo',s.dataset.ags==='1'); return agHoje(box)}
+      if(g('[data-agab]')){LS('agAb',L('agAb')!==true); aberto=null; return draw('')}
+      if(x=n('[data-agx]')){LS('agAb',true); aberto=L2.indexOf(x); draw(''); const el=box.querySelector(`[data-agi="${aberto}"]`); if(el) el.scrollIntoView({block:'center'}); return}
+      if(x=n('[data-agv]')){const i=L2.indexOf(x); aberto=aberto===i?null:i; return draw('')}
+      if(x=n('[data-agc]')){e.stopPropagation(); return painelCliente(x.cnpj,L2.map(y=>y.cnpj))}
+      if(x=n('[data-ago]')){e.stopPropagation(); return detOrc(x.oid)}
+      if(x=n('[data-agt]')){e.stopPropagation(); return formTarefa({cnpj:x.cnpj,cliente:x.razao||x.n,rep:Object.keys(HIST_REP).find(k=>HIST_REP[k]===x.rep)||null,orcamento_id:x.oid||null,tipo:'ligacao',titulo:x.ag==='orc'?`Cobrar orçamento ${x.rep} (${brl(x.v)})`:`Retomar compras ${x.rep}`})}
+      if(n('[data-agl]')||n('[data-agw]')) return; /* deixa o link abrir */
+      let st=null, d=0, obs=null; if(x=n('[data-agf]')){st='feita'; d=x.ag==='orc'?7:14} else if(x=n('[data-aga]')){st='adiada'; d=1} else if(x=n('[data-agn]')){obs=prompt('Por que não faz sentido? (opcional — ajuda os agentes a melhorar)',''); if(obs===null) return; st='nao_faz_sentido'; d=60}
+      if(st){e.stopPropagation(); await agMarcar(x,st,d,obs); L2.splice(L2.indexOf(x),1); aberto=null; draw(''); toast(st==='feita'?'Boa! Marcado como feito':st==='adiada'?'Volta amanhã':'Ok, não vou mostrar este por 60 dias')}}}
+  catch(e){box.innerHTML=''}}
+function agPadrao(x){return x.ag==='orc'?{prioridade:x.u<=10?1:2,porque:`Orçamento de ${brl(x.v)} parado há ${x.u} dias úteis, sem retorno do cliente.`,falar:'Pergunte se conseguiu avaliar e o que falta para fechar: quantidade, prazo ou condição.',whatsapp:`Olá! Tudo bem? Conseguiu avaliar o orçamento ${x.rep} que enviei? Se precisar ajustar quantidades ou condições, me fala que eu preparo.`}
+  :{prioridade:x.d/x.ciclo<=2?1:2,porque:`Compra ${x.rep} a cada ~${x.ciclo} dias e está há ${x.d} sem comprar.`,falar:'Pergunte como está o estoque e ofereça repetir o último pedido.',whatsapp:`Olá! Tudo bem? Passando para saber como está o estoque dos produtos ${x.rep}. Quer que eu prepare a reposição com base no último pedido?`}}
+function agCache(so){const hoje=ymdL(new Date()); let c=L('agIA'); if(!c||c.d!==hoje||c.u!==(sess&&sess.uid)) c={d:hoje,u:sess&&sess.uid,m:{},tent:{}};
+  return {m:c.m,c,pend:L2=>L2.some(x=>!c.m[x.k]&&!c.tent[x.k])}}
+async function agIA(L2,metaTx,IA,so){const c=IA.c, falta=L2.filter(x=>!c.m[x.k]&&!c.tent[x.k]); falta.forEach(x=>c.tent[x.k]=1); LS('agIA',c);
+  try{const tk=await token(); const r=await fetch(SB+'/functions/v1/agentes-ia',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(tk||KEY),'Content-Type':'application/json'},
+      body:JSON.stringify({vendedor:so?meuNome():'equipe toda',meta:metaTx,itens:falta.map(x=>({k:x.k,agente:AG_NOME[x.ag],cliente:x.n,rep:x.rep,fatos:x.fatos}))})});
+    const j=await r.json().catch(()=>({})); if(!r.ok||j.erro) return 'textos da IA indisponíveis agora';
+    (j.itens||[]).forEach(t=>{if(t&&t.k&&falta.some(x=>x.k===t.k)) c.m[t.k]={prioridade:+t.prioridade||2,porque:t.porque||'',falar:t.falar||'',whatsapp:t.whatsapp||''}}); LS('agIA',c); return ''}
+  catch(e){return 'textos da IA indisponíveis agora'}}
+/*AGENTES-FIM*/
 
 /* alerta da página inicial: itens da Sigma em orçamentos abertos (antes de transmitir) com estoque baixo, agrupados por orçamento */
 let SGAL=null;

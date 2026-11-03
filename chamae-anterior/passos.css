@@ -57,3 +57,26 @@
 .opas-it .d{color:var(--muted)}
 .opas-sum>.opas-tl{display:grid;grid-template-columns:1fr;gap:4px;font-size:15px;background:var(--surface2)}
 .opas-sum .opas-tl span{color:inherit}
+/* escolher cliente com filtros */
+.cpk{display:grid;grid-template-columns:2fr 1fr 1.3fr 1fr;gap:10px}
+.cpk-res{display:grid;gap:8px}
+.cpk-c{display:grid;gap:3px;text-align:left;border:2px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;position:relative;padding-right:110px}
+.cpk-c:hover{border-color:var(--accent)}
+.cpk-n{font-size:18px;font-weight:700}
+.cpk-l{font-size:14.5px;color:var(--muted)}
+.cpk-t{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.cpk-go{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:10px 14px;font-weight:700;font-size:15px}
+@media(max-width:760px){.cpk{grid-template-columns:1fr 1fr}.cpk label:first-child{grid-column:1/-1}.cpk-c{padding-right:14px}.cpk-go{position:static;transform:none;justify-self:start;margin-top:6px}}
+/* prazo: lista de seleção no visual do Sistema (Victor 02/11: "campo de seleção, não aberto") */
+.pzsel{position:relative;max-width:520px}
+.pzsel-b{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:56px;padding:10px 16px;border:2px solid var(--line);border-radius:12px;background:var(--field,var(--surface));color:var(--ink);font:inherit;font-size:17px;cursor:pointer;text-align:left}
+.pzsel-b:focus,.pzsel-b:hover{border-color:var(--accent)}
+.pzsel-b small{color:var(--muted);font-size:14px;margin-left:6px}
+.pzsel-a{font-size:18px;color:var(--muted)}
+.pzsel-l{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.28);padding:6px;max-height:340px;overflow:auto;display:grid;gap:2px}
+.pzsel-l[hidden]{display:none}
+.pzsel-o{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:0;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:16px;cursor:pointer;text-align:left}
+.pzsel-o:hover{background:var(--surface2)}
+.pzsel-o.on{background:var(--surface2)} .pzsel-o.on b{color:var(--ok,#1f9d5c)}
+.pzsel-o small{color:var(--muted);font-size:14px;text-align:right}
+.pzsel-o[data-opzo]{border-top:1px solid var(--line);border-radius:0 0 10px 10px}

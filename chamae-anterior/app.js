@@ -1449,8 +1449,8 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
    Os números saem das regras (grátis). A IA grátis (função agentes-ia, Groq) só escreve porquê / o que falar / WhatsApp, 1 vez por dia.
    Feito / Amanhã / Não faz sentido ficam na tabela `oportunidades` (se ela não existir, ficam só neste aparelho). */
 const AG_MAX=10, AG_ORC_DIAS=2, AG_ON=true; /* cadência de cobrança: 2º, 5º e 10º dia útil */
-const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?',sumiu:'Item que sumiu',epoca:'Comprou nesta época',cruz:'Venda cruzada',ticket:'Ticket caindo',estoque:'Voltou ao estoque',portal:'Entrou no portal',fat:'Pedido faturado',novo:'Cliente novo'},
-  AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8',sumiu:'#ff7a70',epoca:'#4fd18b',cruz:'#5aa9ff',ticket:'#e07bd8',estoque:'#2fd3c6',portal:'#ff5a36',fat:'#b37bff',novo:'#8bd14f'}, AG_CICLO_MAX=3;
+const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?',sumiu:'Item que sumiu',epoca:'Comprou nesta época',cruz:'Venda cruzada',ticket:'Ticket caindo',estoque:'Voltou ao estoque',portal:'Entrou no portal',fat:'Pedido faturado',novo:'Cliente novo',fria:'Sem comprar',ret:'Retorno marcado'},
+  AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8',sumiu:'#ff7a70',epoca:'#4fd18b',cruz:'#5aa9ff',ticket:'#e07bd8',estoque:'#2fd3c6',portal:'#ff5a36',fat:'#b37bff',novo:'#8bd14f',fria:'#6f86c9',ret:'#294680'}, AG_CICLO_MAX=3;
 const agMais=n=>{const d=new Date(); d.setDate(d.getDate()+n); return ymdL(d)};
 const agUteis=(a,b)=>{let n=0; const d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<e){d.setDate(d.getDate()+1); if(diaUtil(d)) n++} return n};
 let AGP=null, AGTAB=null;
@@ -1546,6 +1546,7 @@ function agPadrao(x){const T={
   estoque:{p:1,q:`Perdemos este orçamento por falta de estoque, e o item voltou.`,f:'Avise que chegou e ofereça reenviar o orçamento.',w:`Olá! Tudo bem? Boa notícia: os itens que estavam em falta no seu orçamento ${x.rep} voltaram ao estoque. Quer que eu atualize o orçamento?`},
   portal:{p:1,q:'Entrou no portal B2B agora.',f:'Ligue e pergunte se está procurando algum item.',w:'Olá! Tudo bem? Vi que você acessou nosso portal. Está procurando algum item? Posso te ajudar com a cotação.'},
   fat:{p:2,q:`Pedido ${x.rep} faturado (${brl(x.v)}).`,f:'Avise que o pedido saiu e pergunte se falta algo para repor.',w:`Olá! Tudo bem? Seu pedido ${x.rep} foi faturado e já está a caminho. Precisa de mais algum item para aproveitar o próximo envio?`},
+  fria:{p:2,q:`Comprava ${x.rep} e está há ${x.d} dias sem comprar.`,f:'Pergunte se ainda usa os produtos e com quem está comprando hoje; ofereça uma cotação com base no último pedido.',w:`Olá! Tudo bem? Faz um tempo que não falamos sobre os produtos ${x.rep}. Ainda usa? Posso te mandar uma cotação atualizada do último pedido.`},
   novo:{p:1,q:`Cliente novo: fez a 1ª compra e ainda não fez a 2ª.`,f:'Pergunte como foi a experiência com o primeiro pedido e ofereça a reposição.',w:`Olá! Tudo bem? Como foi com o primeiro pedido ${x.rep}? Se precisar repor ou de outros itens, estou à disposição.`}}[x.ag];
   if(T) return {prioridade:T.p,porque:T.q,falar:T.f,whatsapp:T.w};
   if(x.ag==='ciclo') return {prioridade:3,porque:`Orçamento de ${brl(x.v)} aberto há ${x.d} dias sem desfecho.`,falar:'Pergunte se ainda está em negociação. Se fechou com outro, registre o motivo em ✖ Perdemos.',whatsapp:`Olá! Tudo bem? Sobre o orçamento ${x.rep} que enviei há algum tempo: ainda está em avaliação ou posso ajudar com alguma alteração?`};
@@ -2288,7 +2289,7 @@ async function clientesView(){const m=$('#main'); if(ctx.cnpj) return fichaClien
   $('#cimp').onclick=()=>importarClientes(); $('#cnovo').onclick=()=>fichaCliente('',true); if(ehGestor()){$('#cexcl').onclick=()=>cexcPainel(); cexcLista(true).then(()=>{const n=cexcPend().length, b=$('#cexcn'); if(b){b.textContent=n; b.hidden=!n}})} $('#csync').onclick=e=>sincronizarReprio(e.target).then(()=>clientesView());
   /* Clientes abre sempre na lista e filtros; Bater carteira é a 2ª opção (ou vem do Início com cm:'cart') */
   const modo=ctx.cm==='cart'?'cart':'lista'; m.querySelector('.card.grid').insertAdjacentHTML('beforebegin',`<div class="row" style="margin-top:10px"><button class="chip${modo==='lista'?' on':''}" data-cm="lista">📋 Lista e filtros</button><button class="chip${modo==='cart'?' on':''}" data-cm="cart">📞 Bater carteira</button></div>`); m.querySelector('[data-cm]').parentNode.onclick=e=>{const b=e.target.closest('[data-cm]'); if(b) go('cli',{cm:b.dataset.cm})};
-  if(modo==='cart'){m.querySelector('#clq').closest('.card').hidden=true; await clientes(); if(!m.isConnected) return; return carteira($('#clres'))}
+  if(modo==='cart'){m.querySelector('#clq').closest('.card').hidden=true; const pb=document.createElement('div'); pb.id='plDia'; pb.style.marginTop='10px'; $('#clres').before(pb); await clientes(); if(!m.isConnected) return; planoDia(pb); return carteira($('#clres'))}
   const C=await clientes(); if(!m.isConnected) return; const Vs=[...TIME]; $('#clv').innerHTML='<option value="">Todos os vendedores</option>'+Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('');
   const ult=c=>{const d=Object.values(c.reps).map(x=>x.ultimo).filter(Boolean).sort().pop(); return d||null};
   let pgc=0; const draw=()=>{const w=norm(f.q).trim(), dg=w.replace(/\D/g,''); const L2=C.filter(c=>(!w||norm(c.n+' '+(c.fa||'')+' '+(c.cid||'')+' '+(c.em||'')).includes(w)||(dg.length>=4&&c.cnpj.includes(dg)))&&(!f.vend||norm(c.v||'')===f.vend)&&(()=>{const u=ult(c); if(f.ina==='n') return !u; if(!f.ina) return true; return u&&dias(u)>=+f.ina})());
@@ -2918,6 +2919,130 @@ async function orcParaCliente(c){const R=(await reps()).filter(r=>r.ativa); cons
   ov.onclick=async e=>{if(e.target.closest('[data-x]')||e.target===ov) return ov.remove(); const b=e.target.closest('[data-or]'); if(!b) return; const rep=b.dataset.or; const qq=Q(); if(qq[rep]&&qq[rep].itens.length){if(!confirm(`Há um carrinho ${repName(rep)} em andamento. Guardar como rascunho e começar este?`)) return; await limparCarrinho(rep,true)} else {delete qq[rep]; setQ(qq)}
     const o=curQ(rep); o.vend=meuNome(); saveQ(o); await escolherCliente(rep,o,c.cnpj); if(!o.cli){o.cli={cnpj:c.cnpj,n:c.n,fa:c.fa||'',cid:c.cid||'',tel:c.tel||'',em:c.em||''}; saveQ(o)} ov.remove(); go('rep',{rep})}}
 
+/*PLANO-DIA-INICIO*/
+/* Planejador do dia (03/11, opção B): no topo do Bater carteira.
+   - Escolhe PL_N clientes por vendedor, separados por pasta (representada). A quantidade de cada pasta segue a meta de forma
+     equilibrada: metade dividida igual entre as pastas com oportunidade, metade pelo que falta da meta de cada uma.
+   - Usa os mesmos agentes do "Hoje para você" (parada, orçamento sem retorno, item que sumiu, época, cruzada…) e completa com
+     "sem comprar" (cliente que parou de comprar naquela pasta). Retornos marcados para hoje aparecem à parte, sempre.
+   - Tema do dia (segunda a sexta) dá mais peso a um tipo de oportunidade; cada cliente traz "o que falar" (IA grátis ou texto padrão).
+   - Se atualiza sozinho: contato registrado hoje = feito ("Não atendeu" = tentar de novo), orçamento hoje = 📝, pedido hoje = 🎉.
+   O plano do dia fica guardado no aparelho (chs_plDia) para não mudar de ordem durante o dia; "↻ Refazer" monta de novo. */
+const PL_N=20;
+const PL_TEMA={1:{t:'Reativar quem parou',ag:['parada','fria','ticket','sumiu'],dica:'Abra pela reposição: "quer que eu repita o último pedido?". Quem não compra há muito tempo responde melhor a uma pergunta simples do que a uma oferta.'},
+  2:{t:'Cobrar orçamentos',ag:['orc','ciclo','estoque'],dica:'Pergunte o que falta para fechar (quantidade, prazo ou preço) e já ofereça o ajuste. Se perdeu, registre o motivo: isso ensina os agentes.'},
+  3:{t:'Mix e venda cruzada',ag:['cruz','sumiu','novo','ticket'],dica:'Depois de falar do que ele já compra, apresente um item de outra pasta que clientes parecidos levam juntos.'},
+  4:{t:'Época e novidades',ag:['epoca','estoque','portal','fat','novo'],dica:'Lembre o que ele comprou nesta época no ano passado e ofereça programar a entrega antes de faltar.'},
+  5:{t:'Fechar a semana',ag:['orc','ciclo','parada'],dica:'Foque em quem está mais perto de fechar: orçamentos abertos e quem já está no ponto de repor. Pedido que entra hoje conta na meta da semana.'}};
+const plTema=()=>PL_TEMA[new Date().getDay()]||PL_TEMA[1];
+const plKey=v=>'plDia_'+(v||'todos');
+const plMeiaNoite=()=>{const d=new Date(); d.setHours(0,0,0,0); return d.toISOString()};
+/* monta a lista de candidatos de um vendedor (mesmos agentes do Início + "sem comprar" + retornos de hoje) */
+async function plCandidatos(vend){const hj=new Date(), hoje=ymdL(hj), mine=v=>!vend||norm(v||'').startsWith(vend);
+  const [C,P,O,CT,M,ST,TA]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
+    apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-75)}`).catch(()=>[]),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[]),agEstados(),
+    api(`tarefas?select=id,cnpj,titulo,vence,hora,responsavel_nome&feita=eq.false&vence=lte.${hoje}&cnpj=not.is.null&order=vence&limit=300`).catch(()=>[])]);
+  const [RI,R0]=await Promise.all([agItensDB(),reps().catch(()=>[])]);
+  const ult={}; CT.forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
+  const X=agCtx(P,C), dono=cn=>{const c=X.byC[cn]; return c&&c.v?c.v:''}, meu=cn=>!vend||mine(dono(cn));
+  const [ES,PO,FA]=await Promise.all([agEstoque(X,false,ult).catch(()=>[]),agPortal(X,mine).catch(()=>[]),agFat(X,mine,ult).catch(()=>[])]);
+  let MT=agMeta(M,P,mine,!!vend,vend); if(vend&&!MT.L.length){MT=agMeta(M,P,()=>true,false,''); MT.eq=true} /* sem meta do vendedor: usa a meta da equipe como peso */
+  let todos=[...agParadas(P,C,mine,ult),...agOrcs(O,P,C,false,ult),...agItensSinais(RI,X,mine,ult),...agCruz(C,P,R0,X,mine,ult),...agTicket(P,X,mine,ult),...ES,...PO,...FA,...agNovoCli(P,X,mine,ult)]
+    .filter(x=>x.cnpj&&meu(x.cnpj)).filter(x=>{const s=ST[x.k]; return !(s&&s.s==='nao_faz_sentido'&&s.ate>=hoje)});
+  /* "sem comprar": parou de comprar na pasta (60 dias a 18 meses), para completar quando os agentes acham pouco */
+  const tk={}; P.forEach(x=>{const k=String(x.cnpj||'').replace(/\D/g,'')+'|'+x.representada; tk[k]=tk[k]||{s:0,n:0}; tk[k].s+=+x.valor||0; tk[k].n++});
+  const ja=new Set(todos.map(x=>x.cnpj+'|'+x.rep));
+  C.forEach(c=>{if(!meu(c.cnpj)||agFalou(ult,c.cnpj,10)) return; Object.entries(c.reps||{}).forEach(([r,x])=>{if(!x||!x.ultimo||ja.has(c.cnpj+'|'+r)) return; const d=dias(x.ultimo); if(d<60||d>540) return;
+    const t=tk[c.cnpj+'|'+r], tm=t&&t.n?t.s/t.n:0; todos.push({k:`fria|${c.cnpj}|${r}`,ag:'fria',cnpj:c.cnpj,n:c.fa||c.n,razao:c.n||'',tel:c.tel||'',rep:r,v:tm,d,ultimo:x.ultimo,
+      sc:tm*(d<=120?.6:d<=240?.45:.3),fatos:`Comprava ${r} (ticket médio ${brl(tm)}); último pedido em ${dbr(x.ultimo)}, há ${d} dias, e não comprou mais.`})})});
+  /* retornos marcados para hoje (ou atrasados) */
+  const RT=[], vr=new Set(); TA.forEach(t=>{const cn=String(t.cnpj||'').replace(/\D/g,''); if(!cn||vr.has(cn)) return; if(vend&&!(norm(t.responsavel_nome||'').startsWith(vend)||(!t.responsavel_nome&&meu(cn)))) return; vr.add(cn); const c=X.byC[cn]||{};
+    RT.push({k:`ret|${t.id}`,ag:'ret',cnpj:cn,n:c.fa||c.n||cn,razao:c.n||'',tel:c.tel||'',rep:'',v:0,tid:t.id,sc:0,titulo:t.titulo,vence:t.vence,hora:t.hora?String(t.hora).slice(0,5):''})});
+  return {todos,RT,MT,C,P}}
+/* divide PL_N entre as pastas: metade igual, metade pelo que falta da meta (equilibrado); quem tem menos candidatos devolve a sobra */
+function plCotas(G,MT,N){const reps=Object.keys(G).filter(r=>G[r].length); if(!reps.length) return {}; const falta={}; (MT.L||[]).forEach(x=>falta[x.rep]=x.falta);
+  const sf=reps.reduce((s,r)=>s+(falta[r]||0),0), w={}; reps.forEach(r=>w[r]=sf>0?.5/reps.length+.5*(falta[r]||0)/sf:1/reps.length);
+  const q={}; reps.forEach(r=>q[r]=0); let resto=Math.min(N,reps.reduce((s,r)=>s+G[r].length,0));
+  /* toda pasta com oportunidade ganha ao menos 1 (a de mais peso primeiro) */
+  reps.slice().sort((a,b)=>w[b]-w[a]).forEach(r=>{if(resto>0){q[r]=1; resto--}});
+  /* o resto pelo peso (maiores sobras primeiro), sem passar do que cada pasta tem */
+  while(resto>0){const ab=reps.filter(r=>q[r]<G[r].length); if(!ab.length) break; const sw=ab.reduce((s,r)=>s+w[r],0), tot=resto;
+    const f=ab.map(r=>({r,x:tot*w[r]/sw})); f.forEach(o=>{const k=Math.min(Math.floor(o.x),G[o.r].length-q[o.r],resto); q[o.r]+=k; resto-=k});
+    f.sort((a,b)=>(b.x%1)-(a.x%1)).forEach(o=>{if(resto>0&&q[o.r]<G[o.r].length){q[o.r]++; resto--}})}
+  return q}
+/* monta (ou remonta) o plano do dia */
+async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCandidatos(vend);
+  todos.forEach(x=>{x.sc2=(x.sc||x.v||1)*(tm.ag.includes(x.ag)?2:1)*(MT.atr&&MT.atr.has(x.rep)?1.3:1); if(tm.ag.includes(x.ag)) x.tema=true});
+  const usados=new Set((manter||[]).map(x=>x.cnpj)); RT.forEach(x=>usados.add(x.cnpj));
+  const G={}; todos.filter(x=>x.ag!=='ciclo'||tm.ag.includes('ciclo')).sort((a,b)=>b.sc2-a.sc2).forEach(x=>{(G[x.rep]=G[x.rep]||[]).push(x)});
+  /* um cliente uma vez só no plano: fica na pasta onde tem mais peso */
+  const vis=new Set(usados);
+  /* cliente que aparece em mais de uma pasta fica na pasta que mais precisa (peso da meta) */
+  const fr={}; (MT.L||[]).forEach(x=>fr[x.rep]=x.falta); const rk=Object.keys(G), sf=rk.reduce((s,r)=>s+(fr[r]||0),0), wr=r=>sf>0?.5+.5*rk.length*(fr[r]||0)/sf:1;
+  const ord=Object.values(G).flat().sort((a,b)=>b.sc2*wr(b.rep)-a.sc2*wr(a.rep)), G2={}; ord.forEach(x=>{if(vis.has(x.cnpj)) return; vis.add(x.cnpj); (G2[x.rep]=G2[x.rep]||[]).push(x)});
+  const N=Math.max(0,PL_N-(manter||[]).length), q=plCotas(G2,MT,N), itens=[...(manter||[])];
+  Object.keys(q).forEach(r=>itens.push(...G2[r].slice(0,q[r])));
+  const reserva={}; Object.keys(G2).forEach(r=>reserva[r]=G2[r].slice(q[r]||0,(q[r]||0)+15));
+  const lim=x=>({k:x.k,ag:x.ag,cnpj:x.cnpj,n:x.n,razao:x.razao,tel:x.tel,rep:x.rep,v:Math.round(x.v||0),d:x.d,u:x.u,ciclo:x.ciclo,etapa:x.etapa,oid:x.oid,its:x.its,de:x.de,fatos:x.fatos,tema:x.tema,tid:x.tid,titulo:x.titulo,vence:x.vence,hora:x.hora});
+  const pl={d:ymdL(new Date()),vend,tema:tm.t,ret:RT.map(lim),itens:itens.map(lim),reserva:Object.fromEntries(Object.entries(reserva).map(([r,l])=>[r,l.map(lim)])),
+    meta:(MT.L||[]).map(x=>({rep:x.rep,falta:x.falta,dia:x.dia,atr:x.atr})),metaEq:!!MT.eq};
+  LS(plKey(vend),pl); return pl}
+/* o que aconteceu hoje com os clientes do plano: contato, orçamento, pedido */
+async function plSituacao(pl){const cn=new Set([...pl.itens,...pl.ret].map(x=>x.cnpj)); if(!cn.size) return {}; const t0=plMeiaNoite(), hoje=ymdL(new Date()), S={}, d=v=>String(v||'').replace(/\D/g,'');
+  const [CT,OR,PD]=await Promise.all([api(`contatos?select=cnpj,resultado,tipo,criado_em&criado_em=gte.${t0}&order=criado_em.desc&limit=1000`).catch(()=>[]),
+    api(`orcamentos?select=id,cnpj,total,status,app,atualizado_em&atualizado_em=gte.${t0}&limit=1000`).catch(()=>[]),agPedidos().catch(()=>[])]);
+  const s=k=>cn.has(k)?(S[k]=S[k]||{c:null,o:0,ov:0,p:0,pv:0}):null;
+  CT.forEach(c=>{const x=s(d(c.cnpj)); if(x&&!x.c) x.c=c});
+  OR.forEach(o=>{const x=s(d(o.cnpj)); if(!x) return; if(o.status==='transmitido'){x.p++; x.pv+=+o.total||0} else if(o.status!=='cancelado'){x.o++; x.ov+=+o.total||0}});
+  PD.forEach(p=>{if(!p.data||p.data<hoje) return; const x=s(d(p.cnpj)); if(x){x.p++; x.pv+=+p.valor||0}});
+  return S}
+const plEst=(S,cn)=>{const s=S[cn]; if(!s) return 'pend'; if(s.p) return 'ped'; if(s.o) return 'orc'; if(s.c) return s.c.resultado==='Não atendeu'?'tent':'feito'; return 'pend'};
+const PL_EST={pend:['',''],tent:['☎️ Não atendeu, tente de novo','warn'],feito:['✓ Contato feito','ok'],orc:['📝 Orçamento feito','ok'],ped:['🎉 Pedido','ok']};
+async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meuVend(); if(!TIME.includes(vend)) vend=ges?(L('plV')||TIME[0]):vend; if(ges&&L('plV')&&TIME.includes(L('plV'))) vend=L('plV');
+  box.innerHTML='<div class="card grid"><b>🗓️ Plano do dia</b><p class="hint" style="margin:0">Montando o plano do dia por pasta…</p></div>';
+  let pl=L(plKey(vend)); try{if(!pl||pl.d!==ymdL(new Date())||!Array.isArray(pl.itens)) pl=await plMontar(vend)}catch(e){box.innerHTML=''; return}
+  if(!box.isConnected) return; let S={}, aberto=L('plAb')!==false, notaIA='';
+  const IA=agCache(true); const texto=x=>IA.m[x.k]||agPadrao(x);
+  const curto=r=>RCURTO[r]||r;
+  const linha=(x,i,lista)=>{const e=plEst(S,x.cnpj), [et,ec]=PL_EST[e], t=texto(x), ph=String(x.tel||'').replace(/\D/g,''), fe=e!=='pend'&&e!=='tent';
+    return `<div class="pli${fe?' plfe':''}" style="border-left:4px solid ${x.ag==='ret'?'var(--brand)':AG_COR[x.ag]||'#9aa1b8'};padding:6px 0 6px 10px;display:grid;gap:4px;margin-top:6px${fe?';opacity:.6':''}">
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><div style="min-width:0"><b>${esc(x.n)}</b> ${x.ag==='ret'?`<span class="tag" style="background:var(--brand);color:#fff">Retorno${x.hora?' '+esc(x.hora):''}</span>`:`<span class="tag" style="background:${AG_COR[x.ag]||'#9aa1b8'};color:#111">${esc(AG_NOME[x.ag]||'')}</span>`}${x.tema?' <span title="Tema do dia">⭐</span>':''}</div>${et?`<span class="${ec}" style="white-space:nowrap;font-size:13px">${et}</span>`:''}</div>
+      ${fe?'':`<div style="font-size:14px">${esc(x.ag==='ret'?x.titulo||'Retorno marcado':t.porque)}</div>${x.ag!=='ret'&&t.falar?`<div class="hint" style="font-size:13px">💡 ${esc(t.falar)}</div>`:''}`}
+      <div class="row" style="gap:6px">${ph&&!fe?`<a class="btn sm" href="tel:+55${ph}" data-pltel="${esc(x.cnpj)}">📞 Ligar</a>`:''}<button class="chip" data-plc="${esc(x.cnpj)}" data-pll="${lista}">${fe?'Ver cliente':'Abrir e registrar'}</button>${x.oid&&!fe?`<button class="chip" data-plo="${esc(x.oid)}">Abrir orçamento</button>`:''}${!fe&&x.ag!=='ret'?`<button class="chip" data-plt="${i}" title="Trocar por outro cliente da mesma pasta">⇄ Trocar</button>`:''}</div></div>`};
+  const draw=()=>{if(!box.isConnected) return; const all=pl.itens, est=all.map(x=>plEst(S,x.cnpj)), feitos=est.filter(e=>e!=='pend'&&e!=='tent').length;
+    const no=Object.values(S).reduce((s,x)=>s+x.o,0), nov=Object.values(S).reduce((s,x)=>s+x.ov,0), np=Object.values(S).reduce((s,x)=>s+x.p,0), npv=Object.values(S).reduce((s,x)=>s+x.pv,0);
+    const pc=all.length?feitos/all.length*100:0, tm=PL_TEMA[new Date().getDay()]||PL_TEMA[1];
+    const G={}; all.forEach((x,i)=>{(G[x.rep]=G[x.rep]||[]).push([x,i])});
+    const mt=r=>(pl.meta||[]).find(y=>y.rep===r);
+    const grupos=Object.keys(G).sort((a,b)=>G[b].length-G[a].length).map(r=>{const m=mt(r), l=G[r].sort((a,b)=>{const ea=plEst(S,a[0].cnpj), eb=plEst(S,b[0].cnpj), fa=ea!=='pend'&&ea!=='tent', fb=eb!=='pend'&&eb!=='tent'; return fa-fb}), fe=l.filter(([x])=>{const e=plEst(S,x.cnpj); return e!=='pend'&&e!=='tent'}).length;
+      return `<details class="pcb plg"${aberto?' open':''}><summary><b>${esc(curto(r))}</b> <span class="hint">· ${fe}/${l.length} feitos${m&&m.falta>0?` · falta ${brl(m.falta)} da meta${pl.metaEq?' da equipe':''} (${brl(m.dia)}/dia)`:m?' · meta batida 👏':''}${m&&m.atr?' · <span class="warn">atrasada</span>':''}</span></summary>${l.map(([x,i])=>linha(x,i,'i')).join('')}</details>`}).join('');
+    box.innerHTML=`<style>.pl>:not(.plg){grid-column:1/-1}</style><div class="card grid pl"><div class="row" style="justify-content:space-between"><b>🗓️ Plano do dia${ges?'':' · '+esc(vend)}</b><div class="row" style="gap:6px">${ges?TIME.map(v=>`<button class="chip${v===vend?' on':''}" data-plv="${v}">${esc(v.charAt(0)+v.slice(1).toLowerCase())}</button>`).join(''):''}<button class="chip" data-plab>${aberto?'Recolher ▴':'Abrir ▾'}</button></div></div>
+      <div class="hint" style="font-size:14px">⭐ <b>Tema de hoje: ${esc(pl.tema||tm.t)}</b>${aberto?`<br><span style="font-size:13px">${esc(tm.dica)}</span>`:''}</div>
+      <div><div class="row" style="justify-content:space-between;font-size:14px"><span>✓ <b>${feitos} de ${all.length}</b> clientes do plano</span><span>📝 ${no} orçamento${no===1?'':'s'}${nov?' · '+brl(nov):''} · 🎉 ${np} pedido${np===1?'':'s'}${npv?' · '+brl(npv):''}</span></div><div class="mbar"><i style="width:${Math.min(100,pc)}%"></i></div></div>
+      ${pl.ret.length?`<details class="pcb plg"${aberto?' open':''}><summary><b>🔔 Retornos marcados</b> <span class="hint">· ${pl.ret.length} para hoje ou atrasados</span></summary>${pl.ret.map((x,i)=>linha(x,i,'r')).join('')}</details>`:''}
+      ${all.length?grupos:'<p class="hint" style="margin:0">Nenhuma oportunidade na carteira hoje. Use a lista abaixo para bater a carteira.</p>'}
+      ${notaIA?`<p class="hint" style="margin:0;font-size:12px">${esc(notaIA)}</p>`:''}
+      <div class="row" style="gap:6px">${feitos>=all.length&&all.length?'<button class="chip" data-plmais>＋ Mais 5 clientes</button>':''}<button class="chip" data-plref title="Monta o plano de novo, mantendo o que já foi feito">↻ Refazer plano</button></div>
+      <p class="hint" style="margin:0;font-size:12px">${PL_N} clientes por dia, divididos por pasta conforme a meta. O plano se atualiza quando você registra contato, faz orçamento ou entra pedido.</p></div>`};
+  const atualiza=async()=>{try{S=await plSituacao(pl)}catch(e){} draw()};
+  draw(); atualiza();
+  if(IA.pend(pl.itens)){const mtx=(pl.meta||[]).map(x=>`${x.rep}: falta ${brl(x.falta)}${x.atr?' (ATRASADA)':''}`).join('\n'); notaIA='a IA está escrevendo o que falar…'; draw(); agIA(pl.itens.slice(0,20),mtx,IA,true).then(e=>{notaIA=e||''; draw()}).catch(()=>{notaIA=''; draw()})}
+  /* volta a conferir quando fecha a ficha rápida do cliente, quando volta para o app e a cada 2 minutos */
+  const obs=new MutationObserver(()=>{if(!box.isConnected){obs.disconnect(); return} if(!document.querySelector('.ov')&&box.dataset.plov==='1'){box.dataset.plov=''; setTimeout(atualiza,600)}}); obs.observe(document.body,{childList:true});
+  const vis=()=>{if(!box.isConnected) return document.removeEventListener('visibilitychange',vis); if(document.visibilityState==='visible') atualiza()}; document.addEventListener('visibilitychange',vis);
+  const iv=setInterval(()=>{if(!box.isConnected) return clearInterval(iv); atualiza()},12e4);
+  box.onclick=async e=>{const g=s=>e.target.closest(s);
+    const v=g('[data-plv]'); if(v){LS('plV',v.dataset.plv); obs.disconnect(); clearInterval(iv); return planoDia(box)}
+    if(g('[data-plab]')){aberto=!aberto; LS('plAb',aberto); return draw()}
+    if(g('[data-pltel]')){const c=(await clientes()).find(y=>y.cnpj===g('[data-pltel]').dataset.pltel); if(c) ligMarcarLigacao(c); return}
+    const c=g('[data-plc]'); if(c){const lista=(c.dataset.pll==='r'?pl.ret:pl.itens).filter(x=>{const es=plEst(S,x.cnpj); return x.cnpj===c.dataset.plc||es==='pend'||es==='tent'}).map(x=>x.cnpj); box.dataset.plov='1'; return painelCliente(c.dataset.plc,lista)}
+    const o=g('[data-plo]'); if(o){box.dataset.plov='1'; return detOrc(o.dataset.plo)}
+    const t=g('[data-plt]'); if(t){const i=+t.dataset.plt, x=pl.itens[i], rs=(pl.reserva[x.rep]||[]), ja=new Set([...pl.itens,...pl.ret].map(y=>y.cnpj)); const nx=rs.find(y=>!ja.has(y.cnpj));
+      if(!nx) return toast(`Não há outro cliente de ${curto(x.rep)} para hoje`); pl.reserva[x.rep]=rs.filter(y=>y!==nx); pl.itens[i]=nx; LS(plKey(vend),pl); await atualiza(); return toast(`Trocado por ${nx.n}`)}
+    if(g('[data-plmais]')){const ja=new Set([...pl.itens,...pl.ret].map(y=>y.cnpj)); let n=0; const fila=Object.values(pl.reserva).flat().filter(y=>!ja.has(y.cnpj)); while(n<5&&fila.length){const r=Object.keys(pl.reserva).sort((a,b)=>(pl.reserva[b]||[]).length-(pl.reserva[a]||[]).length)[0]; const nx=(pl.reserva[r]||[]).find(y=>!ja.has(y.cnpj)); if(!nx) break; pl.reserva[r]=pl.reserva[r].filter(y=>y!==nx); ja.add(nx.cnpj); pl.itens.push(nx); n++}
+      LS(plKey(vend),pl); await atualiza(); return toast(n?`＋ ${n} clientes no plano`:'Não há mais clientes para hoje 👏')}
+    if(g('[data-plref]')){const b=g('[data-plref]'); b.disabled=true; b.textContent='Montando…'; const feitos=pl.itens.filter(x=>plEst(S,x.cnpj)!=='pend'); try{pl=await plMontar(vend,feitos)}catch(er){toast('Não consegui refazer agora')} await atualiza(); return toast('Plano refeito')}}}
+/*PLANO-DIA-FIM*/
 /* lista para bater carteira (dentro de Clientes) */
 async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep:'',cid:'',fx:'',q:''},L('cartF')||{}); const C=await clientes(); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}
   const pend=new Set(tar.map(t=>t.cnpj)); const ultR=c=>{const rs=Object.entries(c.reps||{}).filter(([r])=>!f.rep||r===f.rep).map(([,x])=>x.ultimo).filter(Boolean).sort(); return rs.pop()||null};

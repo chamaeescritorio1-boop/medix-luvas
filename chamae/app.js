@@ -3401,13 +3401,13 @@ const finStatus=l=>l.status==='aberto'&&l.vencimento<hoje()?'atrasado':l.status;
 const FTAG={previsto:'<span class="tag" style="background:#3b82f6;color:#fff">cliente pagou (previsto)</span>',inadimplente:'<span class="tag" style="background:var(--bad);color:#fff">cliente em atraso</span>',aberto:'<span class="tag">em aberto</span>',atrasado:'<span class="tag" style="background:var(--bad);color:#fff">atrasado</span>',pago:'<span class="tag" style="background:var(--ok);color:#06210f">baixado</span>',cancelado:'<span class="tag">cancelado</span>'};
 const mesSel=()=>`<select id="fmo">${MESES.map((n,i)=>`<option value="${i}"${i===FST.mo?' selected':''}>${n}</option>`).join('')}</select><select id="fy">${[0,1,2,3].map(k=>new Date().getFullYear()+1-k).map(y=>`<option${y===FST.y?' selected':''}>${y}</option>`).join('')}</select>`;
 async function finView(){const m=$('#main'); if(!FIN_ON()){m.innerHTML='<div class="sec">Financeiro</div><p class="hint">Somente gestores acessam o financeiro.</p>'; return}
-  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">💰 Financeiro</div><div class="row">${FST.ab==='aj'?'':mesSel()}</div></div>
-   <div class="row" style="margin:10px 0">${[['painel','Painel'],['R','A receber'],['P','A pagar'],['nfe','Comissões / NF-e'],['dre','DRE'],['aj','Configurar']].map(([k,l])=>`<button class="chip${FST.ab===k?' on':''}" data-fab="${k}">${l}</button>`).join('')}</div><div id="fb"><p class="hint">Carregando…</p></div>`;
+  m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">💰 Financeiro</div><div class="row">${FST.ab==='aj'||FST.ab==='rec'||((FST.ab==='R'||FST.ab==='P')&&!['mes','ano'].includes(FFIL.per))?'':mesSel()}</div></div>
+   <div class="row" style="margin:10px 0">${[['painel','Painel'],['R','A receber'],['P','A pagar'],['nfe','Comissões / NF-e'],['dre','DRE'],['rec','🧾 Recibos'],['aj','Configurar']].map(([k,l])=>`<button class="chip${FST.ab===k?' on':''}" data-fab="${k}">${l}</button>`).join('')}</div><div id="fb"><p class="hint">Carregando…</p></div>`;
   m.onchange=e=>{if(e.target.id==='fmo'){FST.mo=+e.target.value; return finView()} if(e.target.id==='fy'){FST.y=+e.target.value; return finView()}};
-  m.onclick=e=>{const a=e.target.closest('[data-fab]'); if(a){FST.ab=a.dataset.fab; FST.st=''; return finView()}};
+  m.onclick=e=>{const a=e.target.closest('[data-fab]'); if(a){if(FST.ab!==a.dataset.fab) FFIL.cat=''; FST.ab=a.dataset.fab; FST.st=''; return finView()}};
   try{await finDados()}catch(err){$('#fb').innerHTML=`<p class="warn">Não consegui abrir o financeiro: ${esc(err.message)}</p>`; return}
   if(!m.isConnected) return; const box=$('#fb');
-  return ({painel:finPainel,R:finLista,P:finLista,nfe:finNFe,dre:finDRE,aj:finAjustes}[FST.ab]||finPainel)(box)}
+  return ({painel:finPainel,R:finLista,P:finLista,nfe:finNFe,dre:finDRE,rec:finRecibos,aj:finAjustes}[FST.ab]||finPainel)(box)}
 
 /* ---------- painel ---------- */
 async function finPainel(box){const de=mesIni(FST.y,FST.mo), ate=mesFim(FST.y,FST.mo), h=hoje(), em7=maisDias(7);
@@ -3457,23 +3457,54 @@ async function finPECard(box){let R; try{R=await finPE()}catch(e){return} if(!bo
    <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Despesas fixas consideradas</summary><table class="t" style="margin-top:6px">${Object.entries(R.grupos).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(nomes[k]||k)}</td><td class="n">${brl(v)}</td></tr>`).join('')}</table></details></div>`)}
 
 /* ---------- contas a receber / a pagar ---------- */
-async function finLista(box){const tp=FST.ab, de=mesIni(FST.y,FST.mo), ate=mesFim(FST.y,FST.mo), h=hoje();
-  let L1=await api(`fin_lancamentos?select=*&tipo=eq.${tp}&vencimento=gte.${de}&vencimento=lte.${ate}&order=vencimento,id`); if(!box.isConnected) return;
+/* filtros de contas a pagar/receber (pedido do Victor 03/11/2026): busca por nome/descrição, período (mês, semana, 30 dias, ano, tudo ou de/até) por vencimento, pagamento ou competência, categoria, representada e conta */
+const FFIL={q:'',per:'mes',dt:'vencimento',de:'',ate:'',cat:'',rep:'',conta:''};
+const FPER=[['mes','Mês escolhido'],['sem','Esta semana'],['30','Próximos 30 dias'],['ano','Ano inteiro'],['tudo','Todo o período'],['custom','Escolher datas…']];
+const FDT=[['vencimento','Vencimento'],['pago_em','Pagamento'],['competencia','Competência']];
+function finPeriodo(){const f=FFIL, h=hoje(); if(f.per==='sem'){const d=new Date(h+'T12:00:00'), w=(d.getDay()+6)%7; return [ymd(new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()-w))),ymd(new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()-w+6)))]}
+  if(f.per==='30') return [h,maisDias(30)]; if(f.per==='ano') return [`${FST.y}-01-01`,`${FST.y}-12-31`]; if(f.per==='tudo') return ['',''];
+  if(f.per==='custom') return [f.de||'',f.ate||'']; return [mesIni(FST.y,FST.mo),mesFim(FST.y,FST.mo)]}
+const finPerTxt=()=>{const [a,b]=finPeriodo(); if(FFIL.per==='mes') return `${MESES[FST.mo]} de ${FST.y}`; if(FFIL.per==='tudo') return 'todo o período'; if(FFIL.per==='ano') return 'o ano de '+FST.y; return a&&b?`${dbr(a)} a ${dbr(b)}`:a?'a partir de '+dbr(a):b?'até '+dbr(b):'todo o período'};
+const finFilAtivos=()=>['q','cat','rep','conta'].filter(k=>FFIL[k]).length+(FFIL.per!=='mes'?1:0)+(FFIL.dt!=='vencimento'?1:0);
+async function finLista(box){const tp=FST.ab, h=hoje(); const [de,ate]=finPeriodo(), dc=FFIL.dt;
+  box.innerHTML='<p class="hint">Carregando…</p>';
+  let L1=await apiAll(`fin_lancamentos?select=*&tipo=eq.${tp}${de?`&${dc}=gte.${de}`:''}${ate?`&${dc}=lte.${ate}`:''}${dc==='vencimento'?'':`&${dc}=not.is.null`}&order=${dc==='vencimento'?'vencimento':dc+',vencimento'},id`); if(!box.isConnected) return;
   /* comissão: depois do vencimento do título o cliente provavelmente pagou, a menos que a fábrica tenha mandado aviso de boleto em aberto daquela NF */
   const AV={}; if(tp==='R') (await api(`fin_avisos?select=nfs,assunto,recebido_em&recebido_em=gte.${maisDias(-200)}&order=recebido_em`).catch(()=>[])).forEach(a=>(a.nfs||[]).forEach(n=>AV[n]=a));
   const nfDe=l=>((l.descricao||'').match(/NF (\d+)/)||[])[1], avDe=l=>{const a=AV[String(nfDe(l)||'').replace(/^0+/,'')]; return a&&String(a.recebido_em).slice(0,10)>=l.vencimento?a:null};
   const finStatus=l=>{const s0=l.status==='aberto'&&l.vencimento<h?'atrasado':l.status; if(l.categoria!=='comissao'||l.status!=='aberto') return s0; if(avDe(l)) return 'inadimplente'; return l.vencimento<h?'previsto':'aberto'};
-  const tot=k=>L1.filter(l=>finStatus(l)===k).reduce((a,l)=>a+(+(k==='pago'?l.valor_pago??l.valor:l.valor)||0),0);
-  const F=FST.st?L1.filter(l=>finStatus(l)===FST.st):L1.filter(l=>l.status!=='cancelado');
-  box.innerHTML=`<div class="kpis"><div class="kpi"><span class="hint">${tp==='R'?'Aguardando o cliente pagar':'Em aberto'}</span><b style="font-size:20px">${brl(tot('aberto'))}</b></div>${tp==='R'?`<div class="kpi"><span class="hint">Cliente pagou (previsto), falta a fábrica repassar</span><b style="font-size:20px;color:#3b82f6">${brl(tot('previsto'))}</b></div><div class="kpi"><span class="hint">Cliente em atraso (aviso da fábrica)</span><b class="bad" style="font-size:20px">${brl(tot('inadimplente')+tot('atrasado'))}</b></div>`:`<div class="kpi"><span class="hint">Atrasado</span><b class="bad" style="font-size:20px">${brl(tot('atrasado'))}</b></div>`}<div class="kpi"><span class="hint">${tp==='R'?'Recebido':'Pago'}</span><b class="ok" style="font-size:20px">${brl(tot('pago'))}</b></div>${tp==='R'?'':`<div class="kpi"><span class="hint">Total do mês</span><b style="font-size:20px">${brl(tot('aberto')+tot('atrasado')+tot('pago'))}</b></div>`}</div>
-   <div class="row" style="margin:10px 0">${(tp==='R'?[['','Todos'],['aberto','Aguardando cliente'],['previsto','Cliente pagou (previsto)'],['inadimplente','Cliente em atraso'],['atrasado','Atrasados'],['pago','Recebidos'],['cancelado','Cancelados']]:[['','Todos'],['aberto','Em aberto'],['atrasado','Atrasados'],['pago','Pagos'],['cancelado','Cancelados']]).map(([k,l])=>`<button class="chip${FST.st===k?' on':''}" data-fst="${k}">${l}</button>`).join('')}<span style="flex:1"></span>${tp==='R'&&L1.some(l=>finStatus(l)==='previsto')?'<button class="btn ghost sm" id="fprev">✓ Fábrica pagou as previstas</button>':''}<button class="btn ghost sm" id="fxls">Excel</button>${tp==='P'?'<button class="btn ghost sm" id="fca">⬆ Importar Conta Azul (PDF/Excel)</button><input id="fcaf" type="file" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>':''}<button class="btn sm" id="fnovo">+ ${tp==='R'?'Conta a receber':'Conta a pagar'}</button></div>
+  const cats=FIN.cats.filter(c=>c.tipo===tp&&(c.ativa||L1.some(l=>l.categoria===c.id))), contas=FIN.contas.filter(c=>c.ativa||L1.some(l=>l.conta_id===c.id)), repsL=(REPS||[]).filter(r=>r.ativa||L1.some(l=>l.rep===r.id));
+  const sel=(k,lbl,todos,ops)=>`<label class="f">${lbl}<select data-ff="${k}"><option value="">${todos}</option>${ops.map(([v,n])=>`<option value="${esc(v)}"${String(FFIL[k])===String(v)?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`;
+    box.innerHTML=`<div class="ffil card">
+    <div class="ffil-top"><label class="f ffil-q">Buscar<input type="search" data-ff="q" autocomplete="off" value="${esc(FFIL.q)}" placeholder="${tp==='R'?'nome do cliente, fábrica, NF, descrição…':'fornecedor, descrição, observação…'}"></label>
+     <label class="f">Período<select data-ff="per">${FPER.map(([k,n])=>`<option value="${k}"${FFIL.per===k?' selected':''}>${n}</option>`).join('')}</select></label>
+     <label class="f">Pela data de<select data-ff="dt">${FDT.map(([k,n])=>`<option value="${k}"${FFIL.dt===k?' selected':''}>${n}</option>`).join('')}</select></label>
+     ${FFIL.per==='custom'?`<label class="f">De<input type="date" data-ff="de" value="${FFIL.de}"></label><label class="f">Até<input type="date" data-ff="ate" value="${FFIL.ate}"></label>`:''}</div>
+    <details class="ffil-mais"${FFIL.cat||FFIL.rep||FFIL.conta?' open':''}><summary>Mais filtros${FFIL.cat||FFIL.rep||FFIL.conta?` <span class="tag">${['cat','rep','conta'].filter(k=>FFIL[k]).length}</span>`:''}</summary><div class="ffil-top">
+     ${sel('cat','Categoria','Todas',cats.map(c=>[c.id,c.grupo?c.grupo+' › '+c.nome:c.nome]))}${sel('rep','Representada','Todas',repsL.map(r=>[r.id,r.nome]))}${sel('conta','Conta bancária','Todas',contas.map(c=>[c.id,c.nome]))}</div></details>
+    <div class="ffil-res"><span class="hint" id="fresumo"></span><button class="chip" id="flimpa" hidden></button></div></div>
+   <div id="fres"></div>`;
+  const res=$('#fres');
+  const render=()=>{const q=norm(FFIL.q).trim(), qd=q.replace(/\D/g,'');
+    const B=L1.filter(l=>(!FFIL.cat||l.categoria===FFIL.cat)&&(!FFIL.rep||l.rep===FFIL.rep)&&(!FFIL.conta||String(l.conta_id)===String(FFIL.conta))&&(!q||q.split(/\s+/).every(w=>norm([l.descricao,l.cliente,l.obs,l.parcela,finCat(l.categoria).nome,l.rep?repName(l.rep):''].join(' ')).includes(w))||(qd.length>=4&&String(l.cnpj||'').includes(qd))));
+    const tot=k=>B.filter(l=>finStatus(l)===k).reduce((a,l)=>a+(+(k==='pago'?l.valor_pago??l.valor:l.valor)||0),0);
+    const F=FST.st?B.filter(l=>finStatus(l)===FST.st):B.filter(l=>l.status!=='cancelado'); res._F=F; res._fs=finStatus;
+    const nA=finFilAtivos(), lb=$('#flimpa'); lb.hidden=!nA; lb.textContent=`✕ Limpar filtros (${nA})`; const sm=F.reduce((a,l)=>a+(+l.valor||0),0); $('#fresumo').textContent=`${F.length} lançamento${F.length===1?'':'s'} · ${brl(sm)} · ${FDT.find(x=>x[0]===FFIL.dt)[1].toLowerCase()} em ${finPerTxt()}`;
+    res.innerHTML=`<div class="kpis"><div class="kpi"><span class="hint">${tp==='R'?'Aguardando o cliente pagar':'Em aberto'}</span><b style="font-size:20px">${brl(tot('aberto'))}</b></div>${tp==='R'?`<div class="kpi"><span class="hint">Cliente pagou (previsto), falta a fábrica repassar</span><b style="font-size:20px;color:#3b82f6">${brl(tot('previsto'))}</b></div><div class="kpi"><span class="hint">Cliente em atraso (aviso da fábrica)</span><b class="bad" style="font-size:20px">${brl(tot('inadimplente')+tot('atrasado'))}</b></div>`:`<div class="kpi"><span class="hint">Atrasado</span><b class="bad" style="font-size:20px">${brl(tot('atrasado'))}</b></div>`}<div class="kpi"><span class="hint">${tp==='R'?'Recebido':'Pago'}</span><b class="ok" style="font-size:20px">${brl(tot('pago'))}</b></div>${tp==='R'?'':`<div class="kpi"><span class="hint">Total ${FFIL.per==='mes'?'do mês':'do período'}</span><b style="font-size:20px">${brl(tot('aberto')+tot('atrasado')+tot('pago'))}</b></div>`}</div>
+   <div class="row" style="margin:10px 0">${(tp==='R'?[['','Todos'],['aberto','Aguardando cliente'],['previsto','Cliente pagou (previsto)'],['inadimplente','Cliente em atraso'],['atrasado','Atrasados'],['pago','Recebidos'],['cancelado','Cancelados']]:[['','Todos'],['aberto','Em aberto'],['atrasado','Atrasados'],['pago','Pagos'],['cancelado','Cancelados']]).map(([k,l])=>`<button class="chip${FST.st===k?' on':''}" data-fst="${k}">${l}</button>`).join('')}<span style="flex:1"></span>${tp==='R'&&B.some(l=>finStatus(l)==='previsto')?'<button class="btn ghost sm" id="fprev">✓ Fábrica pagou as previstas</button>':''}<button class="btn ghost sm" id="fxls">Excel</button>${tp==='P'?'<button class="btn ghost sm" id="fca">⬆ Importar Conta Azul (PDF/Excel)</button><input id="fcaf" type="file" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>':''}<button class="btn sm" id="fnovo">+ ${tp==='R'?'Conta a receber':'Conta a pagar'}</button></div>
    <div style="overflow-x:auto"><table class="t"><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th class="n">Valor</th><th>Situação</th><th></th></tr>
-   ${F.map(l=>`<tr data-fl="${l.id}" style="cursor:pointer;border-top:1px solid var(--line)"><td>${dbr(l.vencimento)}</td><td>${esc(l.descricao)}${l.parcela?` <span class="hint">${esc(l.parcela)}</span>`:''}${l.cliente?`<div class="hint">${esc(l.cliente)}</div>`:''}</td><td class="hint">${esc(finCat(l.categoria).nome)}</td><td class="n"><b>${brl(l.valor)}</b>${l.status==='pago'&&+l.valor_pago!==+l.valor?`<div class="hint">baixado ${brl(l.valor_pago)}</div>`:''}</td><td>${FTAG[finStatus(l)]}${l.pago_em?`<div class="hint">${dbr(l.pago_em)}</div>`:''}${finStatus(l)==='inadimplente'?`<div class="hint" title="${esc(avDe(l).assunto)}">aviso ${dbr(avDe(l).recebido_em)}</div>`:''}</td><td class="n">${l.status==='aberto'?`<button class="btn sm" data-fbx="${l.id}">✓ ${tp==='R'?'Recebido':'Pago'}</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="hint" style="padding:12px 0">Nenhum lançamento neste mês.</td></tr>'}</table></div>`;
-  const caf=$('#fcaf'); if(caf) caf.onchange=()=>{if(caf.files.length) finImportarCA([...caf.files])};
-  box.onclick=async e=>{const t=e.target; const s=t.closest('[data-fst]'); if(s){FST.st=s.dataset.fst; return finLista(box)} if(t.id==='fnovo') return finForm({tipo:tp}); if(t.id==='fca') return caf.click();
-    if(t.id==='fxls'){await loadXLSX(); const ws=XLSX.utils.aoa_to_sheet([['Vencimento','Descrição','Parcela','Categoria','Cliente','Valor','Situação','Baixa','Valor baixado'],...F.map(l=>[dbr(l.vencimento),l.descricao,l.parcela||'',finCat(l.categoria).nome,l.cliente||'',+l.valor,finStatus(l),dbr(l.pago_em),l.valor_pago==null?'':+l.valor_pago])]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,tp==='R'?'A receber':'A pagar'); return XLSX.writeFile(wb,`${tp==='R'?'Contas_a_receber':'Contas_a_pagar'}_${MESES[FST.mo]}_${FST.y}.xlsx`)}
-    if(t.id==='fprev'){const P=L1.filter(l=>finStatus(l)==='previsto'); if(!confirm(`Dar baixa em ${P.length} comissão(ões) prevista(s), total ${brl(P.reduce((a,l)=>a+(+l.valor||0),0))}, como recebidas hoje?`)) return;
+   ${F.map(l=>`<tr data-fl="${l.id}" style="cursor:pointer;border-top:1px solid var(--line)"><td>${dbr(l.vencimento)}${FFIL.dt==='competencia'?`<div class="hint">comp. ${dbr(l.competencia).slice(3)}</div>`:''}</td><td>${esc(l.descricao)}${l.parcela?` <span class="hint">${esc(l.parcela)}</span>`:''}${l.cliente?`<div class="hint">${esc(l.cliente)}</div>`:''}</td><td class="hint">${esc(finCat(l.categoria).nome)}${l.rep?`<div>${esc(repName(l.rep))}</div>`:''}</td><td class="n"><b>${brl(l.valor)}</b>${l.status==='pago'&&+l.valor_pago!==+l.valor?`<div class="hint">baixado ${brl(l.valor_pago)}</div>`:''}</td><td>${FTAG[finStatus(l)]}${l.pago_em?`<div class="hint">${dbr(l.pago_em)}</div>`:''}${finStatus(l)==='inadimplente'?`<div class="hint" title="${esc(avDe(l).assunto)}">aviso ${dbr(avDe(l).recebido_em)}</div>`:''}</td><td class="n">${l.status==='aberto'?`<button class="btn sm" data-fbx="${l.id}">✓ ${tp==='R'?'Recebido':'Pago'}</button>`:''}${l.status==='pago'?`<button class="chip" data-frc="${l.id}" title="Emitir recibo deste lançamento">🧾 Recibo</button>`:''}</td></tr>`).join('')||`<tr><td colspan="6" class="hint" style="padding:12px 0">${finFilAtivos()||FST.st?'Nenhum lançamento com esses filtros.':'Nenhum lançamento neste mês.'}</td></tr>`}</table></div>`;
+    const caf=$('#fcaf'); if(caf) caf.onchange=()=>{if(caf.files.length) finImportarCA([...caf.files])}};
+  render();
+  let tq; box.oninput=e=>{const k=e.target.dataset.ff; if(k!=='q') return; clearTimeout(tq); tq=setTimeout(()=>{FFIL.q=e.target.value; render()},200)};
+  box.onchange=e=>{const k=e.target.dataset.ff; if(!k||k==='q') return; FFIL[k]=e.target.value; if(k==='per'&&FFIL.per==='custom'&&!FFIL.de){FFIL.de=mesIni(FST.y,FST.mo); FFIL.ate=mesFim(FST.y,FST.mo)} if(k==='per') return finView(); finLista(box)};
+  box.onclick=async e=>{const t=e.target; if(t.id==='flimpa'){Object.assign(FFIL,{q:'',per:'mes',dt:'vencimento',de:'',ate:'',cat:'',rep:'',conta:''}); FST.st=''; return finView()}
+    const s=t.closest('[data-fst]'); if(s){FST.st=s.dataset.fst; return render()} if(t.id==='fnovo') return finForm({tipo:tp}); if(t.id==='fca') return $('#fcaf').click();
+    const F=res._F||[];
+    if(t.id==='fxls'){await loadXLSX(); const ws=XLSX.utils.aoa_to_sheet([['Vencimento','Descrição','Parcela','Categoria','Representada','Cliente','Valor','Situação','Baixa','Valor baixado'],...F.map(l=>[dbr(l.vencimento),l.descricao,l.parcela||'',finCat(l.categoria).nome,l.rep?repName(l.rep):'',l.cliente||'',+l.valor,finStatus(l),dbr(l.pago_em),l.valor_pago==null?'':+l.valor_pago])]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,tp==='R'?'A receber':'A pagar'); return XLSX.writeFile(wb,`${tp==='R'?'Contas_a_receber':'Contas_a_pagar'}_${finPerTxt().replace(/[^\wÀ-ú]+/g,'_')}.xlsx`)}
+    if(t.id==='fprev'){const P=F.filter(l=>finStatus(l)==='previsto'); if(!P.length) return toast('Nenhuma prevista na lista filtrada'); if(!confirm(`Dar baixa em ${P.length} comissão(ões) prevista(s), total ${brl(P.reduce((a,l)=>a+(+l.valor||0),0))}, como recebidas hoje?`)) return;
       try{for(const l of P) await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'pago',valor_pago:l.valor,pago_em:hoje()})}); toast('Baixas registradas'); return finLista(box)}catch(err){return toast('Erro: '+err.message)}}
+    const rc=t.closest('[data-frc]'); if(rc) return recForm(recDeLanc(L1.find(x=>x.id==rc.dataset.frc)));
     const b=t.closest('[data-fbx]'); if(b){const l=L1.find(x=>x.id==b.dataset.fbx); return finBaixa(l)}
     const r=t.closest('[data-fl]'); if(r) return finForm(L1.find(x=>x.id==r.dataset.fl))}}
 async function finBaixa(l){const fv=await formulario('Registrar baixa',[{k:'v',l:`Valor ${l.tipo==='R'?'recebido':'pago'} (R$)`,val:String(l.valor).replace('.',','),mode:'decimal',req:true},{k:'d',l:'Data',type:'date',val:hoje(),req:true}],'Registrar'); if(!fv) return; const vp=lerNumBR(fv.v); if(!(vp>=0)) return toast('Valor inválido'); const pe=fv.d||hoje();
@@ -3491,11 +3522,11 @@ async function finForm(l0){if(!l0) return; const l={tipo:'P',status:'aberto',ven
    ${novo?`<div class="r2"><label class="f">Repetir todo mês por (meses)<input id="frep" type="number" min="1" max="60" value="1"></label><label class="f">ou parcelar em (vezes, divide o valor)<input id="fpar" type="number" min="1" max="60" value="1"></label></div>`:''}
    ${l.status==='pago'?`<div class="r2"><label class="f">Baixado em<input id="fpe" type="date" value="${l.pago_em||''}"></label><label class="f">Valor baixado<input id="fvp" inputmode="decimal" value="${String(l.valor_pago??'').replace('.',',')}"></label></div>`:''}
    <label class="f">Observação<textarea id="fob" rows="2">${esc(l.obs||'')}</textarea></label>
-   <div class="row"><button class="btn" id="fsv">Salvar</button>${!novo&&l.status==='aberto'?`<button class="btn ghost" id="fbx">✓ Baixar</button>`:''}${!novo&&l.status==='pago'?`<button class="btn ghost" id="fest">Desfazer baixa</button>`:''}${!novo&&l.status!=='cancelado'?`<button class="btn ghost" id="fcan">Cancelar lançamento</button>`:''}${!novo?`<button class="btn ghost" id="fdel" style="color:var(--bad)">Excluir</button>`:''}<button class="btn ghost" data-x>Fechar</button></div></div>`;
+   <div class="row"><button class="btn" id="fsv">Salvar</button>${!novo&&l.status==='aberto'?`<button class="btn ghost" id="fbx">✓ Baixar</button>`:''}${!novo&&l.status==='pago'?`<button class="btn ghost" id="frc">🧾 Emitir recibo</button><button class="btn ghost" id="fest">Desfazer baixa</button>`:''}${!novo&&l.status!=='cancelado'?`<button class="btn ghost" id="fcan">Cancelar lançamento</button>`:''}${!novo?`<button class="btn ghost" id="fdel" style="color:var(--bad)">Excluir</button>`:''}<button class="btn ghost" data-x>Fechar</button></div></div>`;
   document.body.appendChild(ov); const q=s=>ov.querySelector(s); const fim=m_=>{ov.remove(); toast(m_); finView()};
   let cpMexeu=false; q('#fcp').oninput=()=>cpMexeu=true; q('#fve').onchange=()=>{if(!cpMexeu&&q('#fve').value) q('#fcp').value=q('#fve').value.slice(0,7)};
   ov.onclick=async e=>{const t=e.target; if(t===ov||t.closest('[data-x]')) return ov.remove();
-    try{if(t.id==='fbx'){ov.remove(); return finBaixa(l)}
+    try{if(t.id==='fbx'){ov.remove(); return finBaixa(l)} if(t.id==='frc'){ov.remove(); return recForm(recDeLanc(l))}
       if(t.id==='fest'){await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'aberto',pago_em:null,valor_pago:null})}); return fim('Baixa desfeita')}
       if(t.id==='fcan'){await api(`fin_lancamentos?id=eq.${l.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'cancelado'})}); return fim('Lançamento cancelado')}
       if(t.id==='fdel'){if(!confirm('Excluir este lançamento?'+(l.grupo?' (só este; os outros meses/parcelas continuam)':''))) return; await api(`fin_lancamentos?id=eq.${l.id}`,{method:'DELETE'}); return fim('Excluído')}
@@ -3507,6 +3538,124 @@ async function finForm(l0){if(!l0) return; const l={tipo:'P',status:'aberto',ven
       const addM=(d,k)=>{const [y,mo,dd]=d.split('-').map(Number); const ult=new Date(Date.UTC(y,mo-1+k+1,0)).getUTCDate(); return ymd(new Date(Date.UTC(y,mo-1+k,Math.min(dd,ult))))};
       const vp=par>1?Math.round(val/par*100)/100:val; const rows=Array.from({length:n},(_,k)=>({...base,valor:par>1&&k===n-1?Math.round((val-vp*(n-1))*100)/100:vp,vencimento:addM(ve,k),competencia:addM(base.competencia,k).slice(0,8)+'01',grupo,parcela:par>1?`${k+1}/${n}`:null}));
       await api('fin_lancamentos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(rows)}); fim(n>1?`${n} lançamentos criados`:'Lançamento criado')}catch(err){toast('Erro: '+err.message)}}}
+
+/* ---------- recibos (pedido do Victor 03/11/2026): o financeiro preenche, o Sistema gera o PDF no padrão do orçamento. Guardados em fin_config, chave 'recibo:000001' (sem tabela nova) ---------- */
+const REC_CFG0={razao:'Chamae Representações Comerciais',cnpj:'18.308.187/0001-50',end:'',cidade:'',tel:'(16) 99793-7802',email:'victor.crepaldi@chamae.com.br',ass:'',ass_doc:''};
+const REC_FORMAS=['PIX','Dinheiro','Transferência bancária','Boleto','Cheque','Cartão','Depósito','Compensação de comissão'];
+const RST={q:''};
+async function recCfg(){const r=await api('fin_config?select=valor&chave=eq.recibo_cfg').catch(()=>[]); return Object.assign({},REC_CFG0,(r[0]||{}).valor||{})}
+async function recLista(){return (await apiAll('fin_config?select=chave,valor&chave=like.recibo:*&order=chave.desc').catch(()=>[])).map(x=>x.valor).filter(Boolean)}
+const recNum=n=>String(n).padStart(4,'0');
+function extenso(v){v=Math.round((+v||0)*100); const re=Math.floor(v/100), ce=v%100;
+  const U=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'], D=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'], C=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  const ate999=n=>{if(n===100) return 'cem'; const c=Math.floor(n/100), r=n%100, p=[]; if(c) p.push(C[c]); if(r<20){if(r) p.push(U[r])} else {p.push(D[Math.floor(r/10)]+(r%10?' e '+U[r%10]:''))} return p.join(' e ')};
+  const grupos=n=>{if(!n) return 'zero'; const G=[['',''],['mil','mil'],['milhão','milhões'],['bilhão','bilhões']]; const ps=[]; let i=0; const gs=[]; while(n>0){gs.push(n%1000); n=Math.floor(n/1000)}
+    for(i=gs.length-1;i>=0;i--){const g=gs[i]; if(!g) continue; let t=i===1&&g===1?'mil':ate999(g)+(i?' '+(g===1?G[i][0]:G[i][1]):''); ps.push({t,g,i})}
+    return ps.map((p,k)=>{if(!k) return p.t; const last=k===ps.length-1; return (last&&(p.g<100||p.g%100===0)?' e ':' ')+p.t}).join('')};
+  const out=[]; if(re) out.push(grupos(re)+(re===1?' real':(re>=1e6&&re%1e6===0?' de reais':' reais'))); if(ce) out.push(grupos(ce)+(ce===1?' centavo':' centavos')); return out.join(' e ')||'zero reais'}
+const recDataLonga=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'}):'';
+const ehChamae=(nome,cfg)=>!!nome&&norm(nome)===norm(cfg.razao);
+function recDeLanc(l){if(!l) return null; const ref=[l.descricao,l.parcela?'parcela '+l.parcela:''].filter(Boolean).join(' · '), outro=l.cliente||(l.rep?repName(l.rep):'');
+  return l.tipo==='R'?{tipo:'R',pag:outro,pag_doc:l.cnpj?fmtCnpj(l.cnpj):'',valor:+(l.valor_pago??l.valor),data:l.pago_em||hoje(),ref,lanc:l.id}:{tipo:'P',rec:outro,rec_doc:l.cnpj?fmtCnpj(l.cnpj):'',valor:+(l.valor_pago??l.valor),data:l.pago_em||hoje(),ref,lanc:l.id}}
+
+async function finRecibos(box){box.innerHTML='<p class="hint">Carregando recibos…</p>'; const [R,cfg]=await Promise.all([recLista(),recCfg()]); if(!box.isConnected) return;
+  box.innerHTML=`<div class="ffil card"><div class="ffil-top rec-top"><label class="f ffil-q">Buscar recibo<input type="search" id="rq" autocomplete="off" value="${esc(RST.q)}" placeholder="nome, CPF/CNPJ, referente a, nº…"></label>
+    <div class="row" style="align-self:end;gap:8px"><button class="btn ghost sm" id="rcfg">⚙ Dados da Chamae</button><button class="btn sm" id="rnovo">+ Novo recibo</button></div></div>
+    ${cfg.cidade?'':'<p class="hint" style="margin:8px 0 0">Dica: em <b>⚙ Dados da Chamae</b> coloque a cidade e quem assina; assim o recibo já vem preenchido.</p>'}</div><div id="rres"></div>`;
+  const res=$('#rres');
+  const render=()=>{const q=norm(RST.q).trim(); const F=R.filter(r=>!q||q.split(/\s+/).every(w=>norm([recNum(r.n),r.pag,r.pag_doc,r.rec,r.rec_doc,r.ref,r.forma,brl(r.valor)].join(' ')).includes(w)));
+    res.innerHTML=`<div class="hint" style="margin:10px 0 6px">${F.length} recibo${F.length===1?'':'s'}${F.length?' · '+brl(F.filter(r=>!r.cancelado).reduce((a,r)=>a+(+r.valor||0),0)):''}</div>
+     <div style="overflow-x:auto"><table class="t"><tr><th>Nº</th><th>Data</th><th>Quem pagou → quem recebeu</th><th>Referente a</th><th class="n">Valor</th><th></th></tr>
+     ${F.map(r=>`<tr style="border-top:1px solid var(--line)${r.cancelado?';opacity:.55':''}"><td><b>${recNum(r.n)}</b></td><td>${dbr(r.data)}</td><td>${esc(r.pag||'—')} <span class="hint">→</span> ${esc(r.rec||'—')}${r.cancelado?' <span class="tag">cancelado</span>':''}</td><td class="hint">${esc(String(r.ref||'').slice(0,80))}</td><td class="n"><b>${brl(r.valor)}</b></td>
+       <td class="n" style="white-space:nowrap"><button class="chip" data-rpdf="${r.n}">📄 PDF</button> <button class="chip" data-red="${r.n}" title="Editar">✎</button></td></tr>`).join('')||`<tr><td colspan="6" class="hint" style="padding:14px 0">${R.length?'Nenhum recibo com essa busca.':'Nenhum recibo emitido ainda. Clique em “+ Novo recibo”.'}</td></tr>`}</table></div>`};
+  render(); let tq; $('#rq').oninput=e=>{clearTimeout(tq); tq=setTimeout(()=>{RST.q=e.target.value; render()},200)};
+  box.onclick=async e=>{const t=e.target; if(t.id==='rnovo') return recForm({}); if(t.id==='rcfg') return recCfgForm();
+    const p=t.closest('[data-rpdf]'); if(p){const r=R.find(x=>x.n==p.dataset.rpdf); return recPdf(r,cfg,r.vias||1)}
+    const d=t.closest('[data-red]'); if(d) return recForm(R.find(x=>x.n==d.dataset.red))}}
+
+async function recCfgForm(){const c=await recCfg(); const fv=await formulario('Dados da Chamae no recibo',[{k:'razao',l:'Razão social / nome',val:c.razao,req:true},{k:'cnpj',l:'CNPJ',val:c.cnpj},{k:'end',l:'Endereço (opcional, sai no rodapé)',val:c.end},{k:'cidade',l:'Cidade/UF (local do recibo)',val:c.cidade},{k:'tel',l:'Telefone',val:c.tel},{k:'email',l:'E-mail',val:c.email},{k:'ass',l:'Quem assina pela Chamae',val:c.ass},{k:'ass_doc',l:'CPF ou cargo de quem assina',val:c.ass_doc}],'Salvar'); if(!fv) return;
+  try{await api('fin_config?on_conflict=chave',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({chave:'recibo_cfg',valor:{...c,...fv},atualizado_em:new Date().toISOString()})}); toast('Dados salvos'); if(FST.ab==='rec') finView()}catch(err){toast('Erro: '+err.message)}}
+
+async function recForm(r0){if(!r0) return; const cfg=await recCfg(); const novo=!r0.n; const ch={nome:cfg.razao,doc:cfg.cnpj};
+  const r={tipo:'R',data:hoje(),local:cfg.cidade,forma:'PIX',vias:1,...r0}; if(novo){if(r.tipo==='R'){r.rec=r.rec||ch.nome; r.rec_doc=r.rec_doc||ch.doc} else {r.pag=r.pag||ch.nome; r.pag_doc=r.pag_doc||ch.doc}}
+  if(novo&&!r.ass){if(r.tipo==='R'){r.ass=cfg.ass||cfg.razao; r.ass_doc=cfg.ass?cfg.ass_doc:cfg.cnpj} else {r.ass=r.rec||''; r.ass_doc=r.rec_doc||''}}
+  if(r.valor&&!r.ext) r.ext=extenso(r.valor);
+  const ov=document.createElement('div'); ov.className='ov'; const v=(k)=>esc(r[k]??'');
+  ov.innerHTML=`<div class="sh grid rec-f"><div class="row" style="justify-content:space-between"><b style="font-size:18px">${novo?'Novo recibo':'Recibo nº '+recNum(r.n)}</b><button class="chip" data-x>✕</button></div>
+   <div class="row rec-tipo"><button class="chip${r.tipo==='R'?' on':''}" data-rt="R">⬇️ A Chamae recebeu</button><button class="chip${r.tipo==='P'?' on':''}" data-rt="P">⬆️ A Chamae pagou</button></div>
+   <div class="r2"><label class="f">Quem pagou<input id="rpag" list="rclis" value="${v('pag')}" placeholder="nome ou razão social"></label><label class="f">CPF/CNPJ de quem pagou<input id="rpagd" value="${v('pag_doc')}" inputmode="numeric"></label></div>
+   <div class="r2"><label class="f">Quem recebeu<input id="rrec" list="rclis" value="${v('rec')}" placeholder="nome ou razão social"></label><label class="f">CPF/CNPJ de quem recebeu<input id="rrecd" value="${v('rec_doc')}" inputmode="numeric"></label></div>
+   <datalist id="rclis"></datalist>
+   <div class="r2"><label class="f">Valor (R$)<input id="rval" inputmode="decimal" value="${r.valor!=null?String(r.valor).replace('.',','):''}" placeholder="0,00"></label><label class="f">Data do pagamento<input id="rdat" type="date" value="${v('data')}"></label></div>
+   <label class="f">Valor por extenso <span class="hint">(preenche sozinho; pode corrigir)</span><input id="rext" value="${v('ext')}"></label>
+   <label class="f">Referente a<textarea id="rref" rows="2" placeholder="ex.: comissão de representação da NF 12345 / serviço de entrega de outubro">${v('ref')}</textarea></label>
+   <div class="r2"><label class="f">Forma de pagamento<input id="rfor" list="rfors" value="${v('forma')}"><datalist id="rfors">${REC_FORMAS.map(f=>`<option value="${f}">`).join('')}</datalist></label><label class="f">Cidade/UF<input id="rloc" value="${v('local')}" placeholder="ex.: Ribeirão Preto/SP"></label></div>
+   <div class="r2"><label class="f">Quem assina<input id="rass" value="${v('ass')}"></label><label class="f">CPF ou cargo de quem assina<input id="rassd" value="${v('ass_doc')}"></label></div>
+   <label class="f">Observação (opcional, sai pequena no recibo)<input id="robs" value="${v('obs')}"></label>
+   <label class="row" style="gap:8px;font-size:15px"><input type="checkbox" id="rvias"${r.vias==2?' checked':''} style="width:20px;height:20px;min-height:0"> Duas vias na mesma folha (uma para cada lado, com linha de corte)</label>
+   <div class="row"><button class="btn" id="rsv">💾 Salvar e gerar PDF</button><button class="btn ghost" id="rprev">👁 Ver PDF sem salvar</button>${!novo?`<button class="btn ghost" id="rcan" style="color:var(--bad)">${r.cancelado?'Reativar':'Cancelar recibo'}</button>`:''}</div></div>`;
+  document.body.appendChild(ov); const q=s=>ov.querySelector(s);
+  clientes().then(C=>{const dl=q('#rclis'); if(dl) dl.innerHTML=C.slice(0,4000).map(c=>`<option value="${esc(c.n)}">${esc(fmtCnpj(c.cnpj))}</option>`).join('')}).catch(()=>{});
+  const docDe=async(inp,docInp)=>{if(docInp.value.trim()) return; const C=await clientes().catch(()=>[]); const c=C.find(x=>norm(x.n)===norm(inp.value)); if(c) docInp.value=fmtCnpj(c.cnpj)};
+  let extMexeu=!!r0.ext&&r0.ext!==extenso(r0.valor), assMexeu=!novo;
+  q('#rext').oninput=()=>extMexeu=true; q('#rass').oninput=q('#rassd').oninput=()=>assMexeu=true;
+  q('#rval').oninput=()=>{if(extMexeu) return; const n=lerNumBR(q('#rval').value); q('#rext').value=n>0?extenso(n):''};
+  const syncAss=()=>{if(assMexeu) return; if(r.tipo==='P'){q('#rass').value=q('#rrec').value; q('#rassd').value=q('#rrecd').value}};
+  q('#rpag').onchange=()=>docDe(q('#rpag'),q('#rpagd')); q('#rrec').onchange=async()=>{await docDe(q('#rrec'),q('#rrecd')); syncAss()}; q('#rrecd').oninput=syncAss;
+  const ler=()=>({...r,tipo:r.tipo,pag:q('#rpag').value.trim(),pag_doc:q('#rpagd').value.trim(),rec:q('#rrec').value.trim(),rec_doc:q('#rrecd').value.trim(),valor:lerNumBR(q('#rval').value),data:q('#rdat').value,ext:q('#rext').value.trim(),ref:q('#rref').value.trim(),forma:q('#rfor').value.trim(),local:q('#rloc').value.trim(),ass:q('#rass').value.trim(),ass_doc:q('#rassd').value.trim(),obs:q('#robs').value.trim(),vias:q('#rvias').checked?2:1});
+  const salvar=async x=>{if(!x.n){const u=await api('fin_config?select=chave&chave=like.recibo:*&order=chave.desc&limit=1'); x.n=(u[0]?+u[0].chave.split(':')[1]:0)+1; x.em=new Date().toISOString(); x.por=meuNome()}
+    await api('fin_config?on_conflict=chave',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({chave:'recibo:'+String(x.n).padStart(6,'0'),valor:x,atualizado_em:new Date().toISOString()})}); return x};
+  ov.onclick=async e=>{const t=e.target; if(t===ov||t.closest('[data-x]')) return ov.remove();
+    const rt=t.closest('[data-rt]'); if(rt&&rt.dataset.rt!==r.tipo){const a=ler(); r.tipo=rt.dataset.rt; ov.querySelectorAll('[data-rt]').forEach(b=>b.classList.toggle('on',b.dataset.rt===r.tipo));
+      /* troca os lados: a Chamae passa de quem recebeu para quem pagou (ou o contrário) */
+      q('#rpag').value=a.rec; q('#rpagd').value=a.rec_doc; q('#rrec').value=a.pag; q('#rrecd').value=a.pag_doc;
+      if(!assMexeu){if(r.tipo==='R'){q('#rass').value=cfg.ass||cfg.razao; q('#rassd').value=cfg.ass?cfg.ass_doc:cfg.cnpj} else syncAss()} return}
+    try{if(t.id==='rcan'){r.cancelado=!r.cancelado; await salvar({...r}); ov.remove(); toast(r.cancelado?'Recibo cancelado':'Recibo reativado'); if(FST.ab==='rec') finView(); return}
+      if(t.id!=='rsv'&&t.id!=='rprev') return; const x=ler();
+      if(!x.pag||!x.rec||!(x.valor>0)||!x.data) return toast('Preencha quem pagou, quem recebeu, valor e data');
+      if(!x.ext) x.ext=extenso(x.valor);
+      if(t.id==='rprev') return recPdf({...x,n:x.n||0},cfg,x.vias,true);
+      t.disabled=true; t.textContent='Gerando…'; const s=await salvar(x); ov.remove(); toast('Recibo nº '+recNum(s.n)+' salvo'); await recPdf(s,cfg,s.vias); if(FST.ab==='rec') finView()}catch(err){t.disabled=false; t.textContent='💾 Salvar e gerar PDF'; toast('Erro: '+err.message)}}}
+
+async function recPdf(r,cfg,vias,previa){await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,M=14; const NAVY=[28,35,64],GOLD=[224,161,0],GREY=[110,104,98],LINE=[221,214,207],CREAM=[253,244,214];
+  const logo=await imgData('logo.jpg',900); const dois=vias==2; const chR=ehChamae(r.rec,cfg);
+  const rod=[cfg.razao,cfg.cnpj?'CNPJ '+cfg.cnpj:'',cfg.tel,cfg.email].filter(Boolean).join('  ·  ');
+  const caixa=(x,y,w,h,lbl,fill)=>{doc.setDrawColor(...LINE); if(fill){doc.setFillColor(...fill); doc.roundedRect(x,y,w,h,2,2,'FD')} else doc.roundedRect(x,y,w,h,2,2); doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GREY); doc.text(lbl,x+4,y+5)};
+  const bloco=(y0,via)=>{const k=dois?1:1.18, hh=dois?24:30; /* k: folga extra quando é uma via só na folha */
+    doc.setFillColor(...NAVY); doc.rect(0,y0,W,hh,'F'); if(logo){const lw=dois?54:66, lh=lw*24/66; doc.addImage(logo.d,'JPEG',M-2,y0+(hh-lh)/2,lw,lh)}
+    doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(dois?16:19); doc.text('RECIBO',W-M,y0+(dois?11:13),{align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(`Nº ${r.n?recNum(r.n):'(prévia)'}${via?'  ·  '+via:''}`,W-M,y0+(dois?17:20),{align:'right'}); if(!dois) doc.text(dbr(r.data),W-M,y0+25,{align:'right'});
+    doc.setFillColor(...GOLD); doc.rect(0,y0+hh,W,1.2,'F');
+    let y=y0+hh+(dois?6:10); const cw=W-2*M;
+    /* quem pagou + valor */
+    const h1=dois?17:20; doc.setFont('helvetica','bold'); doc.setFontSize(dois?11:12.5); const pl=doc.splitTextToSize(r.pag||'',cw-62); const h1b=Math.max(h1,(dois?11:13)+pl.length*5+(r.pag_doc?4.5:0));
+    caixa(M,y,cw-58,h1b,chR?'RECEBEMOS DE':'RECEBI(EMOS) DE'); doc.setTextColor(30); doc.setFont('helvetica','bold'); doc.setFontSize(dois?11:12.5); doc.text(pl,M+4,y+(dois?10.5:12));
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(60); if(r.pag_doc) doc.text((/\d{3}\.\d{3}\.\d{3}-\d{2}|^\d{11}$/.test(r.pag_doc)?'CPF ':(/\//.test(r.pag_doc)||/^\d{14}$/.test(r.pag_doc)?'CNPJ ':''))+r.pag_doc,M+4,y+(dois?10.5:12)+pl.length*5);
+    caixa(W-M-54,y,54,h1b,'VALOR',CREAM); doc.setTextColor(30); doc.setFont('helvetica','bold'); doc.setFontSize(dois?15:17); doc.text(brl(r.valor),W-M-4,y+h1b/2+(dois?4:4.5),{align:'right'}); y+=h1b+(dois?3:5)*k;
+    /* extenso */
+    doc.setFont('helvetica','normal'); doc.setFontSize(dois?10:11); const el=doc.splitTextToSize('('+(r.ext||extenso(r.valor))+')',cw-8).slice(0,2); const h2=(dois?9:11)+el.length*(dois?4.6:5.2);
+    caixa(M,y,cw,h2,'A IMPORTÂNCIA DE'); doc.setTextColor(30); doc.setFont('helvetica','bolditalic'); doc.setFontSize(dois?10:11); doc.text(el,M+4,y+(dois?10:11.5)); y+=h2+(dois?3:5)*k;
+    /* referente a */
+    doc.setFont('helvetica','normal'); doc.setFontSize(dois?9.5:10.5); const rl=doc.splitTextToSize(r.ref||'—',cw-8).slice(0,dois?3:6); const h3=(dois?9:11)+rl.length*(dois?4.4:5);
+    caixa(M,y,cw,h3,'REFERENTE A'); doc.setTextColor(30); doc.setFontSize(dois?9.5:10.5); doc.text(rl,M+4,y+(dois?10:11.5)); y+=h3+(dois?3:5)*k;
+    /* quem recebeu · forma · data */
+    const h4=dois?16:19, c1=cw*0.48, c2=cw*0.28, c3=cw-c1-c2; const rcl=doc.splitTextToSize(r.rec||'',c1-8);
+    caixa(M,y,c1-2,h4,'QUEM RECEBEU'); doc.setTextColor(30); doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.text(rcl[0]||'',M+4,y+(dois?10:11.5)); doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60); if(r.rec_doc) doc.text(r.rec_doc,M+4,y+(dois?13.8:15.8));
+    caixa(M+c1,y,c2-2,h4,'FORMA DE PAGAMENTO'); doc.setTextColor(30); doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(r.forma||'—',c2-8)[0],M+c1+4,y+(dois?10:11.5));
+    caixa(M+c1+c2,y,c3,h4,'DATA DO PAGAMENTO'); doc.setTextColor(30); doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.text(dbr(r.data),M+c1+c2+4,y+(dois?10:11.5)); doc.setFont('helvetica','normal'); y+=h4+(dois?5:7)*k;
+    /* quitação, local/data e assinatura */
+    doc.setFontSize(dois?8.3:9.5); doc.setTextColor(...GREY); doc.text('Para clareza, firmo(amos) o presente recibo, dando plena, geral e irrevogável quitação do valor acima.',M,y); y+=dois?5:7*k;
+    doc.setTextColor(30); doc.setFontSize(dois?9.5:11); doc.text([r.local,recDataLonga(r.data)].filter(Boolean).join(', ')+'.',W-M,y,{align:'right'}); y+=dois?13:24*k;
+    doc.setDrawColor(60); doc.setLineWidth(.3); doc.line(W/2-45,y,W/2+45,y); doc.setFont('helvetica','bold'); doc.setFontSize(dois?9.5:10.5); doc.text(r.ass||r.rec||'',W/2,y+4.6,{align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GREY); if(r.ass_doc) doc.text(r.ass_doc,W/2,y+8.6,{align:'center'}); y+=dois?11:14;
+    if(r.obs){doc.setFontSize(7.5); doc.text(doc.splitTextToSize('Obs.: '+r.obs,cw).slice(0,2),M,y+(dois?0:4))}
+    const fy=y0+(dois?141:283); doc.setDrawColor(...GOLD); doc.setLineWidth(.6); doc.line(M,fy,W-M,fy); doc.setFontSize(7.6); doc.setTextColor(...GREY); doc.text(rod,W/2,fy+4.4,{align:'center'}); if(cfg.end&&!dois) doc.text(cfg.end,W/2,fy+8.2,{align:'center'});
+    if(r.cancelado||previa){doc.saveGraphicsState&&doc.saveGraphicsState(); try{doc.setGState(new doc.GState({opacity:.18}))}catch(_){}; doc.setTextColor(r.cancelado?200:120,r.cancelado?30:120,r.cancelado?30:120); doc.setFont('helvetica','bold'); doc.setFontSize(dois?54:80); doc.text(r.cancelado?'CANCELADO':'PRÉVIA',W/2,y0+(dois?92:170),{align:'center',angle:20}); doc.restoreGraphicsState&&doc.restoreGraphicsState(); doc.setFont('helvetica','normal')}};
+  if(dois){bloco(0,'1ª via'); doc.setDrawColor(150); doc.setLineDashPattern([2,2],0); doc.setLineWidth(.2); doc.line(4,148.5,W-4,148.5); doc.setLineDashPattern([],0); doc.setFontSize(7); doc.setTextColor(150); doc.text('corte aqui',W-6,147,{align:'right'}); bloco(148.5,'2ª via')} else bloco(0,'');
+  const nome=(r.tipo==='R'?r.pag:r.rec)||'recibo'; const fname=`Recibo-${r.n?recNum(r.n):'previa'}-${nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').slice(0,30)}.pdf`;
+  const blob=doc.output('blob'); if(window.__recPdfHook) return window.__recPdfHook(blob,fname);
+  const file=new File([blob],fname,{type:'application/pdf'}); if(MOVEL&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Recibo '+recNum(r.n)}); return}catch(e){if(e.name==='AbortError') return}}
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500); toast('PDF do recibo baixado')}
 
 /* ---------- NF-e: leitura do XML, comissão e vínculo com o pedido ---------- */
 function lerNFe(txt){const x=new DOMParser().parseFromString(txt,'text/xml'); if(x.getElementsByTagName('parsererror').length) throw new Error('XML inválido');

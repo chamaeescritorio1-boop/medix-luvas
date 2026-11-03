@@ -2875,6 +2875,7 @@ async function painelCliente(cnpj,lista){const C=await clientes(); const idx=lis
   const dhOff=()=>{dh=false; ov.querySelector('#pcdh').hidden=true; ov.querySelector('[data-pdh]').classList.remove('on')};
   ov.querySelector('.sh').innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b style="font-size:18px">${esc(c.n)}</b>${c.fa?`<div class="hint">${esc(c.fa)}</div>`:''}<div class="hint">${esc(c.cid||'')} · ${esc(fmtCnpj(c.cnpj))}${c.v?' · '+esc(c.v):''}</div></div><button class="chip" data-x>✕</button></div>
    <div class="row" style="margin:8px 0">${tel?`<a class="btn sm" data-ltel href="tel:+55${tel}">📞 Ligar</a><a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/55${tel}">💬 WhatsApp</a>`:''}<button class="btn sm ghost" data-lia>🎙️ Enviar ligação</button>${c.em?`<a class="btn sm ghost" href="mailto:${esc(c.em)}">✉️ E-mail</a>`:''}<button class="btn sm ghost" data-ctg aria-expanded="false">👥 Contatos${pes.length?' ('+pes.length+')':''} <span data-ctseta>▾</span></button></div>
+   ${plDicaHtml(cnpj)}
    <div id="pcct" class="pcb ctbox" hidden>${ctLista(c,pes)}</div>
    <div class="tags" style="margin-bottom:6px">${repTags(c)||'<span class="hint">Nunca comprou</span>'}</div>
    ${tar.length?`<div class="hint">Pendente: ${tar.map(t=>esc(t.titulo)+' ('+esc(t.vence.split('-').reverse().join('/'))+(t.hora?' '+esc(String(t.hora).slice(0,5)):'')+')').join(' · ')}</div>`:''}
@@ -2894,6 +2895,7 @@ async function painelCliente(cnpj,lista){const C=await clientes(); const idx=lis
    <div class="row" style="margin-top:10px"><button class="btn ghost" id="pco">+ Orçamento</button><button class="btn ghost" id="pcf">Ficha completa</button>${lista&&idx>=0&&idx<lista.length-1?'<button class="btn ghost" id="pcn">Próximo cliente ›</button>':''}</div>`;
   ov.addEventListener('change',e=>{if(e.target.id==='pcdd'||e.target.id==='pcdhh') dhVer()});
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')||t===ov) return ov.remove();
+    if(t.closest('[data-pltroca]')){const d=PL_DICA[cnpj]; ov.remove(); if(d&&d.troca) d.troca(); return}
     if(t.closest('[data-ltel]')) ligMarcarLigacao(c); if(t.closest('[data-lia]')){ov.remove(); return ligIA(c)}
     const cg=t.closest('[data-ctg]'); if(cg){const b=ov.querySelector('#pcct'); b.hidden=!b.hidden; cg.setAttribute('aria-expanded',String(!b.hidden)); cg.classList.toggle('on',!b.hidden); cg.querySelector('[data-ctseta]').textContent=b.hidden?'▾':'▴'; return}
     const cp=t.closest('[data-cpy]'); if(cp){try{await navigator.clipboard.writeText(cp.dataset.cpy); toast('Copiado: '+cp.dataset.cpy)}catch(_){prompt('Copie o número:',cp.dataset.cpy)} return}
@@ -3004,26 +3006,33 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
   if(!box.isConnected) return; let S={}, aberto=L('plAb')!==false, notaIA='';
   const IA=agCache(true); const texto=x=>IA.m[x.k]||agPadrao(x);
   const curto=r=>RCURTO[r]||r;
-  const linha=(x,i,lista)=>{const e=plEst(S,x.cnpj), [et,ec]=PL_EST[e], t=texto(x), ph=String(x.tel||'').replace(/\D/g,''), fe=e!=='pend'&&e!=='tent';
-    return `<div class="pli${fe?' plfe':''}" style="border-left:4px solid ${x.ag==='ret'?'var(--brand)':AG_COR[x.ag]||'#9aa1b8'};padding:6px 0 6px 10px;display:grid;gap:4px;margin-top:6px${fe?';opacity:.6':''}">
-      <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><div style="min-width:0"><b>${esc(x.n)}</b> ${x.ag==='ret'?`<span class="tag" style="background:var(--brand);color:#fff">Retorno${x.hora?' '+esc(x.hora):''}</span>`:`<span class="tag" style="background:${AG_COR[x.ag]||'#9aa1b8'};color:#111">${esc(AG_NOME[x.ag]||'')}</span>`}${x.tema?' <span title="Tema do dia">⭐</span>':''}</div>${et?`<span class="${ec}" style="white-space:nowrap;font-size:13px">${et}</span>`:''}</div>
-      ${fe?'':`<div style="font-size:14px">${esc(x.ag==='ret'?x.titulo||'Retorno marcado':t.porque)}</div>${x.ag!=='ret'&&t.falar?`<div class="hint" style="font-size:13px">💡 ${esc(t.falar)}</div>`:''}`}
-      <div class="row" style="gap:6px">${ph&&!fe?`<a class="btn sm" href="tel:+55${ph}" data-pltel="${esc(x.cnpj)}">📞 Ligar</a>`:''}<button class="chip" data-plc="${esc(x.cnpj)}" data-pll="${lista}">${fe?'Ver cliente':'Abrir e registrar'}</button>${x.oid&&!fe?`<button class="chip" data-plo="${esc(x.oid)}">Abrir orçamento</button>`:''}${!fe&&x.ag!=='ret'?`<button class="chip" data-plt="${i}" title="Trocar por outro cliente da mesma pasta">⇄ Trocar</button>`:''}</div></div>`};
-  const draw=()=>{if(!box.isConnected) return; const all=pl.itens, est=all.map(x=>plEst(S,x.cnpj)), feitos=est.filter(e=>e!=='pend'&&e!=='tent').length;
-    const no=Object.values(S).reduce((s,x)=>s+x.o,0), nov=Object.values(S).reduce((s,x)=>s+x.ov,0), np=Object.values(S).reduce((s,x)=>s+x.p,0), npv=Object.values(S).reduce((s,x)=>s+x.pv,0);
-    const pc=all.length?feitos/all.length*100:0, tm=PL_TEMA[new Date().getDay()]||PL_TEMA[1];
-    const G={}; all.forEach((x,i)=>{(G[x.rep]=G[x.rep]||[]).push([x,i])});
+  let aba='', mais=false, dicaAb=false;
+  const fez=x=>{const e=plEst(S,x.cnpj); return e!=='pend'&&e!=='tent'};
+  const ICO={feito:'<span class="ok">✓</span>',tent:'<span class="warn" title="Não atendeu, tente de novo">☎️</span>',orc:'<span class="ok" title="Orçamento feito">📝</span>',ped:'<span class="ok" title="Pedido">🎉</span>'};
+  /* a ficha rápida mostra o "o que falar" e o Trocar dos clientes do plano */
+  const dicas=()=>{PL_DICA={}; pl.itens.forEach((x,i)=>{const t=texto(x); PL_DICA[x.cnpj]={rep:curto(x.rep),ag:AG_NOME[x.ag]||'',porque:t.porque,falar:t.falar,troca:fez(x)?null:()=>trocar(i)}}); pl.ret.forEach(x=>{if(!PL_DICA[x.cnpj]) PL_DICA[x.cnpj]={rep:'',ag:'Retorno marcado',porque:x.titulo||'',falar:'',troca:null}})};
+  const linha=(x,tag)=>{const e=plEst(S,x.cnpj), t=texto(x), f=fez(x), cor=x.ag==='ret'?'var(--brand)':AG_COR[x.ag]||'#9aa1b8', mot=x.ag==='ret'?(x.titulo||'Retorno marcado'):t.porque;
+    return `<button class="chip" data-plc="${esc(x.cnpj)}" style="text-align:left;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%${f?';opacity:.55':''}"><span style="min-width:0;display:flex;gap:10px;align-items:center"><i style="width:8px;height:8px;border-radius:50%;background:${cor};flex:0 0 auto"></i><span style="min-width:0"><b>${esc(x.n)}</b>${x.ag==='ret'?` <span class="tag" style="font-size:11px">🔔 ${x.hora?esc(x.hora):'hoje'}</span>`:tag?` <span class="tag" style="font-size:11px">${esc(curto(x.rep))}</span>`:''}<span class="hint" style="font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(mot)}</span></span></span><span style="white-space:nowrap">${ICO[e]||'<span class="hint">›</span>'}</span></button>`};
+  /* em "Todos" as pastas se alternam (uma de cada), para o dia não começar todo numa fábrica só */
+  const mistura=l=>{const G={}, o=[]; l.forEach(x=>(G[x.rep]=G[x.rep]||[]).push(x)); const ks=Object.keys(G); for(let k=0;o.length<l.length;k++) ks.forEach(r=>{if(G[r][k]) o.push(G[r][k])}); return o};
+  const visiveis=()=>{let l=aba==='ret'?pl.ret:aba?pl.itens.filter(x=>x.rep===aba):mistura(pl.itens); return l.filter(x=>!fez(x)).concat(l.filter(fez))};
+  const draw=()=>{if(!box.isConnected) return; const all=pl.itens, feitos=all.filter(fez).length, tm=PL_TEMA[new Date().getDay()]||PL_TEMA[1]; dicas();
+    const no=Object.values(S).reduce((s,x)=>s+x.o,0), np=Object.values(S).reduce((s,x)=>s+x.p,0);
+    const G={}; all.forEach(x=>{(G[x.rep]=G[x.rep]||[]).push(x)}); const reps=Object.keys(G).sort((a,b)=>G[b].length-G[a].length); if(aba&&aba!=='ret'&&!G[aba]) aba='';
     const mt=r=>(pl.meta||[]).find(y=>y.rep===r);
-    const grupos=Object.keys(G).sort((a,b)=>G[b].length-G[a].length).map(r=>{const m=mt(r), l=G[r].sort((a,b)=>{const ea=plEst(S,a[0].cnpj), eb=plEst(S,b[0].cnpj), fa=ea!=='pend'&&ea!=='tent', fb=eb!=='pend'&&eb!=='tent'; return fa-fb}), fe=l.filter(([x])=>{const e=plEst(S,x.cnpj); return e!=='pend'&&e!=='tent'}).length;
-      return `<details class="pcb plg"${aberto?' open':''}><summary><b>${esc(curto(r))}</b> <span class="hint">· ${fe}/${l.length} feitos${m&&m.falta>0?` · falta ${brl(m.falta)} da meta${pl.metaEq?' da equipe':''} (${brl(m.dia)}/dia)`:m?' · meta batida 👏':''}${m&&m.atr?' · <span class="warn">atrasada</span>':''}</span></summary>${l.map(([x,i])=>linha(x,i,'i')).join('')}</details>`}).join('');
-    box.innerHTML=`<style>.pl>:not(.plg){grid-column:1/-1}</style><div class="card grid pl"><div class="row" style="justify-content:space-between"><b>🗓️ Plano do dia${ges?'':' · '+esc(vend)}</b><div class="row" style="gap:6px">${ges?TIME.map(v=>`<button class="chip${v===vend?' on':''}" data-plv="${v}">${esc(v.charAt(0)+v.slice(1).toLowerCase())}</button>`).join(''):''}<button class="chip" data-plab>${aberto?'Recolher ▴':'Abrir ▾'}</button></div></div>
-      <div class="hint" style="font-size:14px">⭐ <b>Tema de hoje: ${esc(pl.tema||tm.t)}</b>${aberto?`<br><span style="font-size:13px">${esc(tm.dica)}</span>`:''}</div>
-      <div><div class="row" style="justify-content:space-between;font-size:14px"><span>✓ <b>${feitos} de ${all.length}</b> clientes do plano</span><span>📝 ${no} orçamento${no===1?'':'s'}${nov?' · '+brl(nov):''} · 🎉 ${np} pedido${np===1?'':'s'}${npv?' · '+brl(npv):''}</span></div><div class="mbar"><i style="width:${Math.min(100,pc)}%"></i></div></div>
-      ${pl.ret.length?`<details class="pcb plg"${aberto?' open':''}><summary><b>🔔 Retornos marcados</b> <span class="hint">· ${pl.ret.length} para hoje ou atrasados</span></summary>${pl.ret.map((x,i)=>linha(x,i,'r')).join('')}</details>`:''}
-      ${all.length?grupos:'<p class="hint" style="margin:0">Nenhuma oportunidade na carteira hoje. Use a lista abaixo para bater a carteira.</p>'}
-      ${notaIA?`<p class="hint" style="margin:0;font-size:12px">${esc(notaIA)}</p>`:''}
-      <div class="row" style="gap:6px">${feitos>=all.length&&all.length?'<button class="chip" data-plmais>＋ Mais 5 clientes</button>':''}<button class="chip" data-plref title="Monta o plano de novo, mantendo o que já foi feito">↻ Refazer plano</button></div>
-      <p class="hint" style="margin:0;font-size:12px">${PL_N} clientes por dia, divididos por pasta conforme a meta. O plano se atualiza quando você registra contato, faz orçamento ou entra pedido.</p></div>`};
+    const tabs=[['','Todos',all.length,feitos],...(pl.ret.length?[['ret','🔔 Retornos',pl.ret.length,null]]:[]),...reps.map(r=>[r,curto(r),G[r].length,G[r].filter(fez).length])];
+    const V=visiveis(), lim=mais?V.length:8, m=aba&&aba!=='ret'?mt(aba):null;
+    box.innerHTML=`<style>#plDia .pl{grid-template-columns:minmax(0,1fr)!important}#plDia .pll{display:grid;gap:6px;grid-template-columns:minmax(0,1fr)}#plDia .pll>.chip{white-space:normal;min-width:0;max-width:100%}#plDia .pll>.chip>span:first-child{flex:1 1 auto}</style><div class="card grid pl" style="gap:10px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:8px"><b>🗓️ Plano do dia</b><span style="white-space:nowrap"><b>${feitos}/${all.length}</b> ✓ <span class="hint">· 📝 ${no} · 🎉 ${np}</span></span></div>
+      <div class="mbar" style="height:6px;margin-top:-4px"><i style="width:${all.length?Math.min(100,feitos/all.length*100):0}%"></i></div>
+      <div class="row" style="justify-content:space-between;gap:6px"><button class="chip" data-pldica style="border:0;background:none;padding:0;font-size:13px;text-align:left">⭐ Hoje: <b>${esc(pl.tema||tm.t)}</b> <span class="hint">ⓘ</span></button>${ges?`<select data-plv style="width:auto;min-height:0;padding:4px 8px;font-size:13px">${TIME.map(v=>`<option${v===vend?' selected':''}>${esc(v)}</option>`).join('')}</select>`:''}</div>
+      ${dicaAb?`<div class="hint" style="font-size:13px;margin-top:-4px">${esc(tm.dica)}</div>`:''}
+      <div class="row" style="gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px">${tabs.map(([k,l,n,f])=>`<button class="chip${aba===k?' on':''}" data-plaba="${esc(k)}" style="white-space:nowrap">${esc(l)} <span class="hint">${f!=null&&k?f+'/':''}${n}</span></button>`).join('')}</div>
+      ${m?`<div class="hint" style="font-size:12px;margin-top:-4px">${m.falta>0?`Falta ${brl(m.falta)} da meta${pl.metaEq?' da equipe':''} (${brl(m.dia)} por dia útil)${m.atr?' · <span class="warn">atrasada</span>':''}`:'Meta do mês batida 👏'}</div>`:''}
+      ${V.length?`<div class="pll">${V.slice(0,lim).map(x=>linha(x,!aba)).join('')}</div>`:'<p class="hint" style="margin:0">Nenhuma oportunidade na carteira hoje. Use a lista abaixo para bater a carteira.</p>'}
+      <div class="row" style="gap:6px">${V.length>8?`<button class="chip" data-plver>${mais?'Mostrar menos ▴':`Ver mais ${V.length-8} ▾`}</button>`:''}${all.length&&feitos>=all.length?'<button class="chip" data-plmais>＋ Mais 5 clientes</button>':''}<button class="chip" data-plref title="Monta o plano de novo, mantendo o que já foi feito" style="margin-left:auto">↻ Refazer</button></div>
+      ${notaIA?`<p class="hint" style="margin:0;font-size:12px">${esc(notaIA)}</p>`:''}</div>`};
+  const trocar=async i=>{const x=pl.itens[i], rs=(pl.reserva[x.rep]||[]), ja=new Set([...pl.itens,...pl.ret].map(y=>y.cnpj)); const nx=rs.find(y=>!ja.has(y.cnpj));
+    if(!nx) return toast(`Não há outro cliente de ${curto(x.rep)} para hoje`); pl.reserva[x.rep]=rs.filter(y=>y!==nx); pl.itens[i]=nx; LS(plKey(vend),pl); await atualiza(); toast(`Trocado por ${nx.n}`)};
   const atualiza=async()=>{try{S=await plSituacao(pl)}catch(e){} draw()};
   draw(); atualiza();
   if(IA.pend(pl.itens)){const mtx=(pl.meta||[]).map(x=>`${x.rep}: falta ${brl(x.falta)}${x.atr?' (ATRASADA)':''}`).join('\n'); notaIA='a IA está escrevendo o que falar…'; draw(); agIA(pl.itens.slice(0,20),mtx,IA,true).then(e=>{notaIA=e||''; draw()}).catch(()=>{notaIA=''; draw()})}
@@ -3031,17 +3040,18 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
   const obs=new MutationObserver(()=>{if(!box.isConnected){obs.disconnect(); return} if(!document.querySelector('.ov')&&box.dataset.plov==='1'){box.dataset.plov=''; setTimeout(atualiza,600)}}); obs.observe(document.body,{childList:true});
   const vis=()=>{if(!box.isConnected) return document.removeEventListener('visibilitychange',vis); if(document.visibilityState==='visible') atualiza()}; document.addEventListener('visibilitychange',vis);
   const iv=setInterval(()=>{if(!box.isConnected) return clearInterval(iv); atualiza()},12e4);
+  box.onchange=e=>{const v=e.target.closest('[data-plv]'); if(v){LS('plV',v.value); obs.disconnect(); clearInterval(iv); planoDia(box)}};
   box.onclick=async e=>{const g=s=>e.target.closest(s);
-    const v=g('[data-plv]'); if(v){LS('plV',v.dataset.plv); obs.disconnect(); clearInterval(iv); return planoDia(box)}
-    if(g('[data-plab]')){aberto=!aberto; LS('plAb',aberto); return draw()}
-    if(g('[data-pltel]')){const c=(await clientes()).find(y=>y.cnpj===g('[data-pltel]').dataset.pltel); if(c) ligMarcarLigacao(c); return}
-    const c=g('[data-plc]'); if(c){const lista=(c.dataset.pll==='r'?pl.ret:pl.itens).filter(x=>{const es=plEst(S,x.cnpj); return x.cnpj===c.dataset.plc||es==='pend'||es==='tent'}).map(x=>x.cnpj); box.dataset.plov='1'; return painelCliente(c.dataset.plc,lista)}
-    const o=g('[data-plo]'); if(o){box.dataset.plov='1'; return detOrc(o.dataset.plo)}
-    const t=g('[data-plt]'); if(t){const i=+t.dataset.plt, x=pl.itens[i], rs=(pl.reserva[x.rep]||[]), ja=new Set([...pl.itens,...pl.ret].map(y=>y.cnpj)); const nx=rs.find(y=>!ja.has(y.cnpj));
-      if(!nx) return toast(`Não há outro cliente de ${curto(x.rep)} para hoje`); pl.reserva[x.rep]=rs.filter(y=>y!==nx); pl.itens[i]=nx; LS(plKey(vend),pl); await atualiza(); return toast(`Trocado por ${nx.n}`)}
-    if(g('[data-plmais]')){const ja=new Set([...pl.itens,...pl.ret].map(y=>y.cnpj)); let n=0; const fila=Object.values(pl.reserva).flat().filter(y=>!ja.has(y.cnpj)); while(n<5&&fila.length){const r=Object.keys(pl.reserva).sort((a,b)=>(pl.reserva[b]||[]).length-(pl.reserva[a]||[]).length)[0]; const nx=(pl.reserva[r]||[]).find(y=>!ja.has(y.cnpj)); if(!nx) break; pl.reserva[r]=pl.reserva[r].filter(y=>y!==nx); ja.add(nx.cnpj); pl.itens.push(nx); n++}
+    if(g('[data-pldica]')){dicaAb=!dicaAb; return draw()}
+    const ab=g('[data-plaba]'); if(ab){aba=ab.dataset.plaba; mais=false; return draw()}
+    if(g('[data-plver]')){mais=!mais; return draw()}
+    const c=g('[data-plc]'); if(c){const lista=visiveis().filter(x=>x.cnpj===c.dataset.plc||!fez(x)).map(x=>x.cnpj); box.dataset.plov='1'; return painelCliente(c.dataset.plc,lista)}
+    if(g('[data-plmais]')){const ja=new Set([...pl.itens,...pl.ret].map(y=>y.cnpj)); let n=0; while(n<5){const r=Object.keys(pl.reserva).sort((a,b)=>(pl.reserva[b]||[]).length-(pl.reserva[a]||[]).length)[0]; const nx=r&&(pl.reserva[r]||[]).find(y=>!ja.has(y.cnpj)); if(!nx) break; pl.reserva[r]=pl.reserva[r].filter(y=>y!==nx); ja.add(nx.cnpj); pl.itens.push(nx); n++}
       LS(plKey(vend),pl); await atualiza(); return toast(n?`＋ ${n} clientes no plano`:'Não há mais clientes para hoje 👏')}
     if(g('[data-plref]')){const b=g('[data-plref]'); b.disabled=true; b.textContent='Montando…'; const feitos=pl.itens.filter(x=>plEst(S,x.cnpj)!=='pend'); try{pl=await plMontar(vend,feitos)}catch(er){toast('Não consegui refazer agora')} await atualiza(); return toast('Plano refeito')}}}
+/* bloco "Plano do dia" dentro da ficha rápida do cliente: por que ligar, o que falar e trocar */
+let PL_DICA={};
+function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector('#plDia')) return ''; return `<div class="pcb" style="border-left:4px solid var(--brand)"><div class="row" style="justify-content:space-between;gap:6px"><b>🗓️ Plano do dia${d.rep?' · '+esc(d.rep):''}</b>${d.troca?'<button class="chip" data-pltroca>⇄ Trocar este cliente</button>':''}</div><div style="font-size:14px">${esc(d.porque||d.ag)}</div>${d.falar?`<div class="hint" style="font-size:13px">💡 ${esc(d.falar)}</div>`:''}</div>`}
 /*PLANO-DIA-FIM*/
 /* lista para bater carteira (dentro de Clientes) */
 async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep:'',cid:'',fx:'',q:''},L('cartF')||{}); const C=await clientes(); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}

@@ -1,0 +1,27 @@
+name: Teste do Sistema
+# Abre o Sistema (teste e oficial) num navegador com login falso e base simulada,
+# passa por todas as telas e fica vermelho se aparecer erro. Roda a cada mudança.
+on:
+  pull_request:
+    paths: ['chamae/**', 'sistema/**', 'testes/**', '.github/workflows/teste-sistema.yml']
+  push:
+    branches: [main]
+    paths: ['chamae/**', 'sistema/**', 'testes/**', '.github/workflows/teste-sistema.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Conferir se o código não tem erro de digitação
+        run: for f in chamae/app.js sistema/app.js; do node --check "$f" && echo "ok $f"; done
+      - name: Instalar navegador de teste
+        run: npm i --no-save --no-package-lock playwright@1.56.1 && npx playwright install --with-deps chromium
+      - name: Abrir o Sistema e passar por todas as telas
+        run: node testes/fumaca.js

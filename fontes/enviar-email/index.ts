@@ -66,6 +66,12 @@ Deno.serve(async (req) => {
   const C = contas();
   const vend = String(perfil.email_envio || (String(perfil.email || user.email || '').endsWith('@chamae.com.br') ? perfil.email || user.email : '') || '').trim().toLowerCase();
   const conta = C.find((c) => c.email === vend);
+  // 03/11: a caixa não pode ser a de outra pessoa (ex.: Clayton com o e-mail de envio do Victor no perfil)
+  if (vend) {
+    const dono = await rest(`perfis?select=id&id=neq.${user.id}&or=(email.ilike.${encodeURIComponent(vend)},email_envio.ilike.${encodeURIComponent(vend)})`);
+    const outros = dono.ok ? await dono.json() : [];
+    if (outros.length) return json({ erro: `A caixa ${vend} é de outro usuário. Cada vendedor envia só pela própria caixa. Nada foi enviado.` }, 403);
+  }
   if (b.checar) return json({ de: vend || null, pronta: !!conta });
   if (!C.length) return json({ erro: 'O envio de e-mail ainda não foi configurado (falta o secret SMTP_CONTAS no Supabase).' }, 503);
   if (!vend) return json({ erro: 'Seu usuário não tem e-mail @chamae.com.br de envio. Peça ao gestor para preencher o e-mail de envio no seu perfil.' }, 409);

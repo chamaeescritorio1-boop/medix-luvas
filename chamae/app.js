@@ -675,7 +675,7 @@ async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); awai
     doc.setTextColor(30);doc.setFontSize(8.5);doc.text(`${qt} ${String(it.un||'un.').toLowerCase().slice(0,6)} x ${pu?brl(pu):'-'} =`,W-M-6,y+21.8,{align:'right'});
     doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.text(pu?brl(pu*qt):'-',W-M-6,y+26.5,{align:'right'});doc.setFont('helvetica','normal'); y+=hBox+4}
   if(y+44>285){doc.addPage();head();y=38}
-  if((t.ipi||t.fr||t.aj)&&on('subtotal')){doc.setFontSize(9);doc.setTextColor(30);[['Subtotal (sem IPI)',t.sub],['IPI',t.ipi],...(t.aj?[[t.lbl,t.aj]]:[]),...(t.fr?[[`Frete estimado (${pct(t.tr.p)})`,t.fr]]:[])].forEach(([l,v])=>{doc.text(l,W-M-60,y+4);doc.text(brl(v),W-M-5,y+4,{align:'right'});y+=5});y+=2}
+  if((t.ipi||t.fr||t.aj)&&on('subtotal')){doc.setFontSize(9);doc.setTextColor(30);[['Subtotal (sem IPI)',t.sub],['IPI',t.ipi],...(t.aj?[[t.lbl,t.aj]]:[]),...(t.fr?[[`Frete estimado (${pct(t.tr.p)})`,t.fr]]:[])].forEach(([l,v])=>{doc.text(String(l),W-M-40,y+4,{align:'right'});doc.text(brl(v),W-M-5,y+4,{align:'right'});y+=5});y+=2}
   doc.setFillColor(...NAVY);doc.roundedRect(M,y,W-2*M,14,2,2,'F');doc.setTextColor(255);doc.setFontSize(10);doc.text(on('unid')?`TOTAL  ·  ${un} un.`:'TOTAL',M+5,y+9);
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(brl(t.sub+t.ipi+(t.aj||0)+t.fr),W-M-5,y+9.5,{align:'right'});doc.setFont('helvetica','normal');y+=20;
   doc.setTextColor(...GREY);doc.setFontSize(8.5);

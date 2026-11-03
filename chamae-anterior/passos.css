@@ -80,3 +80,6 @@
 .pzsel-o.on{background:var(--surface2)} .pzsel-o.on b{color:var(--ok,#1f9d5c)}
 .pzsel-o small{color:var(--muted);font-size:14px;text-align:right}
 .pzsel-o[data-opzo]{border-top:1px solid var(--line);border-radius:0 0 10px 10px}
+.r2[hidden],details[hidden]{display:none!important}
+.opas{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+@media(max-width:760px){.opas-b{font-size:11px}}

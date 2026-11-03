@@ -1,0 +1,25 @@
+/* Encaixe — nenhum campo encostado ou por cima de outro, no PC e no celular (pedido do Victor 02/11/2026).
+   Só espaçamento/quebra de linha; para desfazer basta tirar o <link> deste arquivo no index.html. */
+
+/* Orçamento › escolher cliente: "Limpar filtros" não encosta no campo Vendedor */
+.cpk{margin-bottom:12px}
+
+/* Orçamento em "Ver tudo numa página": "Ver passo a passo" não sobe por cima do título nem do Zerar */
+.row:has(>#opPassos){margin:8px 0 12px!important}
+
+/* Orçamento › Pagamento: prazos compridos ([B35] 28/42/56/70/84) quebram dentro do botão em vez de sair da tela */
+.opas-pzb{min-width:0}
+.opas-pzb b,.opas-pzb small{overflow-wrap:anywhere}
+
+/* Converter CA (Medix/Marluvas): no celular os botões descem para a linha de baixo em vez de sair da tela */
+.row:has(>button[id$="Ref"]){flex-wrap:wrap!important}
+.row:has(>button[id$="Ref"])>input{flex:1 1 180px!important;min-width:0}
+
+/* Formulários de 2 colunas (ex.: cadastro da representada): campo não estica além da tela */
+.r2>*{min-width:0}
+
+/* Tabelas largas (Relatórios, preços do produto): no celular rolam dentro do cartão, sem empurrar a tela */
+@media(max-width:760px){
+ table.t:not(.tcards):not(.tpt):not([hidden]){display:block;max-width:100%;overflow-x:auto}
+ table.t:not(.tcards):not(.tpt)>tbody{display:table;width:100%}
+}

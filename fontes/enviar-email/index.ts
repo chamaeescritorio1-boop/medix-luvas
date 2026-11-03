@@ -29,6 +29,18 @@ const rest = (path: string, init: RequestInit = {}) =>
   fetch(SB + '/rest/v1/' + path, { ...init, headers: { apikey: SRV, Authorization: 'Bearer ' + SRV, 'Content-Type': 'application/json', ...(init.headers || {}) } });
 
 // só a equipe aprovada (gestor/vendedor, fora do portal B2B)
+// 03/11: confere se o domínio de cada destinatário existe (MX ou A). Ex.: vendas1@chamae.comn.br (erro de digitação)
+// voltava só depois, como "Undelivered Mail". Se o DNS não puder ser consultado, deixa passar (não trava o envio).
+async function dominioExiste(dom: string): Promise<boolean> {
+  const tenta = async (tipo: 'MX' | 'A') => {
+    try { const r = await Promise.race([Deno.resolveDns(dom, tipo), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))]) as unknown[]; return r.length > 0 ? true : null; }
+    catch (e) { const n = (e as Error)?.name || ''; return /NotFound/i.test(n) || /no ?data|nxdomain|not found/i.test(String((e as Error)?.message)) ? false : null; }
+  };
+  const mx = await tenta('MX'); if (mx) return true;
+  const a = await tenta('A'); if (a) return true;
+  return !(mx === false && a === false);
+}
+
 async function ehEquipe(auth: string) {
   const r = await fetch(SB + '/rest/v1/rpc/eh_equipe', { method: 'POST', headers: { apikey: ANON, Authorization: auth, 'Content-Type': 'application/json' }, body: '{}' });
   return r.ok && (await r.json()) === true;
@@ -62,6 +74,12 @@ Deno.serve(async (req) => {
   const cc = [...new Set((b.cc || []).map((x: string) => String(x).trim().toLowerCase()).filter(emailOk))] as string[];
   if (!para.length) return json({ erro: 'Nenhum destinatário válido.' }, 400);
   if (para.length + cc.length > 20) return json({ erro: 'Destinatários demais (máx. 20).' }, 400);
+  const doms = [...new Set([...para, ...cc].map((e) => e.split('@')[1]))];
+  const ruins = (await Promise.all(doms.map(async (d) => (await dominioExiste(d)) ? null : d))).filter(Boolean) as string[];
+  if (ruins.length) {
+    const ends = [...para, ...cc].filter((e) => ruins.includes(e.split('@')[1]));
+    return json({ erro: `Endereço com erro de digitação: ${ends.join(', ')} (o domínio ${ruins.join(', ')} não existe). Corrija e envie de novo. Nada foi enviado.`, invalidos: ends }, 422);
+  }
   const assunto = String(b.assunto || '').slice(0, 300) || 'Orçamento Chamae';
   const texto = String(b.texto || '').slice(0, 20000);
   const ref = b.ref || {};

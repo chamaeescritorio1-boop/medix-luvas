@@ -666,7 +666,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
   };
   const posSalvar=env=>{if(document.querySelector('.ov[data-pos]')) return; const ov=document.createElement('div'); ov.className='ov'; ov.dataset.pos=1; const B=(ac,tx,pri)=>`<button class="btn${pri?'':' ghost'}" data-ac="${ac}" style="width:100%;justify-content:center">${tx}</button>`;
    ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between"><b style="font-size:18px">✓ Orçamento ${env?'enviado e salvo':'salvo'}${o.num?' · Nº '+esc(o.num):''}</b><button class="chip" data-x>✕</button></div><div class="hint">${o.cli?esc(o.cli.fa||o.cli.n)+' · ':''}${brl(sub+ipi+aj+fr)} · O que deseja fazer agora?</div>${rep==='sigma'&&SIGMA_AUTO?'<div class="hint">PDF, WhatsApp e e-mail também lançam o orçamento no portal Sigma.</div>':''}
-    <div data-rev><div class="hint" style="font-size:13px">🔎 Revisando o orçamento…</div></div><div class="grid" style="gap:8px">${B('owa','📲 WhatsApp + PDF',1)}${B('opdf','📄 Baixar PDF')}${B('omail','✉️ Enviar por e-mail')}${B('ocopy','📋 Copiar texto')}${B('otar','⏰ Tarefa de follow-up')}${B('fim','✓ Fechar · zerar carrinho e ir ao início')}</div></div>`; document.body.appendChild(ov);
+    <div data-rev><div class="hint" style="font-size:13px">🔎 Revisando o orçamento…</div></div><div data-regc></div><div class="grid" style="gap:8px">${B('owa','📲 WhatsApp + PDF',1)}${B('opdf','📄 Baixar PDF')}${B('omail','✉️ Enviar por e-mail')}${B('ocopy','📋 Copiar texto')}${B('otar','⏰ Tarefa de follow-up')}${B('fim','✓ Fechar · zerar carrinho e ir ao início')}</div></div>`; document.body.appendChild(ov); regContatoOrc(ov.querySelector('[data-regc]'),{rep,o,total:sub+ipi+aj+fr,nItens:rows.length});
    revisarOrc(rep,o,rows,{sub,pmin,cpz,EQ}).then(A=>{const el=ov.querySelector('[data-rev]'); if(el) el.innerHTML=revisorHtml(A)}).catch(()=>{const el=ov.querySelector('[data-rev]'); if(el) el.innerHTML=''});
    ov.onclick=async e=>{const b=e.target.closest('button'); if(e.target===ov||(b&&(b.hasAttribute('data-x')||0))) return ov.remove();
     if(b&&b.dataset.revadd){const pid=isNaN(+b.dataset.revadd)?b.dataset.revadd:+b.dataset.revadd, q=+b.dataset.revm||1; if(!o.itens.some(x=>x.pid==pid)) o.itens.push({pid,qt:q}); saveQ(o); ov.remove(); toast('Item incluído · ajuste a quantidade e salve de novo'); return orc()}
@@ -2829,6 +2829,49 @@ async function itensQueCompra(rep,cli,o){
 const LIG_ST={enviado:'Enviando…',transcrevendo:'Transcrevendo o áudio…',analisando:'A IA está lendo a conversa…'};
 const LIG_RES=['Pediu orçamento','Vai comprar','Sem demanda agora','Não atendeu','Retornar depois','Outro'];
 function ligDur(s){s=+s||0; return s?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:''}
+/*REGORC-INICIO*/
+/* Registrar o contato logo depois de salvar o orçamento (04/11, pedido do vendedor):
+   o cliente liga, o vendedor monta o orçamento na hora e já registra a conversa na mesma janela.
+   Grava em contatos (aparece em 📝 Conversas) e, se escolher retorno, cria "Retorno de orçamento" na Agenda. */
+function regOrcHtml(st){const P=st.p; if(P) return `<div class="card regc" style="background:var(--surface2);padding:10px 12px"><div class="row" style="justify-content:space-between;align-items:center"><span>✓ <b>Contato registrado</b>${P.ret?` · retorno <b>${esc(P.ret.split('-').reverse().join('/')+(P.h?' '+P.h:''))}</b> na Agenda`:''}</span><button class="chip" data-rcdesf>Desfazer</button></div></div>`;
+  return `<details class="card regc" style="background:var(--surface2);padding:12px"${st.ab?' open':''}><summary style="cursor:pointer"><b>📞 Registrar o contato com o cliente</b> <span class="hint">· vai para 📝 Conversas</span></summary><div class="grid" style="gap:8px;margin-top:8px">
+   <div class="row">${['ligacao','whatsapp','visita','email'].map(k=>`<button class="chip${k===st.tipo?' on':''}" data-rct="${k}">${TT[k]}</button>`).join('')}</div>
+   <div class="row">${['Pediu orçamento','Vai comprar','Vai pensar','Fechou pedido'].map(k=>`<button class="chip${k===st.res?' on':''}" data-rcr="${k}">${k}</button>`).join('')}</div>
+   <textarea data-rcx rows="2" placeholder="Algo a mais? (opcional: comprador, urgência, concorrente…)">${esc(st.tx||'')}</textarea>
+   <div class="row" style="align-items:center"><span class="hint">Retornar:</span>${[[0,'Não'],[1,'Amanhã'],[3,'3 dias'],[7,'7 dias']].map(([d,l])=>`<button class="chip${!st.dh&&d===st.ret?' on':''}" data-rcn="${d}">${l}</button>`).join('')}<button class="chip${st.dh?' on':''}" data-rcdh>📅 Dia e hora</button></div>
+   <div data-rcdhb class="grid"${st.dh?'':' hidden'}><div class="r2"><label class="f">Dia<input data-rcd type="date" min="${hoje()}" value="${esc(st.d||maisDias(st.ret||1))}"></label><label class="f">Hora<input data-rch type="time" step="300" value="${esc(st.h||'')}"></label></div><span data-rcc class="hint">Escolha o dia e, se quiser, o horário.</span></div>
+   <div class="row"><button class="btn" data-rcs>✓ Registrar contato</button><button class="btn ghost" data-rcia>🎙️ Enviar gravação</button></div></div></details>`}
+function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli; if(!c||!c.cnpj){box.innerHTML=''; return}
+  const K=o.sid||o.num||''; const feitos=L('regOrc')||{};
+  const pend=L('ligPend'); const ligou=pend&&pend.cnpj===c.cnpj&&Date.now()-pend.t<3*36e5;
+  const st={ab:ligou||!matchMedia('(max-width:699px)').matches,tipo:'ligacao',res:'Pediu orçamento',ret:+(L('fupDias')??3)||3,dh:false,tx:'',p:K&&feitos[K]||null};
+  const g=s=>box.querySelector(s);
+  const pinta=()=>{const x=g('[data-rcx]'); if(x){st.tx=x.value; if(st.dh&&g('[data-rcd]')){st.d=g('[data-rcd]').value; st.h=g('[data-rch]').value}} box.innerHTML=regOrcHtml(st); if(st.dh&&!st.p) ver()};
+  let bate=[];
+  const ver=async()=>{const d=g('[data-rcd]').value, h=g('[data-rch]').value, el=g('[data-rcc]'); bate=[]; if(!d){el.textContent='Escolha o dia.'; return} const dl=d.split('-').reverse().join('/'); if(!h){el.innerHTML=`Retorno em <b>${dl}</b>, sem horário.`; return}
+    const r=await conflitos(d,h,30); bate=r.bate; if(!el.isConnected) return; el.innerHTML=bate.length?`<span class="warn">⚠️ Nesse horário você já tem: ${bate.map(x=>esc(String(x.hora).slice(0,5)+' '+x.titulo)).join(' · ')}</span>`:`Retorno em <b>${dl} às ${esc(h)}</b> · horário livre ✓`};
+  box.addEventListener('change',e=>{if(e.target.matches('[data-rcd],[data-rch]')) ver()});
+  box.addEventListener('toggle',e=>{if(e.target.matches('details.regc')) st.ab=e.target.open},true);
+  box.onclick=async e=>{const t=e.target; let b;
+    if(b=t.closest('[data-rct]')){st.tipo=b.dataset.rct; return pinta()}
+    if(b=t.closest('[data-rcr]')){st.res=st.res===b.dataset.rcr?'':b.dataset.rcr; return pinta()}
+    if(b=t.closest('[data-rcn]')){st.ret=+b.dataset.rcn; st.dh=false; return pinta()}
+    if(t.closest('[data-rcdh]')){st.dh=!st.dh; pinta(); if(st.dh) g('[data-rch]').focus(); return}
+    if(t.closest('[data-rcia]')){const ov=box.closest('.ov'); if(ov) ov.remove(); return ligIA({cnpj:c.cnpj,n:c.n,fa:c.fa||''})}
+    if(t.closest('[data-rcdesf]')){const P=st.p; if(!P) return; try{if(P.id) await api(`contatos?id=eq.${P.id}`,{method:'DELETE',headers:{Prefer:'return=minimal'}}); if(P.tid) await api(`tarefas?id=eq.${P.tid}`,{method:'DELETE',headers:{Prefer:'return=minimal'}}); const f=L('regOrc')||{}; delete f[K]; LS('regOrc',f); st.p=null; contaTarefas(); toast('Registro desfeito'); return pinta()}catch(err){return toast('Erro: '+err.message)}}
+    if(!(b=t.closest('[data-rcs]'))) return;
+    const extra=g('[data-rcx]').value.trim(); const dd=st.dh?g('[data-rcd]').value:'', hh=st.dh?g('[data-rch]').value:''; if(st.dh&&!dd) return toast('Escolha o dia do retorno');
+    if(st.dh&&hh){await ver(); if(bate.length&&!confirm(`Nesse horário você já tem: ${bate.map(x=>String(x.hora).slice(0,5)+' '+x.titulo).join('; ')}. Marcar mesmo assim?`)) return}
+    const vence=st.dh?dd:(st.ret?maisDias(st.ret):null);
+    const resumo=`${st.res||'Contato'} · orçamento ${repName(rep)}${o.num?' nº '+o.num:''} · ${brl(total)} · ${nItens} item(ns)`;
+    const texto=resumo+(extra?'\n'+extra:''); b.disabled=true;
+    try{const corpo={cnpj:c.cnpj,tipo:st.tipo,texto,resultado:st.res||null,retorno:vence,representada:repName(rep),usuario_nome:meuNome()};
+      const [ct]=await api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(corpo)}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({cnpj:c.cnpj,tipo:st.tipo,texto,retorno:vence})}));
+      let tid=null; if(vence){const r=await novaTarefa({titulo:`Retorno de orçamento ${repName(rep)} – ${c.fa||c.n}`,tipo:'followup',cnpj:c.cnpj,cliente:c.n,rep,orcamento_id:o.sid||null,vence,...(hh?{hora:hh,duracao:30}:{}),obs:texto}).catch(()=>null); tid=r&&r[0]&&r[0].id||null}
+      st.p={id:ct&&ct.id||null,tid,ret:vence,h:hh}; if(K){const f=L('regOrc')||{}; f[K]=st.p; const ks=Object.keys(f); if(ks.length>60) delete f[ks[0]]; LS('regOrc',f)}
+      if(ligou) LS('ligPend',null); contaTarefas(); toast('Contato registrado'+(vence?' + retorno '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):'')); pinta()}catch(err){toast('Erro: '+err.message); b.disabled=false}};
+  pinta()}
+/*REGORC-FIM*/
 function ligMarcarLigacao(c){LS('ligPend',{cnpj:c.cnpj,n:c.n,fa:c.fa||'',t:Date.now()})}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible') return; const p=L('ligPend'); if(!p) return; const ms=Date.now()-p.t; if(ms<15e3) return; LS('ligPend',null); if(ms>3*36e5||$('#ligAviso')) return;
   const d=document.createElement('div'); d.id='ligAviso'; d.className='toast'; d.style.cssText+=';display:flex;gap:8px;align-items:center;pointer-events:auto;z-index:40'; d.innerHTML=`<span>Como foi a ligação com <b>${esc(p.fa||p.n)}</b>?</span><button class="btn sm" data-lg>🎙️ Enviar</button><button class="chip" data-lx>✕</button>`; document.body.appendChild(d);

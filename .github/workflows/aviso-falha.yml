@@ -1,0 +1,49 @@
+name: Aviso de falha
+# Quando uma das automações abaixo falha, abre um aviso (issue) neste repositório e o
+# GitHub manda e-mail/notificação ao dono. Se falhar de novo, comenta no mesmo aviso.
+# Todo dia de manhã (e a cada nova falha) confere os avisos abertos: se a automação já
+# voltou a funcionar, o aviso é fechado sozinho. Só roda quando há falha + 1x por dia.
+on:
+  workflow_run:
+    workflows:
+      - "Fichas do Drive Medix"
+      - "Fotos do site Medix"
+      - "Dados das fichas técnicas Medix"
+    types: [completed]
+  schedule:
+    - cron: '50 11 * * *'
+  workflow_dispatch:
+permissions:
+  issues: write
+  actions: read
+jobs:
+  aviso:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const PREFIXO = '⚠️ Automação falhou: ';
+            const hora = d => new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+            const abertos = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', labels: 'aviso-falha', per_page: 100 });
+            const run = context.payload.workflow_run;
+            if (run) {
+              const titulo = PREFIXO + run.name, atual = abertos.find(i => i.title === titulo);
+              if (atual) await github.rest.issues.createComment({ owner, repo, issue_number: atual.number, body: 'Falhou de novo em ' + hora(run.updated_at) + ': ' + run.html_url });
+              else await github.rest.issues.create({ owner, repo, title: titulo, labels: ['aviso-falha'], assignees: [owner],
+                body: 'A automação **' + run.name + '** falhou em ' + hora(run.updated_at) + '.\n\nVer o que aconteceu: ' + run.html_url + '\n\nEste aviso fecha sozinho quando a automação voltar a funcionar.' });
+            }
+            // fecha os avisos de automações que já voltaram a funcionar
+            const wfs = (await github.rest.actions.listRepoWorkflows({ owner, repo, per_page: 100 })).data.workflows;
+            for (const i of abertos) {
+              const nome = i.title.slice(PREFIXO.length), wf = wfs.find(w => w.name === nome);
+              if (!wf) continue;
+              const ult = (await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: wf.id, status: 'completed', per_page: 1 })).data.workflow_runs[0];
+              if (ult && ult.conclusion === 'success') {
+                await github.rest.issues.createComment({ owner, repo, issue_number: i.number, body: '✅ Voltou a funcionar em ' + hora(ult.updated_at) + ': ' + ult.html_url });
+                await github.rest.issues.update({ owner, repo, issue_number: i.number, state: 'closed', state_reason: 'completed' });
+              }
+            }

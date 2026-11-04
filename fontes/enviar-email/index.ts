@@ -1,8 +1,10 @@
 // Envia por e-mail (SMTP da Hostinger, caixas @chamae.com.br) o orçamento do Sistema Chamae, com o PDF anexado.
 // Chamado por enviarEmail() no app.js: { para[], cc[], assunto, texto, anexo:{nome,base64}|null, ref:{tipo,id,cnpj} }.
 // Contas no secret SMTP_CONTAS (Supabase › Edge Functions › Secrets), uma por linha:  email;senha
-//   a 1ª linha é a caixa padrão. Se o e-mail de envio do vendedor (perfis.email_envio) tiver linha própria, sai dele;
-//   senão sai da caixa padrão com "Responder para" o vendedor.
+//   cada vendedor sai SEMPRE da própria caixa (perfis.email_envio, ou o e-mail de login @chamae.com.br).
+//   03/11: se a caixa do vendedor não tiver linha no SMTP_CONTAS, o envio é recusado com aviso claro
+//   (antes caía na 1ª linha, a caixa do Victor, e o e-mail do Clayton saiu como se fosse do Victor).
+//   { checar:true } só responde de qual caixa vai sair e se ela está pronta (a janela de envio mostra isso).
 // Opcional: SMTP_HOST (padrão smtp.hostinger.com) e SMTP_PORT (padrão 465, SSL). Cada envio fica em email_envios.
 import nodemailer from 'npm:nodemailer@6.9.16';
 
@@ -27,6 +29,18 @@ const rest = (path: string, init: RequestInit = {}) =>
   fetch(SB + '/rest/v1/' + path, { ...init, headers: { apikey: SRV, Authorization: 'Bearer ' + SRV, 'Content-Type': 'application/json', ...(init.headers || {}) } });
 
 // só a equipe aprovada (gestor/vendedor, fora do portal B2B)
+// 03/11: confere se o domínio de cada destinatário existe (MX ou A). Ex.: vendas1@chamae.comn.br (erro de digitação)
+// voltava só depois, como "Undelivered Mail". Se o DNS não puder ser consultado, deixa passar (não trava o envio).
+async function dominioExiste(dom: string): Promise<boolean> {
+  const tenta = async (tipo: 'MX' | 'A') => {
+    try { const r = await Promise.race([Deno.resolveDns(dom, tipo), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))]) as unknown[]; return r.length > 0 ? true : null; }
+    catch (e) { const n = (e as Error)?.name || ''; return /NotFound/i.test(n) || /no ?data|nxdomain|not found/i.test(String((e as Error)?.message)) ? false : null; }
+  };
+  const mx = await tenta('MX'); if (mx) return true;
+  const a = await tenta('A'); if (a) return true;
+  return !(mx === false && a === false);
+}
+
 async function ehEquipe(auth: string) {
   const r = await fetch(SB + '/rest/v1/rpc/eh_equipe', { method: 'POST', headers: { apikey: ANON, Authorization: auth, 'Content-Type': 'application/json' }, body: '{}' });
   return r.ok && (await r.json()) === true;
@@ -47,20 +61,37 @@ Deno.serve(async (req) => {
 
   let b: any;
   try { b = await req.json(); } catch { return json({ erro: 'Pedido inválido' }, 400); }
+
+  // de qual caixa sai: a do próprio vendedor, nunca a de outra pessoa
+  const C = contas();
+  const vend = String(perfil.email_envio || (String(perfil.email || user.email || '').endsWith('@chamae.com.br') ? perfil.email || user.email : '') || '').trim().toLowerCase();
+  const conta = C.find((c) => c.email === vend);
+  // 03/11: a caixa não pode ser a de outra pessoa (ex.: Clayton com o e-mail de envio do Victor no perfil)
+  if (vend) {
+    const dono = await rest(`perfis?select=id&id=neq.${user.id}&or=(email.ilike.${encodeURIComponent(vend)},email_envio.ilike.${encodeURIComponent(vend)})`);
+    const outros = dono.ok ? await dono.json() : [];
+    if (outros.length) return json({ erro: `A caixa ${vend} é de outro usuário. Cada vendedor envia só pela própria caixa. Nada foi enviado.` }, 403);
+  }
+  if (b.checar) return json({ de: vend || null, pronta: !!conta });
+  if (!C.length) return json({ erro: 'O envio de e-mail ainda não foi configurado (falta o secret SMTP_CONTAS no Supabase).' }, 503);
+  if (!vend) return json({ erro: 'Seu usuário não tem e-mail @chamae.com.br de envio. Peça ao gestor para preencher o e-mail de envio no seu perfil.' }, 409);
+  if (!conta) return json({ erro: `Sua caixa ${vend} ainda não está liberada para enviar pelo Sistema. Peça ao Victor para cadastrá-la (Supabase › Edge Functions › Secrets › SMTP_CONTAS). Nada foi enviado.` }, 409);
   const para = [...new Set((b.para || []).map((x: string) => String(x).trim().toLowerCase()).filter(emailOk))] as string[];
   const cc = [...new Set((b.cc || []).map((x: string) => String(x).trim().toLowerCase()).filter(emailOk))] as string[];
   if (!para.length) return json({ erro: 'Nenhum destinatário válido.' }, 400);
   if (para.length + cc.length > 20) return json({ erro: 'Destinatários demais (máx. 20).' }, 400);
+  const doms = [...new Set([...para, ...cc].map((e) => e.split('@')[1]))];
+  const ruins = (await Promise.all(doms.map(async (d) => (await dominioExiste(d)) ? null : d))).filter(Boolean) as string[];
+  if (ruins.length) {
+    const ends = [...para, ...cc].filter((e) => ruins.includes(e.split('@')[1]));
+    return json({ erro: `Endereço com erro de digitação: ${ends.join(', ')} (o domínio ${ruins.join(', ')} não existe). Corrija e envie de novo. Nada foi enviado.`, invalidos: ends }, 422);
+  }
   const assunto = String(b.assunto || '').slice(0, 300) || 'Orçamento Chamae';
   const texto = String(b.texto || '').slice(0, 20000);
   const ref = b.ref || {};
   // opcional (02/11, Estratégia do dia): corpo em HTML e imagens no corpo (cid), ex.: a arte do e-mail de reativação
   const html = b.html ? String(b.html).slice(0, 60000) : undefined;
 
-  const C = contas();
-  if (!C.length) return json({ erro: 'O envio de e-mail ainda não foi configurado (falta o secret SMTP_CONTAS no Supabase).' }, 503);
-  const vend = String(perfil.email_envio || (String(perfil.email || user.email || '').endsWith('@chamae.com.br') ? perfil.email || user.email : '') || '').toLowerCase();
-  const conta = C.find((c) => c.email === vend) || C[0];
   const nome = (perfil.nome || 'Chamae') + ' · Chamae Representações';
 
   const anexos = [];
@@ -82,7 +113,6 @@ Deno.serve(async (req) => {
     const t = nodemailer.createTransport({ host: HOST, port: PORT, secure: PORT === 465, auth: { user: conta.email, pass: conta.senha }, connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 60000 });
     const info = await t.sendMail({
       from: { name: nome, address: conta.email },
-      replyTo: vend && vend !== conta.email ? vend : undefined,
       to: para, cc: cc.length ? cc : undefined,
       subject: assunto, text: texto, html, attachments: anexos,
     });

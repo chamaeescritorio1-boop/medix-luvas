@@ -1480,7 +1480,7 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
   box.innerHTML='<p class="hint">Montando sua semana…</p>';
   try{const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7); const wd=[0,1,2,3,4].map(i=>{const d=new Date(seg); d.setDate(seg.getDate()+i); return d}); const dom=new Date(seg); dom.setDate(seg.getDate()+6);
     const a12=new Date(hj); a12.setFullYear(hj.getFullYear()-1); const meses=[...new Set(wd.map(d=>d.getFullYear()*12+d.getMonth()))];
-    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),agPedidos().then(d=>d.filter(x=>x.data>=ymdL(a12))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
+    const [C,RR,O,P,...MM]=await Promise.all([clientes(),reps().catch(()=>[]),api('orcamentos?select=id,app,cliente,cnpj,total,lin:dados->linhas,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=300').catch(()=>[]),agPedidos().then(d=>d.filter(x=>x.data>=ymdL(a12))).catch(()=>[]),...meses.map(k=>metasDoMes(Math.floor(k/12),k%12).then(m=>m||[]))]);
     const mine=v=>!so||!eu||norm(v||'').startsWith(eu);
     /* meta da semana: meta do mês ÷ dias úteis do mês × dias úteis desta semana (seg–sex) */
     const metaRep=M=>{const o={}; M.filter(x=>so&&eu?x.tipo==='vr'&&norm(x.chave.split('|')[0]).startsWith(eu):x.tipo==='rep').forEach(x=>{const r=so&&eu?x.chave.split('|')[1]:x.chave; o[r]=(o[r]||0)+(+x.valor||0)}); return o};
@@ -1544,15 +1544,17 @@ function agParadas(P,C,mine,ult){const G={}, hoje=ymdL(new Date()), a12=agMais(-
     out.push({k:`parada|${g.cnpj}|${g.rep}`,ag:'parada',cnpj:g.cnpj,n:c.fa||c.n||g.cnpj,razao:c.n||'',tel:c.tel||'',rep:g.rep,v:tk,ciclo,d,ultimo:g.u,
       sc:tk*(r<=2?1:r<=3?.8:.5),fatos:`Compra ${g.rep} a cada ~${ciclo} dias (mediana); último pedido em ${g.u.split('-').reverse().join('/')}, há ${d} dias; ticket médio ${brl(tk)}; ${ds.length} compras em 18 meses.`})});
   return out}
+/* valor do orçamento SEM IPI (sem IPI, encargo do prazo e frete): é o que conta para meta e comissão. Soma qt×pu das linhas; sem linhas, usa o total */
+function vOrc(o){if(!o) return 0; if(o._vsi!=null) return o._vsi; const L=o.lin||(o.dados&&o.dados.linhas); let v=0; if(Array.isArray(L)) v=L.reduce((s,l)=>s+(+l.qt||0)*(+l.pu||0),0); return o._vsi=v>0?Math.round(v*100)/100:(+o.total||0)}
 function agOrcs(O,P,C,so,ult){const byC={}; C.forEach(c=>byC[c.cnpj]=c); const hoje=ymdL(new Date()), out=[];
-  O.forEach(o=>{if(so&&o.user_id!==sess.uid) return; const st=stOf(o); if(!['orcamento','aguardando_aprovacao','aguardando_atg'].includes(st)) return; const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn||!(+o.total>0)) return;
+  O.forEach(o=>{if(so&&o.user_id!==sess.uid) return; const st=stOf(o); if(!['orcamento','aguardando_aprovacao','aguardando_atg'].includes(st)) return; const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn||!(vOrc(o)>0)) return;
     const d0=String(o.atualizado_em||'').slice(0,10); if(!d0) return; const u=agUteis(d0,hoje), d=dias(d0); if(u<AG_ORC_DIAS||d>180) return; const ci=d>30;
     const rn=HIST_REP[o.app]||repName(o.app); if(P.some(x=>String(x.cnpj||'').replace(/\D/g,'')===cn&&x.representada===rn&&x.data>=d0)) return; /* virou pedido */
     const st3=u>=10?3:u>=5?2:1, sd=agUtilMais(d0,[2,5,10][st3-1]); const uc=ult[cn]; if(uc&&uc>=(ci?String(o.atualizado_em):sd)) return; /* teve contato depois (na cadência: depois desta etapa) */
-    const c=byC[cn]||{}; if(ci){out.push({k:`ciclo|${o.id}`,ag:'ciclo',oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,sc:0,
-      fatos:`Orçamento ${rn} de ${brl(o.total)} aberto há ${d} dias sem pedido nem desfecho registrado. Pergunte ao cliente se ainda está em negociação, e registre se ganhou ou perdeu.`}); return}
-    out.push({k:`orc|${o.id}|${st3}`,ag:'orc',etapa:st3,oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:+o.total,d,u,
-      sc:(+o.total)*(u<=10?1.2:u<=20?1:.7),fatos:`Orçamento ${rn} de ${brl(o.total)} (${(STATUS.find(s=>s[0]===st)||[,st])[1]}), parado há ${u} dias úteis (${d} corridos), sem pedido e sem contato registrado depois. Esta é a ${st3}ª cobrança da cadência (2º, 5º e 10º dia útil): ${['','lembrete leve, pergunte se recebeu e se ficou alguma dúvida','ofereça ajustar quantidade, prazo ou condição','última tentativa, pergunte com franqueza se fechou com outro e por quê'][st3]}.`})});
+    const c=byC[cn]||{}; if(ci){out.push({k:`ciclo|${o.id}`,ag:'ciclo',oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:vOrc(o),d,u,sc:0,
+      fatos:`Orçamento ${rn} de ${brl(vOrc(o))} sem IPI aberto há ${d} dias sem pedido nem desfecho registrado. Pergunte ao cliente se ainda está em negociação, e registre se ganhou ou perdeu.`}); return}
+    out.push({k:`orc|${o.id}|${st3}`,ag:'orc',etapa:st3,oid:o.id,cnpj:cn,n:c.fa||c.n||o.cliente||cn,razao:c.n||o.cliente||'',tel:c.tel||'',rep:rn,v:vOrc(o),d,u,
+      sc:vOrc(o)*(u<=10?1.2:u<=20?1:.7),fatos:`Orçamento ${rn} de ${brl(vOrc(o))} sem IPI (${(STATUS.find(s=>s[0]===st)||[,st])[1]}), parado há ${u} dias úteis (${d} corridos), sem pedido e sem contato registrado depois. Esta é a ${st3}ª cobrança da cadência (2º, 5º e 10º dia útil): ${['','lembrete leve, pergunte se recebeu e se ficou alguma dúvida','ofereça ajustar quantidade, prazo ou condição','última tentativa, pergunte com franqueza se fechou com outro e por quê'][st3]}.`})});
   return out}
 const agUtilMais=(d0,n)=>{const d=new Date(d0+'T12:00:00'); let k=0; while(k<n){d.setDate(d.getDate()+1); if(diaUtil(d)) k++} return ymdL(d)};
 function agMeta(M,P,mine,so,eu){const hj=new Date(), y=hj.getFullYear(), mo=hj.getMonth(), ini=ymdL(new Date(y,mo,1)), hoje=ymdL(hj);
@@ -1564,7 +1566,7 @@ function agMeta(M,P,mine,so,eu){const hj=new Date(), y=hj.getFullYear(), mo=hj.g
 async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ges||L('agSo')!==false, eu=meuVend(), mine=v=>!so||!eu||norm(v||'').startsWith(eu); let aberto=null;
   box.innerHTML='<div class="card grid ag"><b>🤖 Hoje para você</b><p class="hint" style="margin:0">Os agentes estão olhando sua carteira…</p></div>';
   cicloAuto().then(n=>{if(n) toast(`🤖 ${n} ${n>1?'orçamentos viraram pedido e foram marcados':'orçamento virou pedido e foi marcado'} como ganho`)});
-  try{const hj=new Date(); const [C,P,O,CT,M,ST]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
+  try{const hj=new Date(); const [C,P,O,CT,M,ST]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,lin:dados->linhas,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
       apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-75)}`).catch(()=>[]),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[]),agEstados()]);
     const [RI,R0]=await Promise.all([agItensDB(),reps().catch(()=>[])]);
     const ult={}; CT.forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!ult[k]||c.criado_em>ult[k])) ult[k]=c.criado_em});
@@ -1670,11 +1672,11 @@ function revisorHtml(A){if(!A.length) return '<div class="hint" style="font-size
   return `<div class="card grid" style="gap:6px;padding:10px"><b style="font-size:14px">🔎 Revisor antes de enviar</b>${A.map(a=>`<div style="font-size:13px" class="${cl[a.nv]}">${ic[a.nv]} ${a.tx}${a.add?`<div class="grid" style="gap:4px;margin-top:4px">${a.add.map(x=>`<div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:6px"><span style="color:var(--ink,inherit)"><b>${esc(x.p.cod)}</b> ${esc(String(x.p.descricao||'').slice(0,40))} <span class="hint">· ${esc(x.tx)}</span></span><button class="chip" data-revadd="${esc(x.p.id)}" data-revm="${+x.p.mult||1}">＋ Incluir</button></div>`).join('')}</div>`:''}</div>`).join('')}</div>`}
 /* conversão dos últimos 90 dias por vendedor e por fábrica (orçamentos do Sistema, pela data de criação); "ganho" inclui os fechados sozinhos pelo pedido (Fechar o ciclo) */
 async function convPorQuem(box,repF){box.innerHTML='<p class="hint">Calculando por vendedor e fábrica…</p>'; const de=agMais(-90);
-  const [O,PF]=await Promise.all([apiAll(`orcamentos?select=app,status,situacao,total,criado_em,user_id,vend:dados->>vend,auto:dados->ciclo_auto->>num&criado_em=gte.${de}`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
+  const [O,PF]=await Promise.all([apiAll(`orcamentos?select=app,status,situacao,total,lin:dados->linhas,criado_em,user_id,vend:dados->>vend,auto:dados->ciclo_auto->>num&criado_em=gte.${de}`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
   const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=o=>vAt(String(o.vend||nm[o.user_id]||'Sem vendedor').split(/\s+/)[0]);
-  const L4=O.filter(o=>+o.total>0&&(!repF||repName(o.app)===repF));
-  const agr=f=>{const g={}; L4.forEach(o=>{const k=f(o), x=g[k]=g[k]||{k,n:0,v:0,g:0,gv:0,p:0,a:0,au:0}, st=stOf(o); x.n++; x.v+=+o.total; if(st==='transmitido'){x.g++; x.gv+=+o.total; if(o.auto!=null) x.au++} else if(st==='cancelado') x.p++; else x.a++}); return Object.values(g).sort((a,b)=>b.v-a.v)};
-  const tab=(tit,R)=>`<div class="card" style="overflow-x:auto;margin-top:12px"><b>${tit}</b><table class="t"><tr><th></th><th class="n">Orçamentos</th><th class="n">Ganhos</th><th class="n">Perdidos</th><th class="n">Em aberto</th><th class="n">Conversão</th><th class="n">R$ ganho</th></tr>${R.map(x=>`<tr><td>${esc(x.k)}</td><td class="n">${x.n} <small class="hint">${brl(x.v)}</small></td><td class="n ok">${x.g}${x.au?` <small class="hint">(${x.au} auto)</small>`:''}</td><td class="n bad">${x.p}</td><td class="n">${x.a}</td><td class="n"><b>${(x.g/x.n*100).toFixed(0)}%</b></td><td class="n">${brl(x.gv)}</td></tr>`).join('')||'<tr><td colspan="7" class="hint">Sem orçamentos no período.</td></tr>'}</table></div>`;
+  const L4=O.filter(o=>vOrc(o)>0&&(!repF||repName(o.app)===repF));
+  const agr=f=>{const g={}; L4.forEach(o=>{const k=f(o), x=g[k]=g[k]||{k,n:0,v:0,g:0,gv:0,p:0,a:0,au:0}, st=stOf(o); x.n++; x.v+=vOrc(o); if(st==='transmitido'){x.g++; x.gv+=vOrc(o); if(o.auto!=null) x.au++} else if(st==='cancelado') x.p++; else x.a++}); return Object.values(g).sort((a,b)=>b.v-a.v)};
+  const tab=(tit,R)=>`<div class="card" style="overflow-x:auto;margin-top:12px"><b>${tit}</b><table class="t"><tr><th></th><th class="n">Orçamentos</th><th class="n">Ganhos</th><th class="n">Perdidos</th><th class="n">Em aberto</th><th class="n">Conversão</th><th class="n">R$ ganho (s/ IPI)</th></tr>${R.map(x=>`<tr><td>${esc(x.k)}</td><td class="n">${x.n} <small class="hint">${brl(x.v)}</small></td><td class="n ok">${x.g}${x.au?` <small class="hint">(${x.au} auto)</small>`:''}</td><td class="n bad">${x.p}</td><td class="n">${x.a}</td><td class="n"><b>${(x.g/x.n*100).toFixed(0)}%</b></td><td class="n">${brl(x.gv)}</td></tr>`).join('')||'<tr><td colspan="7" class="hint">Sem orçamentos no período.</td></tr>'}</table></div>`;
   const ab=L4.filter(o=>!['transmitido','cancelado'].includes(stOf(o))).length;
   box.innerHTML=tab('Últimos 90 dias por vendedor (orçamentos do Sistema)',agr(quem))+tab('Últimos 90 dias por fábrica',agr(o=>repName(o.app)))+
    `<p class="hint">Ganho = virou pedido (marcado no Sistema ou fechado sozinho pelo pedido do Reprio, "auto"). ${ab?`${ab} ainda em aberto: os agentes perguntam ao vendedor se ganhou ou perdeu.`:''}</p>`}
@@ -1706,7 +1708,7 @@ async function agEstoque(X,so,ult){let O=[]; try{O=await api(`orcamentos?select=
   const SR=cs.length?await sigmaStkMany(cs,false,30*6e4).catch(()=>({})):{}; const out=[];
   O.forEach(o=>{const cn=String(o.cnpj||'').replace(/\D/g,''); if(!cn) return; const uc=ult[cn]; if(uc&&uc>=String(o.atualizado_em)) return;
     const vol=((o.dados||{}).linhas||[]).filter(l=>{const c=String(l.cod||'').trim(); return o.app==='medix'?EQ[c]&&EQ[c][0]==='S':((SR[c]||{}).it||{}).disp>=(+l.qt||1)});
-    if(vol.length) out.push({...agNovo(X,'estoque',cn,HIST_REP[o.app]||repName(o.app),+o.total,(+o.total)*1.1,`Perdemos o orçamento de ${brl(o.total)} em ${dbr(String(o.atualizado_em).slice(0,10))} por falta de estoque. Voltou a ter: ${vol.slice(0,4).map(l=>`${l.cod} ${String(l.desc||'').slice(0,40)}`).join('; ')}.`,{kx:o.id}),oid:o.id})});
+    if(vol.length) out.push({...agNovo(X,'estoque',cn,HIST_REP[o.app]||repName(o.app),vOrc(o),vOrc(o)*1.1,`Perdemos o orçamento de ${brl(vOrc(o))} sem IPI em ${dbr(String(o.atualizado_em).slice(0,10))} por falta de estoque. Voltou a ter: ${vol.slice(0,4).map(l=>`${l.cod} ${String(l.desc||'').slice(0,40)}`).join('; ')}.`,{kx:o.id}),oid:o.id})});
   return out}
 async function agPortal(X,mine){let R=[]; try{R=await api(`b2b_acessos?select=cnpj,nome,ultimo_acesso&ultimo_acesso=gte.${agMais(-2)}`)}catch(e){return []}
   return R.map(r=>{const cn=String(r.cnpj||'').replace(/\D/g,''), c=X.byC[cn]||{}; if(!cn||!mine(c.v)) return null; const rep=Object.keys(c.reps||{})[0]||'';
@@ -1724,12 +1726,12 @@ function agNovoCli(P,X,mine,ult){const G={}; P.forEach(x=>{const cn=String(x.cnp
 async function agResumo(box){if(!box||!AG_ON||!ehGestor()) return; const hj=new Date(); hj.setHours(12,0,0,0); const seg=new Date(hj); seg.setDate(hj.getDate()-(hj.getDay()+6)%7);
   const s1=new Date(seg); s1.setDate(seg.getDate()-7); const s2=new Date(seg); s2.setDate(seg.getDate()-14); const A=ymdL(s1), B=ymdL(seg), Z=ymdL(s2), wk=A;
   const ini=L('agResAb'); let ab=ini&&ini.w===wk?ini.ab:true; const marca=v=>{ab=v; LS('agResAb',{w:wk,ab:v})};
-  try{const [P,O,OP,LG,PF]=await Promise.all([agPedidos(),apiAll(`orcamentos?select=app,status,situacao,total,criado_em,atualizado_em,user_id,vend:dados->>vend,mot:dados->>motivo_perda,auto:dados->ciclo_auto->>num&atualizado_em=gte.${agMais(-30)}`).catch(()=>[]),
+  try{const [P,O,OP,LG,PF]=await Promise.all([agPedidos(),apiAll(`orcamentos?select=app,status,situacao,total,lin:dados->linhas,criado_em,atualizado_em,user_id,vend:dados->>vend,mot:dados->>motivo_perda,auto:dados->ciclo_auto->>num&atualizado_em=gte.${agMais(-30)}`).catch(()=>[]),
       api(`oportunidades?select=usuario_nome,agente,status,valor,atualizado_em&atualizado_em=gte.${A}`).catch(()=>[]),api(`ligacoes?select=usuario_nome,cliente,analise,criado_em&criado_em=gte.${A}&status=eq.pronto`).catch(()=>[]),api('perfis?select=id,nome').catch(()=>[])]);
     const nm={}; PF.forEach(p=>nm[p.id]=p.nome); const quem=v=>String(vAt(String(v||'Sem vendedor').split(/\s+/)[0])||'Sem vendedor');
     const V={}, vv=k=>V[k]=V[k]||{v:0,v0:0,n:0,oc:0,ov:0,g:0,p:0,op:0,opg:0,lg:0};
     P.forEach(x=>{if(x.data>=A&&x.data<B){const r=vv(quem(x.vendedor)); r.v+=+x.valor||0; r.n++} else if(x.data>=Z&&x.data<A) vv(quem(x.vendedor)).v0+=+x.valor||0});
-    const mot={}; O.forEach(o=>{const q=quem(o.vend||nm[o.user_id]), c=String(o.criado_em).slice(0,10), u=String(o.atualizado_em).slice(0,10), st=stOf(o); if(c>=A&&c<B){const r=vv(q); r.oc++; r.ov+=+o.total||0}
+    const mot={}; O.forEach(o=>{const q=quem(o.vend||nm[o.user_id]), c=String(o.criado_em).slice(0,10), u=String(o.atualizado_em).slice(0,10), st=stOf(o); if(c>=A&&c<B){const r=vv(q); r.oc++; r.ov+=vOrc(o)}
       if(u>=A&&u<B){if(st==='transmitido') vv(q).g++; else if(st==='cancelado') vv(q).p++} if(st==='cancelado'&&o.mot) mot[o.mot]=(mot[o.mot]||0)+1});
     OP.forEach(x=>{const r=vv(quem(x.usuario_nome)); r.op++; if(['feita','ganhou'].includes(x.status)) r.opg++});
     LG.forEach(x=>vv(quem(x.usuario_nome)).lg++);
@@ -1737,7 +1739,7 @@ async function agResumo(box){if(!box||!AG_ON||!ehGestor()) return; const hj=new 
     const linhas=Object.entries(V).filter(([k,x])=>x.v||x.v0||x.oc||x.op||x.lg).sort((a,b)=>b[1].v-a[1].v);
     const motL=Object.entries(mot).sort((a,b)=>b[1]-a[1]);
     const fatos=`Semana ${dbr(A)} a ${dbr(ymdL(new Date(seg.getTime()-864e5)))}. Vendas da equipe ${brl(tot)} (semana anterior ${brl(tot0)}).
-Por vendedor: ${linhas.map(([k,x])=>`${k}: vendeu ${brl(x.v)} em ${x.n} pedidos (antes ${brl(x.v0)}); ${x.oc} orçamentos novos (${brl(x.ov)}); ${x.g} ganhos e ${x.p} perdidos; ${x.op} oportunidades dos agentes tratadas (${x.opg} feitas/ganhas); ${x.lg} ligações analisadas`).join(' | ')}.
+Por vendedor: ${linhas.map(([k,x])=>`${k}: vendeu ${brl(x.v)} em ${x.n} pedidos (antes ${brl(x.v0)}); ${x.oc} orçamentos novos (${brl(x.ov)} sem IPI); ${x.g} ganhos e ${x.p} perdidos; ${x.op} oportunidades dos agentes tratadas (${x.opg} feitas/ganhas); ${x.lg} ligações analisadas`).join(' | ')}.
 Motivos de perda (30 dias): ${motL.map(([m,n])=>`${m}: ${n}`).join('; ')||'nenhum registrado'}.
 Ligações analisadas pela IA: ${LG.slice(0,25).map(l=>{const a=l.analise||{}, f=a.feedback||{}; return `[${quem(l.usuario_nome)} · ${l.cliente||''}] resultado ${a.resultado||'?'}; melhorar: ${(f.melhorar||[]).join('; ')}; alertas: ${(a.alertas||[]).join('; ')}`}).join(' || ')||'nenhuma nesta semana'}.`;
     const cache=L('agRes'); let IA=cache&&cache.w===wk?cache.r:null, nota='';
@@ -3056,7 +3058,7 @@ const plKey=v=>'plDia_'+(v||'todos');
 const plMeiaNoite=()=>{const d=new Date(); d.setHours(0,0,0,0); return d.toISOString()};
 /* monta a lista de candidatos de um vendedor (mesmos agentes do Início + "sem comprar" + retornos de hoje) */
 async function plCandidatos(vend){const hj=new Date(), hoje=ymdL(hj), mine=v=>!vend||norm(v||'').startsWith(vend);
-  const [C,P,O,CT,M,ST,TA]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
+  const [C,P,O,CT,M,ST,TA]=await Promise.all([clientes(),agPedidos(),api('orcamentos?select=id,app,cliente,cnpj,total,lin:dados->linhas,status,situacao,atualizado_em,user_id&order=atualizado_em.desc&limit=400').catch(()=>[]),
     apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-75)}`).catch(()=>[]),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[]),agEstados(),
     api(`tarefas?select=id,cnpj,titulo,vence,hora,responsavel_nome&feita=eq.false&vence=lte.${hoje}&cnpj=not.is.null&order=vence&limit=300`).catch(()=>[])]);
   const [RI,R0]=await Promise.all([agItensDB(),reps().catch(()=>[])]);
@@ -3109,10 +3111,10 @@ async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCa
 /* o que aconteceu hoje com os clientes do plano: contato, orçamento, pedido */
 async function plSituacao(pl){const cn=new Set([...pl.itens,...pl.ret].map(x=>x.cnpj)); if(!cn.size) return {}; const t0=plMeiaNoite(), hoje=ymdL(new Date()), S={}, d=v=>String(v||'').replace(/\D/g,'');
   const [CT,OR,PD]=await Promise.all([api(`contatos?select=cnpj,resultado,tipo,criado_em&criado_em=gte.${t0}&order=criado_em.desc&limit=1000`).catch(()=>[]),
-    api(`orcamentos?select=id,cnpj,total,status,app,atualizado_em&atualizado_em=gte.${t0}&limit=1000`).catch(()=>[]),agPedidos().catch(()=>[])]);
+    api(`orcamentos?select=id,cnpj,total,lin:dados->linhas,status,app,atualizado_em&atualizado_em=gte.${t0}&limit=1000`).catch(()=>[]),agPedidos().catch(()=>[])]);
   const s=k=>cn.has(k)?(S[k]=S[k]||{c:null,o:0,ov:0,p:0,pv:0}):null;
   CT.forEach(c=>{const x=s(d(c.cnpj)); if(x&&!x.c) x.c=c});
-  OR.forEach(o=>{const x=s(d(o.cnpj)); if(!x) return; if(o.status==='transmitido'){x.p++; x.pv+=+o.total||0} else if(o.status!=='cancelado'){x.o++; x.ov+=+o.total||0}});
+  OR.forEach(o=>{const x=s(d(o.cnpj)); if(!x) return; if(o.status==='transmitido'){x.p++; x.pv+=vOrc(o)} else if(o.status!=='cancelado'){x.o++; x.ov+=vOrc(o)}});
   PD.forEach(p=>{if(!p.data||p.data<hoje) return; const x=s(d(p.cnpj)); if(x){x.p++; x.pv+=+p.valor||0}});
   return S}
 const plEst=(S,cn)=>{const s=S[cn]; if(!s) return 'pend'; if(s.p) return 'ped'; if(s.o) return 'orc'; if(s.c) return s.c.resultado==='Não atendeu'?'tent':'feito'; return 'pend'};
@@ -3534,7 +3536,7 @@ async function quadro(box,O,onOpen){await mapaFotos(O.map(o=>(o.dados&&o.dados.r
 async function relPerdas(box,anos,repF){box.innerHTML='<p class="hint">Calculando…</p>'; const de=ymd(new Date(Date.now()-anos*365*864e5));
   const O=await apiAll(`orcamentos?select=id,app,cliente,total,status,atualizado_em,user_id,dados&status=eq.cancelado&atualizado_em=gte.${de}`).catch(()=>[]);
   const R2=await apiAll(`pedidos?select=id,representada,cliente,valor,vendedor,data&origem=eq.reprio&status=eq.cancelado&data=gte.${de}`).catch(()=>[]);
-  const L=[...O.map(o=>({rep:repName(o.app),cli:o.cliente,v:+o.total||0,mot:(o.dados&&o.dados.motivo_perda)||'Sem motivo informado',obs:o.dados&&o.dados.motivo_obs,vend:vAt((o.dados&&o.dados.vend)||''),dt:String(o.atualizado_em).slice(0,10)})),...R2.map(p=>({rep:p.representada,cli:p.cliente,v:+p.valor||0,mot:'Cancelado no Reprio (sem motivo)',vend:vAt(p.vendedor||''),dt:p.data}))].filter(x=>!repF||x.rep===repF);
+  const L=[...O.map(o=>({rep:repName(o.app),cli:o.cliente,v:vOrc(o),mot:(o.dados&&o.dados.motivo_perda)||'Sem motivo informado',obs:o.dados&&o.dados.motivo_obs,vend:vAt((o.dados&&o.dados.vend)||''),dt:String(o.atualizado_em).slice(0,10)})),...R2.map(p=>({rep:p.representada,cli:p.cliente,v:+p.valor||0,mot:'Cancelado no Reprio (sem motivo)',vend:vAt(p.vendedor||''),dt:p.data}))].filter(x=>!repF||x.rep===repF);
   const grp=k=>{const g={}; L.forEach(x=>{const a=g[x[k]||'—']=g[x[k]||'—']||{n:0,v:0}; a.n++; a.v+=x.v}); return Object.entries(g).sort((a,b)=>b[1].v-a[1].v)};
   const tot=L.reduce((s,x)=>s+x.v,0); const tab=(t,arr)=>`<div class="card" style="margin-bottom:12px"><b>${t}</b><table class="t"><tr><th>${t.split(' ').pop()}</th><th class="n">Qtd.</th><th class="n">Valor perdido</th><th class="n">%</th></tr>${arr.map(([k,a])=>`<tr><td>${esc(k)}</td><td class="n">${a.n}</td><td class="n">${brl(a.v)}</td><td class="n">${tot?(a.v/tot*100).toFixed(0):0}%</td></tr>`).join('')}</table></div>`;
   box.innerHTML=`<div class="kpis" style="margin-bottom:12px"><div class="kpi"><small>Orçamentos perdidos</small><b>${L.length}</b></div><div class="kpi"><small>Valor perdido</small><b>${brl(tot)}</b></div></div>`+tab('Por motivo',grp('mot'))+tab('Por representada',grp('rep'))+tab('Por vendedor',grp('vend'))+

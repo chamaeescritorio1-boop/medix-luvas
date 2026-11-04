@@ -3068,6 +3068,8 @@ function plCotas(G,MT,N){const reps=Object.keys(G).filter(r=>G[r].length); if(!r
   return q}
 /* monta (ou remonta) o plano do dia */
 async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCandidatos(vend);
+  /* só as representadas e clientes que o vendedor atende (vendedor_carteira) */
+  {await vcartLista(); const RV=vcartReps(vend), bl=vcartBloq(vend); for(let i=todos.length-1;i>=0;i--){const x=todos[i]; if((x.rep&&REPLIST.includes(x.rep)&&!RV.includes(x.rep))||bl(x.cnpj)) todos.splice(i,1)}}
   todos.forEach(x=>{x.sc2=(x.sc||x.v||1)*(tm.ag.includes(x.ag)?2:1)*(MT.atr&&MT.atr.has(x.rep)?1.3:1); if(tm.ag.includes(x.ag)) x.tema=true});
   const usados=new Set((manter||[]).map(x=>x.cnpj)); RT.forEach(x=>usados.add(x.cnpj));
   const G={}; todos.filter(x=>x.ag!=='ciclo'||tm.ag.includes('ciclo')).sort((a,b)=>b.sc2-a.sc2).forEach(x=>{(G[x.rep]=G[x.rep]||[]).push(x)});
@@ -3081,7 +3083,7 @@ async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCa
   const reserva={}; Object.keys(G2).forEach(r=>reserva[r]=G2[r].slice(q[r]||0,(q[r]||0)+15));
   const lim=x=>({k:x.k,ag:x.ag,cnpj:x.cnpj,n:x.n,razao:x.razao,tel:x.tel,rep:x.rep,v:Math.round(x.v||0),d:x.d,u:x.u,ciclo:x.ciclo,etapa:x.etapa,oid:x.oid,its:x.its,de:x.de,fatos:x.fatos,tema:x.tema,tid:x.tid,titulo:x.titulo,vence:x.vence,hora:x.hora});
   const pl={d:ymdL(new Date()),vend,tema:tm.t,ret:RT.map(lim),itens:itens.map(lim),reserva:Object.fromEntries(Object.entries(reserva).map(([r,l])=>[r,l.map(lim)])),
-    meta:(MT.L||[]).map(x=>({rep:x.rep,falta:x.falta,dia:x.dia,atr:x.atr})),metaEq:!!MT.eq};
+    meta:(MT.L||[]).filter(x=>!REPLIST.includes(x.rep)||vcartReps(vend).includes(x.rep)).map(x=>({rep:x.rep,falta:x.falta,dia:x.dia,atr:x.atr})),metaEq:!!MT.eq,vc:JSON.stringify(vcartDe(vend)||null)};
   LS(plKey(vend),pl); return pl}
 /* o que aconteceu hoje com os clientes do plano: contato, orçamento, pedido */
 async function plSituacao(pl){const cn=new Set([...pl.itens,...pl.ret].map(x=>x.cnpj)); if(!cn.size) return {}; const t0=plMeiaNoite(), hoje=ymdL(new Date()), S={}, d=v=>String(v||'').replace(/\D/g,'');
@@ -3096,7 +3098,7 @@ const plEst=(S,cn)=>{const s=S[cn]; if(!s) return 'pend'; if(s.p) return 'ped'; 
 const PL_EST={pend:['',''],tent:['☎️ Não atendeu, tente de novo','warn'],feito:['✓ Contato feito','ok'],orc:['📝 Orçamento feito','ok'],ped:['🎉 Pedido','ok']};
 async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meuVend(); if(!TIME.includes(vend)) vend=ges?(L('plV')||TIME[0]):vend; if(ges&&L('plV')&&TIME.includes(L('plV'))) vend=L('plV');
   box.innerHTML='<div class="card grid"><b>🗓️ Plano do dia</b><p class="hint" style="margin:0">Montando o plano do dia por pasta…</p></div>';
-  let pl=L(plKey(vend)); try{if(!pl||pl.d!==ymdL(new Date())||!Array.isArray(pl.itens)) pl=await plMontar(vend)}catch(e){box.innerHTML=''; return}
+  let pl=L(plKey(vend)); await vcartLista(); try{if(!pl||pl.d!==ymdL(new Date())||!Array.isArray(pl.itens)) pl=await plMontar(vend); else if((pl.vc||'null')!==JSON.stringify(vcartDe(vend)||null)) pl=await plMontar(vend,pl.itens.filter(x=>(!REPLIST.includes(x.rep)||vcartReps(vend).includes(x.rep))&&!vcartBloq(vend)(x.cnpj)))}catch(e){box.innerHTML=''; return}
   if(!box.isConnected) return; let S={}, aberto=L('plAb')!==false, notaIA='';
   const IA=agCache(true); const texto=x=>IA.m[x.k]||agPadrao(x);
   const curto=r=>RCURTO[r]||r;
@@ -3148,28 +3150,85 @@ let PL_DICA={};
 function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector('#plDia')) return ''; return `<div class="pcb" style="border-left:4px solid var(--brand)"><div class="row" style="justify-content:space-between;gap:6px"><b>🗓️ Plano do dia${d.rep?' · '+esc(d.rep):''}</b>${d.troca?'<button class="chip" data-pltroca>⇄ Trocar este cliente</button>':''}</div><div style="font-size:14px">${esc(d.porque||d.ag)}</div>${d.falar?`<div class="hint" style="font-size:13px">💡 ${esc(d.falar)}</div>`:''}</div>`}
 /*PLANO-DIA-FIM*/
 /* lista para bater carteira (dentro de Clientes) */
-async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep:'',cid:'',fx:'',q:''},L('cartF')||{}); const C=await clientes(); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}
-  const pend=new Set(tar.map(t=>t.cnpj)); const ultR=c=>{const rs=Object.entries(c.reps||{}).filter(([r])=>!f.rep||r===f.rep).map(([,x])=>x.ultimo).filter(Boolean).sort(); return rs.pop()||null};
+/*VCART-INICIO*/
+/* Carteira de cada vendedor (04/11, pedido do Clayton via Victor): o gestor marca quais representadas cada vendedor atende e
+   quais clientes/grupos ele não atende (ex.: cooperativas Coopercitrus e Copercana). Vale no Bater carteira e no Plano do dia:
+   - só aparecem as representadas que ele atende (filtro, etiquetas de dias e "último pedido" contam só essas);
+   - os clientes/grupos marcados somem da lista dele (pela raiz do CNPJ, então pega todas as filiais).
+   Nenhuma representada marcada = atende todas. Guardado na tabela vendedor_carteira (só o gestor grava). */
+let VCART=null;
+async function vcartLista(force){if(VCART&&!force) return VCART; const M={}; try{(await api('vendedor_carteira?select=*')).forEach(x=>M[x.vend]={reps:x.reps||[],sem:x.sem_clientes||[]}); VCART=M; LS('vcart',M)}catch(e){VCART=L('vcart')||{}} return VCART}
+const vcartDe=v=>(VCART||{})[v]||null;
+/* de quem é a regra que vale na tela: vendedor = sempre a dele; gestor = a do vendedor escolhido no filtro */
+const vcartQuem=sel=>ehGestor()?(sel||''):(TIME.includes(meuVend())?meuVend():'');
+const vcartReps=v=>{const c=vcartDe(v); return c&&c.reps&&c.reps.length?REPLIST.filter(r=>c.reps.includes(r)):REPLIST.slice()};
+const vcartBloq=v=>{const c=vcartDe(v), s=new Set(((c&&c.sem)||[]).map(x=>String(x.raiz||'')).filter(Boolean)); return cn=>s.has(String(cn||'').replace(/\D/g,'').slice(0,8))};
+/* tela do gestor (em Equipe e no botão ⚙️ do Bater carteira) */
+async function vcartEditor(box){if(!box) return; await vcartLista(true); const C=await clientes(); if(!box.isConnected) return; let busca={}, ab=box.dataset.vab||'';
+  const grupos=(q,ja)=>{const w=norm(q).trim(); if(w.length<3) return []; const G={}; C.forEach(c=>{const raiz=c.cnpj.slice(0,8); if(c.cnpj.length!==14) return; if(!norm((c.n||'')+' '+(c.fa||'')).includes(w)&&!c.cnpj.startsWith(w.replace(/\D/g,'')||'x')) return; const g=G[raiz]=G[raiz]||{raiz,nome:c.fa||c.n,n:0}; g.n++}); return Object.values(G).filter(g=>!(ja||[]).some(y=>y.raiz===g.raiz)).sort((a,b)=>b.n-a.n).slice(0,8)};
+  const draw=()=>{box.innerHTML=`<div class="card grid"><b>🎯 O que cada vendedor atende</b><p class="hint" style="margin:0">Vale no Bater carteira e no Plano do dia. Sem nenhuma representada marcada, o vendedor vê todas. Clientes marcados como "não atende" somem da lista dele (todas as filiais do mesmo CNPJ).</p>
+    ${TIME.map(v=>{const c=vcartDe(v)||{reps:[],sem:[]}, on=ab===v, rs=c.reps||[], sem=c.sem||[];
+      return `<div class="card grid" style="background:var(--surface2)" data-vc="${esc(v)}"><button class="chip" data-vab="${esc(v)}" style="display:flex;justify-content:space-between;gap:8px;text-align:left;border:0;background:none;padding:0"><span><b>${esc(v)}</b> <span class="hint">${rs.length?esc(rs.map(r=>RCURTO[r]||r).join(', ')):'todas as representadas'}${sem.length?' · não atende '+sem.length+' cliente(s)':''}</span></span><span>${on?'▴':'▾'}</span></button>
+       ${on?`<div class="hint" style="font-size:13px">Representadas que ${esc(v)} atende</div><div class="row" style="gap:6px">${REPLIST.map(r=>`<button class="chip${rs.includes(r)?' on':''}" data-vr="${esc(r)}">${rs.includes(r)?'✓ ':''}${esc(r)}</button>`).join('')}</div>
+        <div class="hint" style="font-size:13px;margin-top:6px">Clientes / cooperativas que ${esc(v)} não atende</div>
+        <div class="row" style="gap:6px">${sem.map(x=>`<span class="tag" style="display:inline-flex;gap:6px;align-items:center">${esc(x.nome)} <button class="chip" data-vx="${esc(x.raiz)}" style="padding:0 6px;min-height:0" title="Tirar">✕</button></span>`).join('')||'<span class="hint">Nenhum.</span>'}</div>
+        <input data-vq type="search" placeholder="Buscar cliente para não aparecer (ex.: Coopercitrus)" value="${esc(busca[v]||'')}">
+        <div class="grid" style="gap:4px">${grupos(busca[v]||'',sem).map(g=>`<button class="chip" data-va="${esc(g.raiz)}" data-vn="${esc(g.nome)}" style="text-align:left">＋ ${esc(g.nome)} <span class="hint">${g.n} CNPJ${g.n>1?'s':''} · raiz ${esc(g.raiz)}</span></button>`).join('')}</div>`:''}</div>`}).join('')}</div>`};
+  const gravar=async(v,c)=>{try{await api('vendedor_carteira?on_conflict=vend',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({vend:v,reps:c.reps,sem_clientes:c.sem,atualizado_em:new Date().toISOString(),atualizado_por:meuNome()||null})}); VCART[v]=c; LS('vcart',VCART); toast('Salvo')}
+    catch(err){toast(/vendedor_carteira/.test(err.message)?'Falta criar a tabela vendedor_carteira (fontes/vendedor-carteira/criar.sql)':'Erro: '+err.message)}};
+  draw();
+  box.onclick=async e=>{const g=s=>e.target.closest(s); const a=g('[data-vab]'); if(a){ab=box.dataset.vab=ab===a.dataset.vab?'':a.dataset.vab; return draw()}
+    const card=g('[data-vc]'); if(!card) return; const v=card.dataset.vc, c=Object.assign({reps:[],sem:[]},JSON.parse(JSON.stringify(vcartDe(v)||{})));
+    const r=g('[data-vr]'); if(r){const k=r.dataset.vr; c.reps=c.reps.includes(k)?c.reps.filter(x=>x!==k):[...c.reps,k]; await gravar(v,c); return draw()}
+    const x=g('[data-vx]'); if(x){c.sem=c.sem.filter(y=>y.raiz!==x.dataset.vx); await gravar(v,c); return draw()}
+    const ad=g('[data-va]'); if(ad){if(!c.sem.some(y=>y.raiz===ad.dataset.va)) c.sem.push({raiz:ad.dataset.va,nome:ad.dataset.vn}); busca[v]=''; await gravar(v,c); return draw()}};
+  let tt; box.oninput=e=>{const q=e.target.closest('[data-vq]'); if(!q) return; const v=q.closest('[data-vc]').dataset.vc; clearTimeout(tt); tt=setTimeout(()=>{busca[v]=q.value; draw(); const n=box.querySelector(`[data-vc="${v}"] [data-vq]`); if(n){n.focus(); n.setSelectionRange(n.value.length,n.value.length)}},300)}}
+/*VCART-FIM*/
+async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),reps:[],cid:'',fx:'',q:''},L('cartF')||{}); if(f.rep&&!(f.reps||[]).length) f.reps=[f.rep]; delete f.rep; f.reps=f.reps||[];
+  const [C0]=await Promise.all([clientes(),vcartLista()]); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}
+  /* regra do vendedor (vendedor_carteira): só as representadas que ele atende e sem os clientes que ele não atende */
+  const quem=vcartQuem(f.vend), RV=vcartReps(quem), bloq=vcartBloq(quem); f.reps=f.reps.filter(r=>RV.includes(r)); const RS=f.reps.length?f.reps:RV, restrito=RV.length<REPLIST.length;
+  const C=C0.filter(c=>!bloq(c.cnpj)), nBloq=C0.length-C.length;
+  const repsDe=c=>Object.entries(c.reps||{}).filter(([r])=>RS.includes(r));
+  const pend=new Set(tar.map(t=>t.cnpj)); const ultR=c=>{const rs=repsDe(c).map(([,x])=>x.ultimo).filter(Boolean).sort(); return rs.pop()||null};
   const Vs=[...TIME]; const cids=[...new Set(C.map(c=>String(c.cid||'').split('/')[0].trim().toUpperCase()).filter(Boolean))].sort();
   const w=norm(f.q).trim(), dg=w.replace(/\D/g,'');
-  let L2=C.filter(c=>(!f.vend||norm(c.v||'').startsWith(f.vend))&&(!f.rep||(c.reps||{})[f.rep])&&(!f.cid||String(c.cid||'').toUpperCase().startsWith(f.cid))&&(!w||norm(c.n+' '+(c.fa||'')+' '+(c.cid||'')).includes(w)||(dg.length>=4&&c.cnpj.includes(dg))));
+  let L2=C.filter(c=>(!f.vend||norm(c.v||'').startsWith(f.vend))&&(!f.reps.length||repsDe(c).length)&&(!f.cid||String(c.cid||'').toUpperCase().startsWith(f.cid))&&(!w||norm(c.n+' '+(c.fa||'')+' '+(c.cid||'')).includes(w)||(dg.length>=4&&c.cnpj.includes(dg))));
+  if(f.fx==='n'&&f.reps.length) L2=C.filter(c=>(!f.vend||norm(c.v||'').startsWith(f.vend))&&!repsDe(c).length&&(!f.cid||String(c.cid||'').toUpperCase().startsWith(f.cid))&&(!w||norm(c.n+' '+(c.fa||'')+' '+(c.cid||'')).includes(w)||(dg.length>=4&&c.cnpj.includes(dg))));
   if(f.fx){L2=L2.filter(c=>{const u=ultR(c); if(f.fx==='n') return !u; if(!u) return false; const d=dias(u); return f.fx==='30'?d>=30&&d<60:f.fx==='60'?d>=60&&d<90:f.fx==='90'?d>=90&&d<180:d>=180})}
   const sc=c=>pend.has(c.cnpj)?-1e9:(()=>{const u=ultR(c); return u?-dias(u):1e6})();
-  if(f.ord==='ret') L2=L2.sort((a,b)=>sc(a)-sc(b)); else if(f.ord==='val') L2=L2.sort((a,b)=>Object.values(b.reps||{}).reduce((s,x)=>s+(+x.ult12m||0),0)-Object.values(a.reps||{}).reduce((s,x)=>s+(+x.ult12m||0),0)); else L2=L2.sort((a,b)=>String(a.fa||a.n).localeCompare(String(b.fa||b.n)));
+  const v12=c=>repsDe(c).reduce((s,[,x])=>s+(+x.ult12m||0),0);
+  if(f.ord==='ret') L2=L2.sort((a,b)=>sc(a)-sc(b)); else if(f.ord==='val') L2=L2.sort((a,b)=>v12(b)-v12(a)); else L2=L2.sort((a,b)=>String(a.fa||a.n).localeCompare(String(b.fa||b.n)));
   const lista=L2.map(c=>c.cnpj); const pgk=Math.min(f.pg||0,Math.max(0,Math.ceil(L2.length/POR_PAG)-1));
-  box.innerHTML=`<div class="card grid"><b>Bater carteira</b>
+  const repTxt=f.reps.length?f.reps.map(r=>RCURTO[r]||r).join(', '):restrito?'As minhas ('+RV.length+')':'Todas';
+  const tagsDe=c=>repTags({reps:Object.fromEntries(repsDe(c))},4);
+  box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b>Bater carteira</b>${ehGestor()?'<button class="chip" data-vcfg style="font-size:13px">⚙️ O que cada vendedor atende</button>':''}</div>
+   <div id="vcfgBox" hidden></div>
    <input id="cfq" type="search" placeholder="Buscar cliente, cidade ou CNPJ" value="${esc(f.q)}">
    <div class="r2"><select id="cfv"><option value="">Toda a equipe</option>${Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('')}</select>
-    <select id="cfr"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===f.rep?' selected':''}>${esc(r)}</option>`).join('')}</select>
+    <button class="chip" id="cfrb" style="text-align:left;display:flex;justify-content:space-between;gap:6px${f.reps.length?';border-color:var(--brand)':''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🏭 Representadas: <b>${esc(repTxt)}</b></span><span>▾</span></button>
     <select id="cfc"><option value="">Todas as cidades</option>${cids.map(c=>`<option${c===f.cid?' selected':''}>${esc(c)}</option>`).join('')}</select>
     <select id="cfo"><option value="ret"${f.ord==='ret'?' selected':''}>Ordem: retornos e mais tempo sem comprar</option><option value="val"${f.ord==='val'?' selected':''}>Ordem: quem mais comprou (12 meses)</option><option value="az"${f.ord==='az'?' selected':''}>Ordem: A–Z</option></select></div>
-   <div class="row">${[['','Todos'],['30','30–59 dias'],['60','60–89'],['90','90–179'],['180','180+'],['n','Nunca comprou'+(f.rep?' '+f.rep:'')]].map(([k,l])=>`<button class="chip${f.fx===k?' on':''}" data-fx="${k}">${l}</button>`).join('')}</div>
-   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>${LEG_DIAS}
-   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${repTags(c,4)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}" style="white-space:nowrap">${u?'há '+diasTxt(dias(u)):'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
+   <div id="cfrp" class="grid" style="gap:6px;background:var(--surface2);border-radius:12px;padding:10px" hidden><div class="hint" style="font-size:13px">Toque para marcar uma ou mais representadas${restrito?' (aparecem só as que você atende)':''}:</div>
+    <div class="row" style="gap:6px">${RV.map(r=>`<button class="chip${f.reps.includes(r)?' on':''}" data-cfr="${esc(r)}">${f.reps.includes(r)?'✓ ':''}${esc(r)}</button>`).join('')}</div>
+    <div class="row" style="gap:6px"><button class="chip" data-cfr0>Limpar</button><button class="btn sm" data-cfrok style="margin-left:auto">Pronto</button></div></div>
+   <div class="row">${[['','Todos'],['30','30–59 dias'],['60','60–89'],['90','90–179'],['180','180+'],['n','Nunca comprou'+(f.reps.length===1?' '+f.reps[0]:f.reps.length?' destas':'')]].map(([k,l])=>`<button class="chip${f.fx===k?' on':''}" data-fx="${k}">${l}</button>`).join('')}</div>
+   <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}${nBloq&&quem?` · ${nBloq} que ${ehGestor()?esc(quem)+' não atende':'você não atende'} ficaram de fora`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>${LEG_DIAS}
+   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${tagsDe(c)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}" style="white-space:nowrap">${u?'há '+diasTxt(dias(u)):'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
   const sv=(pg)=>{f.pg=pg||0; LS('cartF',f); carteira(box)};
-  box.onchange=e=>{const id=e.target.id; if(id==='cfv') f.vend=e.target.value; else if(id==='cfr') f.rep=e.target.value; else if(id==='cfc') f.cid=e.target.value; else if(id==='cfo') f.ord=e.target.value; else return; sv()};
+  box.onchange=e=>{const id=e.target.id; if(id==='cfv') f.vend=e.target.value; else if(id==='cfc') f.cid=e.target.value; else if(id==='cfo') f.ord=e.target.value; else return; sv()};
   let tt; const qi=box.querySelector('#cfq'); qi.oninput=e=>{clearTimeout(tt); tt=setTimeout(()=>{f.q=e.target.value; f.pg=0; LS('cartF',f); carteira(box).then(()=>{const n=box.querySelector('#cfq'); n.focus(); n.setSelectionRange(n.value.length,n.value.length)})},350)};
-  box.onclick=e=>{const pgb=e.target.closest('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=e.target.closest('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=e.target.closest('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
+  /* várias representadas: marca/desmarca sem recarregar; aplica ao tocar em Pronto (ou ao fechar o painel) */
+  const rp=box.querySelector('#cfrp'); let sel=[...f.reps], mudou=false;
+  const aplica=()=>{rp.hidden=true; if(mudou){f.reps=sel; sv()}};
+  box.onclick=e=>{const g=s=>e.target.closest(s);
+    if(g('[data-vcfg]')){const vb=box.querySelector('#vcfgBox'); vb.hidden=!vb.hidden; if(!vb.hidden){vb.dataset.vab=f.vend&&TIME.includes(f.vend)?f.vend:''; vcartEditor(vb)} else sv(f.pg); return}
+    if(g('#vcfgBox')) return;
+    if(g('#cfrb')){if(rp.hidden){rp.hidden=false} else aplica(); return}
+    const r=g('[data-cfr]'); if(r){const k=r.dataset.cfr; sel=sel.includes(k)?sel.filter(x=>x!==k):[...sel,k]; mudou=true; r.classList.toggle('on',sel.includes(k)); r.textContent=(sel.includes(k)?'✓ ':'')+k; return}
+    if(g('[data-cfr0]')){sel=[]; mudou=true; rp.querySelectorAll('[data-cfr]').forEach(b=>{b.classList.remove('on'); b.textContent=b.dataset.cfr}); return}
+    if(g('[data-cfrok]')) return aplica();
+    const pgb=g('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=g('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=g('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
 
 /* ================= Mais ================= */
 function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (reativação de clientes)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
@@ -3241,9 +3300,10 @@ async function b2bCliente(cnpj,razao,fant){const box=$('#b2bbox'); if(!box) retu
 async function equipeView(){const m=$('#main'); if(!ehGestor()){m.innerHTML='<p class="hint">Só gestores.</p>';return} let P=[]; try{P=await api('perfis?select=id,email,nome,papel,aprovado&order=aprovado.desc,nome')}catch(e){try{P=await api('perfis?select=id,email,nome,papel&order=nome')}catch(_){}}
   let B=[]; try{B=await api('b2b_acessos?select=email')}catch(e){} const cli=new Set(B.map(b=>String(b.email).toLowerCase()));
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Equipe</div><button class="chip" data-gm2="mais">‹ Mais</button></div>
-   <div class="card grid" style="margin:10px 0"><b>Como incluir alguém (ex.: Clayton)</b><p class="hint" style="margin:0">1) A pessoa abre o Sistema, toca em <b>“Criar meu acesso”</b> e cadastra e-mail e senha. 2) Ela aparece aqui como <b>pendente</b>. 3) Você escolhe o papel e toca em <b>Aprovar</b>. Ninguém entra sem a sua aprovação.</p>${P.length&&P[0].aprovado===undefined?'<p class="warn" style="margin:0">Rode o arquivo 8_equipe_aprovada.sql no Supabase para ativar a aprovação.</p>':''}</div>
+   <div class="card grid" style="margin:10px 0"><b>Como incluir alguém (ex.: Clayton)</b><p class="hint" style="margin:0">1) A pessoa abre o Sistema, toca em <b>“Criar meu acesso”</b> e cadastra e-mail e senha. 2) Ela aparece aqui como <b>pendente</b>. 3) Você escolhe o papel e toca em <b>Aprovar</b>. Ninguém entra sem a sua aprovação.</p>${P.length&&P[0].aprovado===undefined?'<p class="warn" style="margin:0">Rode o arquivo 8_equipe_aprovada.sql no Supabase para ativar a aprovação.</p>':''}</div><div id="vcfgEq" style="margin-bottom:10px"></div>
    ${P.map(p=>{const ehCli=cli.has(String(p.email).toLowerCase()); return `<div class="card grid" style="margin-bottom:8px" data-pf="${p.id}"><div class="row" style="justify-content:space-between"><div><b>${esc(p.nome||p.email)}</b> <span class="hint">${esc(p.email||'')}</span></div>${ehCli?'<span class="tag">cliente B2B</span>':p.aprovado?'<span class="tag ok">aprovado</span>':'<span class="tag warn">pendente</span>'}</div>
      ${ehCli?'<p class="hint" style="margin:0">Login de cliente do portal (não acessa o sistema).</p>':`<div class="row"><input data-k="nome" value="${esc(p.nome||'')}" placeholder="Nome (igual ao Reprio)" style="flex:1"><select data-k="papel"><option value="vendedor"${p.papel==='vendedor'?' selected':''}>Vendedor</option><option value="gestor"${p.papel==='gestor'?' selected':''}>Gestor</option></select><button class="btn sm" data-ap="${p.aprovado?0:1}">${p.aprovado?'Salvar':'Aprovar'}</button>${p.aprovado&&p.id!==sess.uid?'<button class="chip" data-bloq>Bloquear</button>':''}</div>`}</div>`}).join('')}`;
+  vcartEditor($('#vcfgEq'));
   m.onclick=async e=>{const t=e.target; if(t.closest('[data-gm2]')) return go('mais'); const c=t.closest('[data-pf]'); if(!c) return; const id=c.dataset.pf; const g=k=>c.querySelector(`[data-k="${k}"]`);
     try{if(t.closest('[data-ap]')){await api(`perfis?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome:g('nome').value.trim()||null,papel:g('papel').value,aprovado:true})}); toast('Salvo'); return equipeView()}
       if(t.closest('[data-bloq]')){if(!confirm('Bloquear o acesso desta pessoa?')) return; await api(`perfis?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({aprovado:false})}); return equipeView()}}catch(err){toast('Erro: '+err.message)}}}

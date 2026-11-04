@@ -3185,7 +3185,9 @@ async function vcartEditor(box){if(!box) return; await vcartLista(true); const C
   let tt; box.oninput=e=>{const q=e.target.closest('[data-vq]'); if(!q) return; const v=q.closest('[data-vc]').dataset.vc; clearTimeout(tt); tt=setTimeout(()=>{busca[v]=q.value; draw(); const n=box.querySelector(`[data-vc="${v}"] [data-vq]`); if(n){n.focus(); n.setSelectionRange(n.value.length,n.value.length)}},300)}}
 /*VCART-FIM*/
 async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),reps:[],cid:'',fx:'',q:''},L('cartF')||{}); if(f.rep&&!(f.reps||[]).length) f.reps=[f.rep]; delete f.rep; f.reps=f.reps||[];
-  const [C0]=await Promise.all([clientes(),vcartLista()]); let tar=[]; try{tar=await api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`)}catch(e){}
+  const d7=new Date(); d7.setHours(0,0,0,0); d7.setDate(d7.getDate()-6);
+  const [C0,,tar,CT7]=await Promise.all([clientes(),vcartLista(),api(`tarefas?select=cnpj,vence&feita=eq.false&vence=lte.${hoje()}&cnpj=not.is.null`).catch(()=>[]),
+    api(`contatos?select=cnpj,tipo,resultado,usuario_nome,criado_em&criado_em=gte.${d7.toISOString()}&order=criado_em.desc&limit=3000`).catch(()=>[])]);
   /* regra do vendedor (vendedor_carteira): só as representadas que ele atende e sem os clientes que ele não atende */
   const quem=vcartQuem(f.vend), RV=vcartReps(quem), bloq=vcartBloq(quem); f.reps=f.reps.filter(r=>RV.includes(r)); const RS=f.reps.length?f.reps:RV, restrito=RV.length<REPLIST.length;
   const C=C0.filter(c=>!bloq(c.cnpj)), nBloq=C0.length-C.length;
@@ -3199,11 +3201,16 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
   const sc=c=>pend.has(c.cnpj)?-1e9:(()=>{const u=ultR(c); return u?-dias(u):1e6})();
   const v12=c=>repsDe(c).reduce((s,[,x])=>s+(+x.ult12m||0),0);
   if(f.ord==='ret') L2=L2.sort((a,b)=>sc(a)-sc(b)); else if(f.ord==='val') L2=L2.sort((a,b)=>v12(b)-v12(a)); else L2=L2.sort((a,b)=>String(a.fa||a.n).localeCompare(String(b.fa||b.n)));
+  /* depois do contato (04/11, opção A): quem já recebeu contato hoje vai para o fim, apagado, com hora e resultado; "Não atendeu" sobe */
+  const JA=cartJaFalou(CT7,f.vend), est=c=>{const x=JA.hoje[c.cnpj]; return !x?'':x.resultado==='Não atendeu'?'tent':'feito'};
+  {const tn=L2.filter(c=>est(c)==='tent'), fe=L2.filter(c=>est(c)==='feito').sort((a,b)=>String(JA.hoje[b.cnpj].criado_em).localeCompare(JA.hoje[a.cnpj].criado_em)), pe=L2.filter(c=>!est(c)), r1=pe.filter(c=>pend.has(c.cnpj));
+    L2=[...r1,...tn,...pe.filter(c=>!pend.has(c.cnpj)),...fe]}
+  const nFe=L2.filter(c=>est(c)==='feito').length, iFe=L2.length-nFe;
   const lista=L2.map(c=>c.cnpj); const pgk=Math.min(f.pg||0,Math.max(0,Math.ceil(L2.length/POR_PAG)-1));
   const repTxt=f.reps.length?f.reps.map(r=>RCURTO[r]||r).join(', '):restrito?'As minhas ('+RV.length+')':'Todas';
   const tagsDe=c=>repTags({reps:Object.fromEntries(repsDe(c))},4);
   box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between"><b>Bater carteira</b>${ehGestor()?'<button class="chip" data-vcfg style="font-size:13px">⚙️ O que cada vendedor atende</button>':''}</div>
-   <div id="vcfgBox" hidden></div>
+   <div id="vcfgBox" hidden></div>${cartContinuarHtml(JA,L2,est)}
    <input id="cfq" type="search" placeholder="Buscar cliente, cidade ou CNPJ" value="${esc(f.q)}">
    <div class="r2"><select id="cfv"><option value="">Toda a equipe</option>${Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('')}</select>
     <button class="chip" id="cfrb" style="text-align:left;display:flex;justify-content:space-between;gap:6px${f.reps.length?';border-color:var(--brand)':''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🏭 Representadas: <b>${esc(repTxt)}</b></span><span>▾</span></button>
@@ -3213,8 +3220,9 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     <div class="row" style="gap:6px">${RV.map(r=>`<button class="chip${f.reps.includes(r)?' on':''}" data-cfr="${esc(r)}">${f.reps.includes(r)?'✓ ':''}${esc(r)}</button>`).join('')}</div>
     <div class="row" style="gap:6px"><button class="chip" data-cfr0>Limpar</button><button class="btn sm" data-cfrok style="margin-left:auto">Pronto</button></div></div>
    <div class="row">${[['','Todos'],['30','30–59 dias'],['60','60–89'],['90','90–179'],['180','180+'],['n','Nunca comprou'+(f.reps.length===1?' '+f.reps[0]:f.reps.length?' destas':'')]].map(([k,l])=>`<button class="chip${f.fx===k?' on':''}" data-fx="${k}">${l}</button>`).join('')}</div>
+   ${cartPlacarHtml(JA)}
    <p class="hint" style="margin:0">${L2.length} cliente(s)${pend.size?` · 🔔 ${pend.size} com retorno para hoje`:''}${nBloq&&quem?` · ${nBloq} que ${ehGestor()?esc(quem)+' não atende':'você não atende'} ficaram de fora`:''}. Toque no cliente para ligar, registrar e ir para o próximo.</p>${LEG_DIAS}
-   ${pagina(L2,pgk).map(c=>{const u=ultR(c); return `<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px" data-pc="${esc(c.cnpj)}"><span>${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${tagsDe(c)}</span></span><span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}" style="white-space:nowrap">${u?'há '+diasTxt(dias(u)):'novo'}</span></button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
+   ${pagina(L2,pgk).map((c,i)=>{const u=ultR(c), e=est(c), x=JA.hoje[c.cnpj], gi=pgk*POR_PAG+i; return `${gi===iFe&&nFe?`<div class="hint" style="margin-top:6px;border-top:1px dashed var(--line);padding-top:8px"><b>✓ Já falei hoje (${nFe})</b> · voltam para a lista amanhã, ou no dia do retorno marcado</div>`:''}<button class="chip" style="text-align:left;display:flex;justify-content:space-between;gap:8px${e==='feito'?';opacity:.6':''}" data-pc="${esc(c.cnpj)}"><span>${e==='feito'?'<span class="ok">✓</span> ':e==='tent'?'<span class="warn">☎️</span> ':''}${pend.has(c.cnpj)?'🔔 ':''}<b>${esc(c.fa||c.n)}</b> <span class="hint">${esc(String(c.cid||'').split('/')[0])}</span> <span class="tags" style="display:inline-flex;vertical-align:middle">${tagsDe(c)}</span></span>${e?`<span class="${e==='tent'?'warn':'ok'}" style="white-space:nowrap">${e==='tent'?'não atendeu '+cartHora(x.criado_em):cartHora(x.criado_em)+' · '+esc(x.resultado||CART_TIPO[x.tipo]||'contato')}</span>`:`<span class="${u&&dias(u)>=90?'bad':u&&dias(u)>=60?'warn':''}" style="white-space:nowrap">${u?'há '+diasTxt(dias(u)):'novo'}</span>`}</button>`}).join('')||'<p class="hint">Ninguém com esses filtros.</p>'}${pager(L2.length,pgk)}</div>`;
   const sv=(pg)=>{f.pg=pg||0; LS('cartF',f); carteira(box)};
   box.onchange=e=>{const id=e.target.id; if(id==='cfv') f.vend=e.target.value; else if(id==='cfc') f.cid=e.target.value; else if(id==='cfo') f.ord=e.target.value; else return; sv()};
   let tt; const qi=box.querySelector('#cfq'); qi.oninput=e=>{clearTimeout(tt); tt=setTimeout(()=>{f.q=e.target.value; f.pg=0; LS('cartF',f); carteira(box).then(()=>{const n=box.querySelector('#cfq'); n.focus(); n.setSelectionRange(n.value.length,n.value.length)})},350)};
@@ -3228,7 +3236,35 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     const r=g('[data-cfr]'); if(r){const k=r.dataset.cfr; sel=sel.includes(k)?sel.filter(x=>x!==k):[...sel,k]; mudou=true; r.classList.toggle('on',sel.includes(k)); r.textContent=(sel.includes(k)?'✓ ':'')+k; return}
     if(g('[data-cfr0]')){sel=[]; mudou=true; rp.querySelectorAll('[data-cfr]').forEach(b=>{b.classList.remove('on'); b.textContent=b.dataset.cfr}); return}
     if(g('[data-cfrok]')) return aplica();
-    const pgb=g('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=g('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=g('[data-pc]'); if(p) return painelCliente(p.dataset.pc,lista)}}
+    if(g('[data-cczero]')){LS(cartPosK(f.vend),{zero:new Date().toISOString(),f:null}); return sv(f.pg)}
+    const cc=g('[data-ccont]'); if(cc){const nx=cc.dataset.ccont, P=L(cartPosK(f.vend)); if(P&&P.f&&!P.zero&&!box._ccr){const k=JSON.stringify({...P.f,pg:0}); if(k!==JSON.stringify({...f,pg:0})){box._ccr=1; Object.assign(f,P.f); f.pg=0; LS('cartF',f); return carteira(box).then(()=>{const b=box.querySelector('[data-ccont]'); if(b) b.click(); else toast('Já falou com todos desta lista 👏')})}}
+      const ix=lista.indexOf(nx); if(ix>=0){f.pg=Math.floor(ix/POR_PAG); LS('cartF',f)} box.dataset.cov='1'; return painelCliente(nx,lista)}
+    const pgb=g('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=g('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=g('[data-pc]'); if(p){LS(cartPosK(f.vend),{f:{...f},t:new Date().toISOString()}); box.dataset.cov='1'; return painelCliente(p.dataset.pc,lista)}};
+  /* ao fechar a ficha rápida, a lista se atualiza (quem acabou de receber contato desce com ✓) */
+  if(!box._covObs){box._covObs=new MutationObserver(()=>{if(!box.isConnected){box._covObs.disconnect(); box._covObs=null; return} if(!document.querySelector('.ov')&&box.dataset.cov==='1'){box.dataset.cov=''; setTimeout(()=>{if(box.isConnected) carteira(box)},500)}}); box._covObs.observe(document.body,{childList:true})}}
+/* contatos dos últimos 7 dias: hoje (qualquer pessoa da equipe) e o histórico do vendedor */
+const CART_TIPO={ligacao:'ligação',whatsapp:'WhatsApp',email:'e-mail',visita:'visita'};
+const cartHora=t=>{const d=new Date(t); return isNaN(d)?'':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};
+const cartPosK=v=>'cartPos_'+(v||meuVend()||'todos');
+function cartJaFalou(CT,vend){const t0=new Date(); t0.setHours(0,0,0,0); const T0=t0.toISOString(), hoje={}, meus=[], quem=vend||'';
+  (CT||[]).forEach(c=>{if(c.tipo==='email'&&!c.resultado) return; /* e-mail automático da reativação não conta */ const k=String(c.cnpj||'').replace(/\D/g,''); if(!k) return;
+    if(c.criado_em>=T0&&!hoje[k]) hoje[k]=c; if(!quem||norm(c.usuario_nome||'').startsWith(quem)) meus.push(Object.assign({},c,{cnpj:k}))});
+  return {hoje,meus,T0,quem}}
+function cartPlacarHtml(JA){const H=JA.meus.filter(c=>c.criado_em>=JA.T0); if(!H.length) return ''; const n=new Set(H.map(c=>c.cnpj)).size, orc=H.filter(c=>/orçamento/i.test(c.resultado||'')).length, vc=H.filter(c=>c.resultado==='Vai comprar').length, na=H.filter(c=>c.resultado==='Não atendeu').length;
+  return `<div class="row" style="justify-content:space-between;gap:8px;background:var(--surface2);border-radius:12px;padding:8px 12px"><span><b>Hoje${JA.quem?' ('+esc(JA.quem)+')':''}:</b> ${n} contato${n>1?'s':''}${orc?` · 📝 ${orc} pediu orçamento`:''}${vc?` · 🛒 ${vc} vai comprar`:''}${na?` · ☎️ ${na} sem atender`:''}</span></div>`}
+/* "Continuar de onde parei": último cliente com contato do vendedor (vem do banco, vale no PC e no celular) e o próximo da lista */
+function cartContinuarHtml(JA,L2,est){const M=JA.meus; if(!M.length) return ''; const P=L(cartPosK(JA.quem))||{}; const u=M[0]; if(P.zero&&P.zero>u.criado_em) return '';
+  if(Date.now()-new Date(u.criado_em)>3*864e5) return ''; const ix=L2.findIndex(c=>c.cnpj===u.cnpj); const prox=L2.slice(ix+1).find(c=>!est(c))||L2.find(c=>!est(c)); if(!prox) return '';
+  const C=L2[ix]||CLIS&&CLIS.find(c=>c.cnpj===u.cnpj)||{}; const dt=new Date(u.criado_em), hj=u.criado_em>=JA.T0; const quando=(hj?'hoje ':dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})+' ')+cartHora(u.criado_em);
+  const pend=L2.filter(c=>!est(c)).length, feitos=L2.length-pend;
+  /* histórico: um resumo por dia (7 dias) */
+  const D={}; M.forEach(c=>{const d=ymdL(new Date(c.criado_em)); const x=D[d]=D[d]||{n:new Set(),o:0,na:0,ini:c.criado_em,fim:c.criado_em}; x.n.add(c.cnpj); if(/orçamento/i.test(c.resultado||'')) x.o++; if(c.resultado==='Não atendeu') x.na++; if(c.criado_em<x.ini) x.ini=c.criado_em; if(c.criado_em>x.fim) x.fim=c.criado_em});
+  const hist=Object.entries(D).sort((a,b)=>b[0].localeCompare(a[0])).map(([d,x])=>{const dd=new Date(d+'T12:00'); const lb=d===ymdL(new Date())?'Hoje':dd.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}); return `${lb} ${cartHora(x.ini)}–${cartHora(x.fim)} · ${x.n.size} contato${x.n.size>1?'s':''}${x.o?` · 📝 ${x.o} orçamento${x.o>1?'s':''}`:''}${x.na?` · ☎️ ${x.na} sem atender`:''}`}).join('<br>');
+  return `<div class="card grid" style="border:2px solid var(--brand);gap:8px;margin:0"><div class="row" style="justify-content:space-between;gap:8px"><b>▶ Continuar de onde parei</b><span class="hint">${esc(quando)}</span></div>
+    <div>Último contato: <b>${esc(C.fa||C.n||u.cnpj)}</b>${u.resultado?` <span class="hint">(${esc(u.resultado)})</span>`:''}. Próximo: <b>${esc(prox.fa||prox.n)}</b></div>
+    ${L2.length?`<div class="mbar" style="height:6px"><i style="width:${Math.round(feitos/L2.length*100)}%"></i></div><div class="hint" style="font-size:12px;margin-top:-4px">${feitos} de ${L2.length} desta lista já com contato hoje</div>`:''}
+    <div class="row" style="gap:6px"><button class="btn sm" data-ccont="${esc(prox.cnpj)}">Continuar ▶</button><button class="chip" data-cczero>Começar do zero</button></div>
+    <details><summary class="hint" style="cursor:pointer">📜 Histórico das últimas batidas</summary><div class="hint" style="font-size:13px;line-height:1.7">${hist}</div></details></div>`}
 
 /* ================= Mais ================= */
 function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (reativação de clientes)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];

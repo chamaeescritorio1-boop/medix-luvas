@@ -104,19 +104,6 @@
 .ohist-its>div span:last-child{white-space:nowrap;font-weight:700}
 .opas-pz3{gap:12px}
 @media(max-width:760px){.opas-ja .qty{min-width:0;width:100%;display:flex}.opas-ja .qty input{min-width:0;width:0;flex:1 1 0}.opas-ja .qty button{flex:none;width:38px}.opas-ja{min-width:0}}
-/* grade do item igual ao conversor e preço explicado (04/11/2026) */
-.ogr-row{gap:12px}
-.ogr-box{flex:1;min-width:0;max-width:520px;display:grid;gap:8px;border:1px dashed var(--line);border-radius:12px;padding:10px 12px;background:var(--surface2)}
-.ogr-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px} .ogr-h span{font-weight:700}
-.ogr-c{display:flex;flex-wrap:wrap;gap:6px}
-.ogr-t{display:grid;justify-items:center;min-width:50px;padding:4px 6px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-variant-numeric:tabular-nums}
-.ogr-t small{font-size:12px;color:var(--muted)} .ogr-t b{font-size:17px}
-.ogr-b{justify-self:start}
-.opz-rec{display:grid;gap:3px;margin:6px 0 0 auto;max-width:360px;width:100%;font-size:13.5px;border-top:1px solid var(--line);padding-top:6px;font-variant-numeric:tabular-nums}
-.opz-rec>div{display:flex;justify-content:space-between;gap:10px}
-.opz-rec span{color:var(--muted)}
-.opz-rec .enc span,.opz-rec .enc b{color:var(--warn)}
-.opz-rec .tt{border-top:1px dashed var(--line);padding-top:3px} .opz-rec .tt span{color:var(--ink);font-weight:700}
-.opz-rec .ng span{color:var(--muted)} .opz-rec .ng b{color:var(--warn)}
-@media(max-width:760px){.ogr-row:has(.ogr-box){flex-direction:column;align-items:stretch!important}.ogr-row>div:last-child{justify-items:end}.ogr-box{max-width:none}.opz-rec{max-width:none}}
-.opz-rec b{white-space:nowrap}
+/* grade do item exatamente como no conversor (04/11/2026) */
+.gsum{min-width:0;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:8px 10px;font-size:13px;font-variant-numeric:tabular-nums}
+.gsum>span{min-width:0}

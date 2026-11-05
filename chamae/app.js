@@ -3190,16 +3190,16 @@ function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector(
    quais clientes/grupos ele não atende (ex.: cooperativas Coopercitrus e Copercana). Vale no Bater carteira e no Plano do dia:
    - só aparecem as representadas que ele atende (filtro, etiquetas de dias e "último pedido" contam só essas);
    - os clientes/grupos marcados somem da lista dele (pela raiz do CNPJ, então pega todas as filiais).
-   Nenhuma representada marcada = atende todas. Guardado na tabela vendedor_carteira (só o gestor grava). */
+   Nenhuma representada marcada = atende todas. Guardado na tabela metas, tipo 'vcart' (só o gestor grava). */
 let VCART=null;
-async function vcartLista(force){if(VCART&&!force) return VCART; const M={}; try{(await api('vendedor_carteira?select=*')).forEach(x=>M[x.vend]={reps:x.reps||[],sem:x.sem_clientes||[]}); VCART=M; LS('vcart',M)}catch(e){VCART=L('vcart')||{}} return VCART}
+async function vcartLista(force){if(VCART&&!force) return VCART; const M={}; try{(await api('metas?select=chave&tipo=eq.vcart&ano=eq.0&mes=eq.0')).forEach(x=>{const i=String(x.chave).indexOf('|'); if(i<1) return; try{const o=JSON.parse(x.chave.slice(i+1)); M[x.chave.slice(0,i)]={reps:o.reps||[],sem:o.sem||[]}}catch(_){}}); VCART=M; LS('vcart',M)}catch(e){VCART=L('vcart')||{}} return VCART}
 const vcartDe=v=>(VCART||{})[v]||null;
 /* de quem é a regra que vale na tela: vendedor = sempre a dele; gestor = a do vendedor escolhido no filtro */
 const vcartQuem=sel=>ehGestor()?(sel||''):(TIME.includes(meuVend())?meuVend():'');
 const vcartReps=v=>{const c=vcartDe(v); return c&&c.reps&&c.reps.length?REPLIST.filter(r=>c.reps.includes(r)):REPLIST.slice()};
 const vcartBloq=v=>{const c=vcartDe(v), s=new Set(((c&&c.sem)||[]).map(x=>String(x.raiz||'')).filter(Boolean)); return cn=>s.has(String(cn||'').replace(/\D/g,'').slice(0,8))};
 /* tela do gestor (em Equipe e no botão ⚙️ do Bater carteira) */
-async function vcartEditor(box){if(!box) return; await vcartLista(true); const C=await clientes(); if(!box.isConnected) return; let busca={}, ab=box.dataset.vab||'';
+async function vcartEditor(box){if(!box) return; await vcartLista(true); const C=await clientes(); if(!box.isConnected) return; let busca={}, ab=box.dataset.vsel||'';
   const grupos=(q,ja)=>{const w=norm(q).trim(); if(w.length<3) return []; const G={}; C.forEach(c=>{const raiz=c.cnpj.slice(0,8); if(c.cnpj.length!==14) return; if(!norm((c.n||'')+' '+(c.fa||'')).includes(w)&&!c.cnpj.startsWith(w.replace(/\D/g,'')||'x')) return; const g=G[raiz]=G[raiz]||{raiz,nome:c.fa||c.n,n:0}; g.n++}); return Object.values(G).filter(g=>!(ja||[]).some(y=>y.raiz===g.raiz)).sort((a,b)=>b.n-a.n).slice(0,8)};
   const draw=()=>{box.innerHTML=`<div class="card grid"><b>🎯 O que cada vendedor atende</b><p class="hint" style="margin:0">Vale no Bater carteira e no Plano do dia. Sem nenhuma representada marcada, o vendedor vê todas. Clientes marcados como "não atende" somem da lista dele (todas as filiais do mesmo CNPJ).</p>
     ${TIME.map(v=>{const c=vcartDe(v)||{reps:[],sem:[]}, on=ab===v, rs=c.reps||[], sem=c.sem||[];
@@ -3209,10 +3209,12 @@ async function vcartEditor(box){if(!box) return; await vcartLista(true); const C
         <div class="row" style="gap:6px">${sem.map(x=>`<span class="tag" style="display:inline-flex;gap:6px;align-items:center">${esc(x.nome)} <button class="chip" data-vx="${esc(x.raiz)}" style="padding:0 6px;min-height:0" title="Tirar">✕</button></span>`).join('')||'<span class="hint">Nenhum.</span>'}</div>
         <input data-vq type="search" placeholder="Buscar cliente para não aparecer (ex.: Coopercitrus)" value="${esc(busca[v]||'')}">
         <div class="grid" style="gap:4px">${grupos(busca[v]||'',sem).map(g=>`<button class="chip" data-va="${esc(g.raiz)}" data-vn="${esc(g.nome)}" style="text-align:left">＋ ${esc(g.nome)} <span class="hint">${g.n} CNPJ${g.n>1?'s':''} · raiz ${esc(g.raiz)}</span></button>`).join('')}</div>`:''}</div>`}).join('')}</div>`};
-  const gravar=async(v,c)=>{try{await api('vendedor_carteira?on_conflict=vend',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({vend:v,reps:c.reps,sem_clientes:c.sem,atualizado_em:new Date().toISOString(),atualizado_por:meuNome()||null})}); VCART[v]=c; LS('vcart',VCART); toast('Salvo')}
-    catch(err){toast(/vendedor_carteira/.test(err.message)?'Falta criar a tabela vendedor_carteira (fontes/vendedor-carteira/criar.sql)':'Erro: '+err.message)}};
+  /* guardado na tabela metas (tipo 'vcart', ano 0): a equipe lê, só o gestor grava. chave = "VENDEDOR|{reps,sem}" */
+  const gravar=async(v,c)=>{try{await api(`metas?tipo=eq.vcart&ano=eq.0&mes=eq.0&chave=like.${encodeURIComponent(v+'|*')}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});
+      await api('metas',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({ano:0,mes:0,tipo:'vcart',chave:v+'|'+JSON.stringify({reps:c.reps,sem:c.sem,por:meuNome()||null,em:new Date().toISOString()})})}); VCART[v]=c; LS('vcart',VCART); toast('Salvo')}
+    catch(err){toast('Não salvou: '+err.message)}};
   draw();
-  box.onclick=async e=>{const g=s=>e.target.closest(s); const a=g('[data-vab]'); if(a){ab=box.dataset.vab=ab===a.dataset.vab?'':a.dataset.vab; return draw()}
+  box.onclick=async e=>{const g=s=>e.target.closest(s); const a=g('[data-vab]'); if(a){ab=box.dataset.vsel=ab===a.dataset.vab?'':a.dataset.vab; return draw()}
     const card=g('[data-vc]'); if(!card) return; const v=card.dataset.vc, c=Object.assign({reps:[],sem:[]},JSON.parse(JSON.stringify(vcartDe(v)||{})));
     const r=g('[data-vr]'); if(r){const k=r.dataset.vr; c.reps=c.reps.includes(k)?c.reps.filter(x=>x!==k):[...c.reps,k]; await gravar(v,c); return draw()}
     const x=g('[data-vx]'); if(x){c.sem=c.sem.filter(y=>y.raiz!==x.dataset.vx); await gravar(v,c); return draw()}
@@ -3265,7 +3267,7 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
   const rp=box.querySelector('#cfrp'); let sel=[...f.reps], mudou=false;
   const aplica=()=>{rp.hidden=true; if(mudou){f.reps=sel; sv()}};
   box.onclick=e=>{const g=s=>e.target.closest(s);
-    if(g('[data-vcfg]')){const vb=box.querySelector('#vcfgBox'); vb.hidden=!vb.hidden; if(!vb.hidden){vb.dataset.vab=f.vend&&TIME.includes(f.vend)?f.vend:''; vcartEditor(vb)} else sv(f.pg); return}
+    if(g('[data-vcfg]')){const vb=box.querySelector('#vcfgBox'); vb.hidden=!vb.hidden; if(!vb.hidden){vb.dataset.vsel=f.vend&&TIME.includes(f.vend)?f.vend:''; vcartEditor(vb)} else sv(f.pg); return}
     if(g('#vcfgBox')) return;
     if(g('#cfrb')){if(rp.hidden){rp.hidden=false} else aplica(); return}
     const r=g('[data-cfr]'); if(r){const k=r.dataset.cfr; sel=sel.includes(k)?sel.filter(x=>x!==k):[...sel,k]; mudou=true; r.classList.toggle('on',sel.includes(k)); r.textContent=(sel.includes(k)?'✓ ':'')+k; return}

@@ -53,8 +53,8 @@
    "data": "2026-11-09",
    "tipo": "novo",
    "titulo": "Ver o endereço e a fachada do cliente no Maps",
-   "texto": "Na ficha do cliente aparece o endereço com 3 botões: 🗺️ Abrir no Maps (abre o endereço no Google Maps, no celular abre o aplicativo), 🏠 Ver fachada (abre a foto da rua, o Street View, na frente do cliente) e Mapa aqui (mostra o mapa dentro da própria ficha).",
-   "onde": "Clientes, ficha do cliente e Bater carteira"
+   "texto": "Toque no 📍 ao lado do cliente (Lista e filtros e Bater carteira) ou em 📍 Endereço e mapa na ficha: abre o endereço com 🗺️ Abrir no Maps (no celular abre o aplicativo), 🏠 Ver fachada (a foto da rua, o Street View, na frente do cliente) e Mapa aqui (o mapa dentro do Sistema). Fechado, não ocupa espaço.",
+   "onde": "Clientes (Lista e filtros e Bater carteira) e ficha do cliente"
   },
   {
    "id": "2026110908",

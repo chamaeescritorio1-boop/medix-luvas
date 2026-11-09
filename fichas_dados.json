@@ -1,5 +1,5 @@
 {
-"gerado": "2026-11-02",
+"gerado": "2026-11-09",
 "cod": {
 "10103": {
 "anvisa": "80495510205",
@@ -4690,6 +4690,51 @@
 "15238": {
 "ca": "48856",
 "url": "https://medixbrasil.com.br/produto/pu3-protecao-contra-cortes-para-riscos-intermediarios"
+},
+"14920": {
+"url": "https://medixbrasil.com.br/produto/babador-odontologico-impermeavel-supreme-1782766574"
+},
+"14921": {
+"url": "https://medixbrasil.com.br/produto/babador-odontologico-impermeavel-supreme-1782766574"
+},
+"14997": {
+"anvisa": "80495510180",
+"url": "https://medixbrasil.com.br/produto/conector-valvulado-sistema-fechado-supreme-1793714906",
+"ficha": "https://drive.google.com/file/d/17XXZkEsieWnEZ5MrChgKaDiYXID4eWBF/view"
+},
+"14876": {
+"comp": "150",
+"anvisa": "80495510051",
+"url": "https://medixbrasil.com.br/produto/extensor-multivias-com-conector-valvulado-supreme-1793713910",
+"ficha": "https://drive.google.com/file/d/1X9WbHGSkTVTiWty4GLcxGVz4KBQTUYAJ/view"
+},
+"15576": {
+"po": "sem pó",
+"url": "https://medixbrasil.com.br/produto/luva-thermoplast-tpe-preta-1793723546"
+},
+"15578": {
+"po": "sem pó",
+"url": "https://medixbrasil.com.br/produto/luva-thermoplast-tpe-preta-1793723546"
+},
+"15577": {
+"po": "sem pó",
+"url": "https://medixbrasil.com.br/produto/luva-thermoplast-tpe-preta-1793723546"
+},
+"15575": {
+"po": "sem pó",
+"url": "https://medixbrasil.com.br/produto/luva-thermoplast-tpe-preta-1793723546"
+},
+"15824": {
+"po": "com pó",
+"url": "https://medixbrasil.com.br/produto/rolo-dental-classic-1792762317"
+},
+"14878": {
+"anvisa": "80495510178",
+"url": "https://medixbrasil.com.br/produto/tampa-protetora-com-alcool-1792098887",
+"ficha": "https://drive.google.com/file/d/1du5eUfcs6X7rOGOfxpd5uknCTczj0QW5/view"
+},
+"14877": {
+"url": "https://medixbrasil.com.br/produto/transferidor-de-solucoes-com-conector-valvulado-supreme-1793714629"
 }
 },
 "pdf": {

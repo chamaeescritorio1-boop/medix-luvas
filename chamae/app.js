@@ -2490,6 +2490,7 @@ async function fichaCliente(cnpj,novo){const m=$('#main'); m.innerHTML='<p class
   const tel=String(v('telefone',base.tel)).replace(/\D/g,'');
   m.innerHTML=`<div class="row" style="justify-content:space-between"><button class="chip" id="cvolta">‹ Clientes</button><div class="row">${tel?`<a class="chip" href="https://wa.me/55${tel}" target="_blank" rel="noopener">WhatsApp</a>`:''}${v('email',base.em)?`<a class="chip" href="mailto:${esc(v('email',base.em))}">E-mail</a>`:''}${cnpj?'<button class="chip" id="clig">🎙️ Ligação</button>':''}<button class="btn sm" id="creg">📞 Registrar contato</button><button class="chip" id="ctar">+ Tarefa</button><button class="btn sm" id="corc">+ Orçamento</button></div></div>
    <div class="sec" style="margin-top:10px">${esc(v('razao',base.n)||'Novo cliente')}</div>${v('fantasia',base.fa)?`<div class="hint" style="margin-top:-8px">${esc(v('fantasia',base.fa))}</div>`:''}
+   ${cnpj&&!novo?`<div style="margin-top:8px">${mapsBloco({end:v('endereco',base.end),bai:v('bairro',base.bai),cid:v('cidade')?v('cidade')+(v('uf')?'/'+v('uf'):''):base.cid,cep:v('cep',base.cep),cad:false})}</div>`:''}
    ${semTab?`<p class="warn">${SQL5}</p>`:''}
    ${cRuim?`<div class="card" style="border-color:var(--warn);margin:8px 0"><b>⚠️ ${/^novo-/.test(cnpj)?'Este cliente está sem CNPJ.':'O CNPJ deste cadastro está errado (os números não conferem, veio cortado do sistema antigo).'}</b><div class="hint" style="margin-top:4px">Por isso a busca na Receita e os contatos não funcionam aqui.${cGem?'':' Digite o CNPJ certo no campo CNPJ (a 🔍 busca os dados) e toque em Salvar cadastro: os pedidos, contatos e conversas passam para o CNPJ certo.'}</div>${cGem?`<button class="btn sm" id="cgem" style="margin-top:8px">Abrir a ficha certa: ${esc(cGem.n)} · ${esc(fmtCnpj(cGem.cnpj))}</button><div class="hint" style="margin-top:4px">O CNPJ certo já está cadastrado. Ou digite outro CNPJ no campo e salve.</div>`:''}</div>`:''}
    ${cexcFaixa(cx)}
@@ -3121,6 +3122,29 @@ function ctLista(c,pes){const num=(x,wa)=>{const d=String(x||'').replace(/\D/g,'
   const emp=bl('Empresa','telefone do cadastro',num(c.tel)+mail(c.em));
   const ps=pes.map(p=>{const t=String(p.telefone||'').replace(/\D/g,''), w=String(p.whatsapp||'').replace(/\D/g,''); return bl(esc(p.nome)+(p.principal?' ⭐':''),esc(p.cargo||''),num(p.telefone)+(w&&w!==t?num(p.whatsapp):'')+mail(p.email)||'<div class="hint">sem telefone ou e-mail</div>')}).join('');
   return (emp+ps||'<p class="hint">Nenhum contato cadastrado ainda.</p>')+`<button class="chip" data-ctfic style="margin-top:8px">＋ Cadastrar / editar contatos na ficha ›</button>`}
+/* 📍 Endereço e fachada no Google Maps (sem chave de API, sem custo): link de busca do Maps, mapa embutido e Street View pelo ponto do OpenStreetMap */
+function mapsEnd(o){o=o||{}; const cid=String(o.cid||'').trim(); const cep=String(o.cep||'').replace(/\D/g,''); return [String(o.end||'').trim(),String(o.bai||'').trim(),cid,cep.length===8?cep.replace(/(\d{5})(\d{3})/,'$1-$2'):''].filter(Boolean).join(', ')}
+function mapsUrl(q){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
+function mapsBloco(o){const q=mapsEnd(o); if(!q||!(o.end||o.cep)) return o&&o.cid?`<div class="hint mapsb">📍 ${esc(o.cid)} · sem endereço no cadastro${o.cad!==false?' (complete na ficha, aba Dados)':''}</div>`:'';
+  const d=esc(JSON.stringify({end:o.end||'',bai:o.bai||'',cid:o.cid||'',cep:o.cep||''}));
+  return `<div class="mapsb pcb" data-mapsd="${d}"><div class="hint" style="margin-bottom:6px">📍 ${esc(q)}</div><div class="row"><a class="btn sm ghost" target="_blank" rel="noopener" href="${mapsUrl(q)}">🗺️ Abrir no Maps</a><button class="btn sm ghost" type="button" data-fachada>🏠 Ver fachada</button><button class="btn sm ghost" type="button" data-mapaqui aria-expanded="false">Mapa aqui ▾</button></div><div data-mapbox hidden></div></div>`}
+async function mapsPonto(o){const cid=String(o.cid||''), uf=(cid.match(/\/\s*([A-Z]{2})\s*$/)||[])[1]||'', cidade=cid.replace(/\/\s*[A-Z]{2}\s*$/,'').trim();
+  const rua=String(o.end||'').split(/\s+-\s+/)[0].replace(/\b(SALA|LOJA|GALPAO|GALPÃO|BLOCO|APTO|AP|CONJ|CJ|BOX|LOTE|QUADRA|QD|LT|KM)\b.*$/i,'').replace(/,\s*$/,'').trim();
+  const temNum=/\d/.test(rua); if(!rua||!temNum||!cidade) return null;
+  const k='chamae_geo_'+norm(rua+'|'+cidade).replace(/[^A-Z0-9|]/g,''); try{const c=JSON.parse(localStorage.getItem(k)||'null'); if(c) return c.lat?c:null}catch(_){}
+  let p=null; try{const u='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=br&accept-language=pt-BR&q='+encodeURIComponent([rua,cidade,uf,'Brasil'].filter(Boolean).join(', '));
+    const r=await Promise.race([fetch(u).then(x=>x.ok?x.json():[]),new Promise(res=>setTimeout(()=>res([]),6000))]); const a=(r||[])[0];
+    /* só confia no ponto quando achou o número da casa — rua sozinha pode cair a quilômetros da fachada */
+    if(a&&a.address&&a.address.house_number) p={lat:(+a.lat).toFixed(6),lon:(+a.lon).toFixed(6)}}catch(_){}
+  try{localStorage.setItem(k,JSON.stringify(p||{}))}catch(_){} return p}
+function mapsAbrir(url,w){if(w&&!w.closed){try{w.location.href=url; return}catch(_){}} const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove()}
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-fachada],[data-mapaqui]'); if(!b) return; const box=b.closest('[data-mapsd]'); if(!box) return; e.preventDefault(); let o={}; try{o=JSON.parse(box.dataset.mapsd)}catch(_){} const q=mapsEnd(o);
+  if(b.hasAttribute('data-mapaqui')){const mb=box.querySelector('[data-mapbox]'); const ab=mb.hidden; mb.hidden=!ab; b.setAttribute('aria-expanded',ab); b.textContent=ab?'Fechar mapa ▴':'Mapa aqui ▾';
+    if(ab&&!mb.firstChild) mb.innerHTML=`<iframe title="Mapa do endereço" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${encodeURIComponent(q)}&hl=pt-BR&z=17&output=embed" style="width:100%;height:240px;border:0;border-radius:10px;margin-top:8px;display:block"></iframe>`; return}
+  let w=null; try{w=window.open('about:blank','_blank')}catch(_){} const t0=b.textContent; b.disabled=true; b.textContent='🏠 Procurando…';
+  const p=await mapsPonto(o); b.disabled=false; b.textContent=t0;
+  if(p){mapsAbrir(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${p.lat},${p.lon}`,w); toast('Abrindo a fachada no Street View. Se aparecer a casa ao lado, arraste a imagem para o lado.')}
+  else{mapsAbrir(mapsUrl(q),w); toast('Abri o endereço no Maps: toque na foto do lugar (ou no bonequinho) para ver a fachada.')}});
 async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promise.all([clientes(),reps().catch(()=>null)]); const idx=lista?lista.indexOf(cnpj):-1; const c=C.find(x=>x.cnpj===cnpj)||{cnpj,n:cnpj,reps:{}};
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML='<div class="sh"><p class="hint">Carregando…</p></div>'; document.body.appendChild(ov);
   const [pes,ativ,tar,peds]=await Promise.all([api(`cliente_pessoas?select=*&cnpj=eq.${cnpj}&order=principal.desc,nome&limit=40`).catch(()=>[]),api(`contatos?select=*&cnpj=eq.${cnpj}&order=criado_em.desc&limit=3`).catch(()=>[]),api(`tarefas?select=*&cnpj=eq.${cnpj}&feita=eq.false&order=vence&limit=3`).catch(()=>[]),
@@ -3137,6 +3161,7 @@ async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promis
   const dhOff=()=>{dh=false; ov.querySelector('#pcdh').hidden=true; ov.querySelector('[data-pdh]').classList.remove('on')};
   ov.querySelector('.sh').innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b style="font-size:18px">${esc(c.n)}</b>${c.fa?`<div class="hint">${esc(c.fa)}</div>`:''}<div class="hint">${esc(c.cid||'')} · ${esc(fmtCnpj(c.cnpj))}${c.v?' · '+esc(c.v):''}</div></div><button class="chip" data-x>✕</button></div>
    <div class="row" style="margin:8px 0">${tel?`<a class="btn sm" data-ltel href="tel:+55${tel}">📞 Ligar</a><a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/55${tel}">💬 WhatsApp</a>`:''}<button class="btn sm ghost" data-lia>🎙️ Enviar ligação</button>${c.em?`<a class="btn sm ghost" href="mailto:${esc(c.em)}">✉️ E-mail</a>`:''}<button class="btn sm ghost" data-ctg aria-expanded="false">👥 Contatos${pes.length?' ('+pes.length+')':''} <span data-ctseta>▾</span></button></div>
+   ${mapsBloco(c)}
    ${plDicaHtml(cnpj)}
    <div id="pcct" class="pcb ctbox" hidden>${ctLista(c,pes)}</div>
    <div class="tags" style="margin-bottom:6px">${repTags(c)||'<span class="hint">Nunca comprou</span>'}</div>

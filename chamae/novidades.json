@@ -2,6 +2,23 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026110906",
+   "data": "2026-11-09",
+   "tipo": "correcao",
+   "titulo": "Pedido transmitido conta nas vendas",
+   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
+   "onde": "Pedidos › Transmitir"
+  },
+  {
+   "id": "2026110907",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "gestor": true,
+   "titulo": "Aviso de pedido em dobro",
+   "texto": "Se um pedido transmitido pelo Sistema também for finalizado no Reprio, aparece um aviso no Início e no Painel do mês para deixar só um contando.",
+   "onde": "Início e Relatórios › Painel do mês"
+  },
+  {
    "id": "2026110904",
    "data": "2026-11-09",
    "tipo": "novo",

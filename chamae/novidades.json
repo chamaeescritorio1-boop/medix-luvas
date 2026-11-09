@@ -1,0 +1,332 @@
+{
+ "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
+ "itens": [
+  {
+   "id": "2026110903",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "O.C do cliente em destaque no PDF",
+   "texto": "Quando o cliente manda a ordem de compra (O.C), o número dela aparece em destaque na faixa azul do alto do PDF do orçamento e do pedido.",
+   "onde": "Orçamento › PDF"
+  },
+  {
+   "id": "2026110902",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Sininho de novidades",
+   "texto": "Toda função nova ou correção do Sistema aparece aqui no 🔔. Quando sair versão nova, aparece o botão Atualizar para a nova versão.",
+   "onde": "🔔 no alto da tela"
+  },
+  {
+   "id": "2026110901",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Limites grátis",
+   "texto": "Mostra quanto do plano grátis do banco, dos arquivos e do GitHub já foi usado, com aviso no Início quando estiver perto do limite.",
+   "onde": "Mais › Limites grátis",
+   "gestor": true
+  },
+  {
+   "id": "2026110505",
+   "data": "2026-11-05",
+   "tipo": "correcao",
+   "titulo": "Orçamento não pula mais para o topo",
+   "texto": "A tela do orçamento fica onde você estava a cada alteração de quantidade ou preço.",
+   "onde": "Orçamento"
+  },
+  {
+   "id": "2026110504",
+   "data": "2026-11-05",
+   "tipo": "correcao",
+   "titulo": "Cliente repetido por CNPJ errado",
+   "texto": "CNPJ errado vindo do sistema antigo não cria mais um cliente repetido sem contatos.",
+   "onde": "Clientes"
+  },
+  {
+   "id": "2026110503",
+   "data": "2026-11-05",
+   "tipo": "novo",
+   "titulo": "Medix: tamanhos num card só",
+   "texto": "Os tamanhos do mesmo modelo ficam juntos e as diferenças entre modelos (cano, espessura) aparecem em etiquetas no card.",
+   "onde": "Representadas › Medix"
+  },
+  {
+   "id": "2026110502",
+   "data": "2026-11-05",
+   "tipo": "novo",
+   "titulo": "Desconto do prazo nos Pedidos",
+   "texto": "O total em Pedidos e na tela Transmitir já mostra o desconto do prazo numa linha Desconto.",
+   "onde": "Pedidos › Transmitir"
+  },
+  {
+   "id": "2026110501",
+   "data": "2026-11-05",
+   "tipo": "correcao",
+   "titulo": "O que cada vendedor atende",
+   "texto": "Tocar nas representadas não fecha mais o quadro sem salvar.",
+   "onde": "Clientes › Bater carteira",
+   "gestor": true
+  },
+  {
+   "id": "2026110412",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Bater carteira com várias representadas",
+   "texto": "Escolha mais de uma representada no filtro. O gestor define o que cada vendedor atende.",
+   "onde": "Clientes › Bater carteira"
+  },
+  {
+   "id": "2026110411",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Já falei hoje e Continuar de onde parei",
+   "texto": "Quem já recebeu contato hoje vai para o fim da lista com ✓, hora e resultado. Quem não atendeu sobe. Botão para continuar de onde parou.",
+   "onde": "Clientes › Bater carteira"
+  },
+  {
+   "id": "2026110410",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Registrar o contato depois de salvar o orçamento",
+   "texto": "Na janela de orçamento salvo dá para anotar a conversa com o cliente e marcar o retorno na Agenda.",
+   "onde": "Orçamento › Salvar"
+  },
+  {
+   "id": "2026110409",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Pedidos abre com os seus",
+   "texto": "Pedidos mostra primeiro os seus orçamentos e pedidos. Use o botão Todos para ver os da equipe.",
+   "onde": "Pedidos"
+  },
+  {
+   "id": "2026110408",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Orçamento que virou pedido sai como Pedido",
+   "texto": "No PDF, no nome do arquivo, no WhatsApp e no e-mail aparece Pedido em vez de Orçamento.",
+   "onde": "Pedidos"
+  },
+  {
+   "id": "2026110407",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Frete e códigos na tela Transmitir",
+   "texto": "A tela Transmitir mostra o frete e a transportadora do orçamento, e o código do prazo e da transportadora para copiar.",
+   "onde": "Pedidos › Transmitir"
+  },
+  {
+   "id": "2026110406",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Orçamento Marluvas igual ao conversor",
+   "texto": "Prazo junto com a tabela e os produtos, histórico de prazos e últimos pedidos do cliente, e o item no mesmo cartão do conversor (foto, grade em quadrinhos) na tela e no PDF.",
+   "onde": "Orçamento › Marluvas"
+  },
+  {
+   "id": "2026110405",
+   "data": "2026-11-04",
+   "tipo": "correcao",
+   "titulo": "PDF sem nada encavalado",
+   "texto": "Nome comprido do cliente, ficha técnica e grade não ficam mais um por cima do outro no PDF.",
+   "onde": "PDF do orçamento"
+  },
+  {
+   "id": "2026110404",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Medix com preço do encarte",
+   "texto": "Preço de referência da Medix é o do encarte, o card mostra um preço só e o orçamento tem os botões de nível 1 a 5 como no conversor.",
+   "onde": "Representadas › Medix"
+  },
+  {
+   "id": "2026110403",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Permissões por pessoa",
+   "texto": "O gestor pode liberar alguém para editar representadas e campanhas sem virar gestor.",
+   "onde": "Mais › Equipe",
+   "gestor": true
+  },
+  {
+   "id": "2026110402",
+   "data": "2026-11-04",
+   "tipo": "novo",
+   "titulo": "Metas e comissão sem IPI",
+   "texto": "Orçamentos, conversão, resumo e plano do dia contam sem IPI, com o encargo ou desconto do prazo.",
+   "onde": "Início e Metas",
+   "gestor": true
+  },
+  {
+   "id": "2026110401",
+   "data": "2026-11-04",
+   "tipo": "correcao",
+   "titulo": "Importar planilha de produtos",
+   "texto": "Reconhece Perc. IPI, Múltiplo de venda e UM, e não apaga mais a observação do produto.",
+   "onde": "Produtos › Importar",
+   "gestor": true
+  },
+  {
+   "id": "2026110317",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Plano do dia",
+   "texto": "No Bater carteira, 20 clientes por pasta conforme a meta, com o que falar e um placar que anda com contato, orçamento e pedido.",
+   "onde": "Clientes › Bater carteira"
+  },
+  {
+   "id": "2026110316",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Orçamento em 5 passos",
+   "texto": "Cliente › Tabela › Produtos › Pagamento e transporte › Conferir e enviar.",
+   "onde": "Orçamento"
+  },
+  {
+   "id": "2026110315",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Transportadoras e frete por representada",
+   "texto": "Cada representada tem suas transportadoras e tipo de frete (CIF, FOB), que vão para o orçamento, o WhatsApp e o PDF.",
+   "onde": "Representadas"
+  },
+  {
+   "id": "2026110314",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Contatos e Conversas no Bater carteira",
+   "texto": "Botão Contatos com os telefones, próximo contato com dia e hora e aba Conversas na ficha do cliente.",
+   "onde": "Clientes › Bater carteira"
+  },
+  {
+   "id": "2026110313",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Código do pedido na fábrica e observações",
+   "texto": "Os pedidos mostram o código da fábrica e as observações. A observação fixa do cliente aparece no orçamento e na transmissão.",
+   "onde": "Pedidos"
+  },
+  {
+   "id": "2026110312",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Marluvas com nome da botina e MTS/MTO",
+   "texto": "O card e o orçamento Marluvas mostram código, nome da botina e se é MTS ou MTO, como no conversor.",
+   "onde": "Representadas › Marluvas"
+  },
+  {
+   "id": "2026110311",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Conferência antes de enviar",
+   "texto": "Item sem preço ou prazo fora do cadastro avisam antes de enviar o orçamento.",
+   "onde": "Orçamento › Conferir"
+  },
+  {
+   "id": "2026110310",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Pedir exclusão de cliente",
+   "texto": "O vendedor pede a exclusão com o motivo e o gestor exclui, recusa ou restaura.",
+   "onde": "Clientes › ficha"
+  },
+  {
+   "id": "2026110309",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Desconto à vista no total",
+   "texto": "O desconto do prazo à vista entra no total do orçamento numa linha Desconto.",
+   "onde": "Orçamento"
+  },
+  {
+   "id": "2026110308",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "E-mails do dia mais fáceis",
+   "texto": "Nada vem marcado, tem Selecionar todos e Enviar só este, filtro por fábrica e e-mail com logo e fotos.",
+   "onde": "Início › E-mails do dia"
+  },
+  {
+   "id": "2026110307",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Assinatura no e-mail",
+   "texto": "Coloque a imagem da sua assinatura em Ajustes e ela vai nos e-mails.",
+   "onde": "Mais › Ajustes"
+  },
+  {
+   "id": "2026110306",
+   "data": "2026-11-03",
+   "tipo": "correcao",
+   "titulo": "E-mail sai da sua caixa",
+   "texto": "O e-mail do orçamento sai sempre da caixa do próprio vendedor.",
+   "onde": "Orçamento › Enviar"
+  },
+  {
+   "id": "2026110305",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Ficha técnica ao lado do adicionar",
+   "texto": "Botão 📄 Ficha no produto para abrir ou mandar a ficha técnica.",
+   "onde": "Produtos"
+  },
+  {
+   "id": "2026110304",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Relatório de vendas igual ao Reprio",
+   "texto": "Só pedido transmitido conta, valor com desconto e representada pela tabela.",
+   "onde": "Mais › Relatórios",
+   "gestor": true
+  },
+  {
+   "id": "2026110303",
+   "data": "2026-11-03",
+   "tipo": "novo",
+   "titulo": "Financeiro: filtros e recibo",
+   "texto": "Filtros nas contas a pagar e receber e recibo em PDF.",
+   "onde": "Mais › Financeiro",
+   "gestor": true
+  },
+  {
+   "id": "2026110302",
+   "data": "2026-11-03",
+   "tipo": "correcao",
+   "titulo": "Consulta CA do concorrente",
+   "texto": "Voltou a mostrar a foto e as características do produto do concorrente.",
+   "onde": "Converter CA"
+  },
+  {
+   "id": "2026110301",
+   "data": "2026-11-03",
+   "tipo": "correcao",
+   "titulo": "Campos sem sobreposição",
+   "texto": "Nenhum campo fica encostado ou por cima de outro, no PC e no celular.",
+   "onde": "Todas as telas"
+  },
+  {
+   "id": "2026110203",
+   "data": "2026-11-02",
+   "tipo": "novo",
+   "titulo": "Clientes abre na lista",
+   "texto": "A tela Clientes abre na lista com filtros. O Bater carteira virou a segunda opção.",
+   "onde": "Clientes"
+  },
+  {
+   "id": "2026110202",
+   "data": "2026-11-02",
+   "tipo": "novo",
+   "titulo": "O que fazer agora e ajuda em toda tela",
+   "texto": "O Início mostra o que fazer agora, o botão ? explica cada tela passo a passo e os erros aparecem em frase simples.",
+   "onde": "Início"
+  },
+  {
+   "id": "2026110201",
+   "data": "2026-11-02",
+   "tipo": "novo",
+   "titulo": "Hoje para você",
+   "texto": "Agentes no Início avisam carteira parada, orçamento sem retorno, item que sumiu e mais.",
+   "onde": "Início"
+  }
+ ]
+}

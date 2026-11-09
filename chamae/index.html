@@ -61,6 +61,13 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 #lock form{width:100%;max-width:340px;display:grid;gap:12px;text-align:center}
 .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
 .diff{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.nov-btn{position:relative}.nov-n{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#ff3b30;color:#fff;font:800 11px/19px system-ui;text-align:center;box-shadow:0 0 0 2px var(--surface,#fff)}
+@media(max-width:600px){header .hrow{gap:6px} header .hrow .chip{padding:0 10px} header #who{white-space:nowrap}}
+.novbar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px;text-align:center;position:sticky;top:0;z-index:20}.novbar .btn{background:#fff;color:#111}
+.nov-up{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid var(--accent)}
+.nov-dia{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;opacity:.65;margin-top:6px}
+.nov-it{display:grid;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}.nov-it.nao-lida{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.nov-tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,currentColor 12%,transparent)}.nov-tag.nov{color:#1a8f4c}.nov-tag.cor{color:#b26a00}.nov-tag.novo{background:#ff3b30;color:#fff}
 .badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:800}
 .ov{position:fixed;inset:0;z-index:30;background:rgba(6,8,18,.7);display:flex;align-items:flex-end;justify-content:center}
 .ov .sh{background:var(--surface);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px} @media(min-width:700px){.ov{align-items:center}.ov .sh{border-radius:20px}}
@@ -138,7 +145,7 @@ table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[typ
 <link rel="stylesheet" href="financeiro.css?v=202611031900">
 </head>
 <body>
-<header><div class="hrow"><a href="#" id="homeLnk" style="display:flex;align-items:center;gap:10px;flex:1;color:inherit;text-decoration:none" aria-label="Ir para o início"><img src="icon-192.png" alt=""><h1>Chamae <span>·</span> Sistema<small>teste</small></h1></a><button class="chip" id="srchBtn" type="button" aria-label="Buscar">🔍<span class="lbl"> Buscar</span></button><button class="chip" id="homeBtn" type="button" aria-label="Início" hidden>⌂<span class="lbl"> Início</span></button><button class="chip" id="ajudaBtn" type="button" aria-label="Ajuda desta tela" title="Ajuda desta tela">?<span class="lbl"> Ajuda</span></button><button class="chip" id="who" hidden></button></div></header>
+<header><div class="hrow"><a href="#" id="homeLnk" style="display:flex;align-items:center;gap:10px;flex:1;color:inherit;text-decoration:none" aria-label="Ir para o início"><img src="icon-192.png" alt=""><h1>Chamae <span>·</span> Sistema<small>teste</small></h1></a><button class="chip" id="srchBtn" type="button" aria-label="Buscar">🔍<span class="lbl"> Buscar</span></button><button class="chip" id="homeBtn" type="button" aria-label="Início" hidden>⌂<span class="lbl"> Início</span></button><button class="chip nov-btn" id="novBtn" type="button" aria-label="Novidades do Sistema" title="Novidades do Sistema" hidden>🔔<span class="lbl"> Novidades</span><span class="nov-n" id="novN" hidden>0</span></button><button class="chip" id="ajudaBtn" type="button" aria-label="Ajuda desta tela" title="Ajuda desta tela">?<span class="lbl"> Ajuda</span></button><button class="chip" id="who" hidden></button></div></header>
 <main id="main"></main>
 <nav id="nav" hidden>
  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H5v-9"/></svg>Início</button>
@@ -153,7 +160,7 @@ table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[typ
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202611091400oc"></script>
+<script src="app.js?v=202611091430nov"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

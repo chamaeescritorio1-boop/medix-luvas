@@ -62,7 +62,41 @@ async function afterLogin(){try{let p; try{p=await api('perfis?select=*&id=eq.'+
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
   $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent='👤 '+(meuNome()||sess.email);
   w.onclick=menuUsuario; if(!window._bootCedo) go(rotaIni()); window._bootCedo=false; contaTarefas(); iniciarLembretes();
-  if(!L('tourVisto')){LS('tourVisto',1); setTimeout(()=>tutorial('inicio'),1200)}}
+  if(!L('tourVisto')){LS('tourVisto',1); setTimeout(()=>tutorial('inicio'),1200)} novIniciar()}
+/* 🔔 Novidades: lista em novidades.json (mais nova primeiro). "Lida" = id até o último que a pessoa viu (perfis.nov_vista, com cópia no aparelho).
+   Versão nova = o index publicado chama outro app.js?v= do que está aberto agora: aparece a faixa e o botão Atualizar para a nova versão. */
+const NOV_VER=((document.querySelector('script[src*="app.js?v="]')||{}).src||'').split('app.js?v=')[1]||''; let NOV=[], NOV_NOVA='', NOV_T=0;
+const novLs=()=>'chamae_nov_'+((sess&&sess.uid)||'');
+const novVista=()=>{let a=String((perfil&&perfil.nov_vista)||''), b=''; try{b=localStorage.getItem(novLs())||''}catch(e){} return a>b?a:b};
+const novMeus=()=>NOV.filter(x=>x&&x.id&&(!x.gestor||ehGestor()));
+function novBadge(){const b=$('#novBtn'), n=$('#novN'); if(!b) return; b.hidden=!sess; const v=novVista(), q=novMeus().filter(x=>x.id>v).length;
+  n.hidden=!(q||NOV_NOVA); n.textContent=NOV_NOVA&&!q?'!':q>9?'9+':q; b.title=(q?q+' novidade(s) não lida(s)':'Novidades do Sistema')+(NOV_NOVA?' · versão nova disponível':'');
+  let bar=$('#novBar'); if(NOV_NOVA&&sess){if(!bar){bar=document.createElement('div'); bar.id='novBar'; bar.className='novbar'; bar.innerHTML='<span>✨ Saiu uma versão nova do Sistema.</span><button class="btn sm" type="button">⟳ Atualizar para a nova versão</button>'; bar.querySelector('button').onclick=novAtualizar; document.querySelector('header').after(bar)}} else if(bar) bar.remove()}
+async function novCarrega(forcar){if(!forcar&&Date.now()-NOV_T<120000) return; NOV_T=Date.now();
+  try{const r=await fetch('novidades.json?t='+Date.now(),{cache:'no-store'}); if(r.ok){const j=await r.json(); NOV=(j.itens||[]).slice().sort((a,b)=>String(b.id).localeCompare(String(a.id)))}}catch(e){}
+  try{const r=await fetch('./?nv='+Date.now(),{cache:'no-store'}); if(r.ok){const m=(await r.text()).match(/app\.js\?v=([^"'&\s>]+)/); NOV_NOVA=m&&NOV_VER&&m[1]!==NOV_VER?m[1]:''}}catch(e){}
+  novBadge()}
+async function novAtualizar(){const bt=document.querySelectorAll('#novBar button,[data-novup]'); bt.forEach(b=>{b.disabled=true; b.textContent='Atualizando…'});
+  try{const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); if(r) await r.update()}catch(e){}
+  try{const ks=await caches.keys(); await Promise.all(ks.filter(k=>k.startsWith('chamae-')).map(k=>caches.delete(k)))}catch(e){}
+  location.replace(location.pathname+'?atualizado='+Date.now()+location.hash)}
+const novData=s=>{const [a,m,d]=String(s||'').split('-'); return d?`${d}/${m}/${a}`:''};
+function novAbrir(){document.querySelectorAll('.ov[data-nov]').forEach(x=>x.remove()); const v=novVista(), L2=novMeus(); let qt=30;
+  const ov=document.createElement('div'); ov.className='ov'; ov.dataset.nov=1;
+  const pinta=()=>{let dia=''; const lista=L2.slice(0,qt).map(x=>{const nv=x.id>v, h=x.data!==dia?`<div class="nov-dia">${esc(novData(x.data))}</div>`:''; dia=x.data;
+      return h+`<div class="nov-it${nv?' nao-lida':''}"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${x.tipo==='correcao'?'<span class="nov-tag cor">🔧 Correção</span>':'<span class="nov-tag nov">✨ Nova função</span>'}${nv?'<span class="nov-tag novo">NOVO</span>':''}${x.gestor?'<span class="hint" style="font-size:12px">só gestor</span>':''}</div><b>${esc(x.titulo)}</b>${x.texto?`<div class="hint">${esc(x.texto)}</div>`:''}${x.onde?`<div class="hint" style="font-size:12px;margin-top:2px">📍 ${esc(x.onde)}</div>`:''}</div>`}).join('');
+    ov.innerHTML=`<div class="sh grid" style="gap:10px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="font-size:18px">🔔 Novidades do Sistema</b><button class="chip" data-x aria-label="Fechar">✕</button></div>
+     ${NOV_NOVA?`<div class="nov-up"><div><b>Tem versão nova do Sistema</b><div class="hint">Atualize para usar as novidades abaixo. Leva poucos segundos e nada do que você salvou se perde.</div></div><button class="btn" data-novup type="button">⟳ Atualizar para a nova versão</button></div>`
+       :`<div class="row" style="justify-content:space-between;gap:8px"><span class="hint">✓ Você está na versão mais nova.</span><button class="chip" data-novck type="button">Procurar atualização</button></div>`}
+     ${lista||'<p class="hint">Nenhuma novidade por enquanto.</p>'}${L2.length>qt?'<button class="chip" data-mais type="button">Ver mais antigas</button>':''}</div>`};
+  pinta(); document.body.appendChild(ov);
+  ov.onclick=async e=>{const t=e.target; if(t===ov||t.closest('[data-x]')) return ov.remove(); if(t.closest('[data-novup]')) return novAtualizar(); if(t.closest('[data-mais]')){qt+=30; return pinta()}
+    if(t.closest('[data-novck]')){t.textContent='Procurando…'; await novCarrega(true); pinta(); if(!NOV_NOVA) toast('Você já está na versão mais nova')}};
+  const ult=L2[0]&&L2[0].id; if(ult&&ult>v){try{localStorage.setItem(novLs(),ult)}catch(e){} if(perfil) perfil.nov_vista=ult; S('perfil',perfil); novBadge();
+    api(`perfis?id=eq.${sess.uid}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({nov_vista:ult})}).catch(()=>{})}}
+function novIniciar(){const b=$('#novBtn'); if(!b) return; b.onclick=novAbrir; novCarrega(true);
+  if(!window._novTimer){window._novTimer=setInterval(()=>novCarrega(),10*60000); document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&sess) novCarrega()})}
+  if(/[?&]atualizado=/.test(location.search)){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){} setTimeout(()=>toast('✓ Sistema atualizado. Veja o que mudou no 🔔'),600)}}
 
 /* formulário curto em janela própria (no lugar das janelinhas do navegador): resolve com os valores ou null */
 function formulario(titulo,campos,ok){return new Promise(res=>{const ov=document.createElement('div'); ov.className='ov';

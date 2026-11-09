@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026110923",
+   "data": "2026-11-09",
+   "tipo": "correcao",
+   "titulo": "Fechar o orçamento volta para a tarefa",
+   "texto": "Na Agenda, ao abrir uma tarefa e tocar em Abrir orçamento ou Registrar contato, a janela abre por cima da tarefa. Ao tocar em Fechar ou ✕ você volta para a tarefa, pronto para registrar e concluir. Se for para outra tela (Ficha do cliente, editar orçamento), aparece embaixo o botão ↩ Voltar à tarefa.",
+   "onde": "Tarefas e agenda › tocar na tarefa"
+  },
+  {
    "id": "2026110911",
    "data": "2026-11-09",
    "tipo": "novo",

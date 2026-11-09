@@ -3871,7 +3871,18 @@ async function relConversao(box,repF){box.innerHTML='<p class="hint">Calculando�
   box._csv=[['Mês','Orçamentos','Fechados','Perdidos','Em aberto','Conversão %','Positivação','Faturamento'],...rows.map(r=>[r.lbl,r.tot,r.ganho,r.perd,r.ab,r.taxa.toFixed(1),r.pos,r.fat])]}
 
 /* ================= tarefa: abrir, ver, ir para orçamento/cliente ================= */
+/*TARVOLTA-INICIO* (nov/2026) orçamento, pedido ou registro aberto a partir da tarefa abre POR CIMA dela: ao tocar em Fechar/✕ a tarefa volta.
+  Se no meio do caminho mudar de tela (ficha, editar orçamento…), aparece o botão flutuante "↩ Voltar à tarefa". */
+function tarPorCima(ov,t,fn){ov.style.display='none'; const ctx0=ctx; let mo=null;
+  const ver=()=>{if(!ov.isConnected){mo&&mo.disconnect(); return} if([...document.querySelectorAll('body > .ov')].some(x=>x!==ov&&x.style.display!=='none')) return;
+    mo&&mo.disconnect(); if(ctx!==ctx0){ov.remove(); return tarVoltaPill(t)} ov.style.display=''};
+  Promise.resolve().then(fn).catch(e=>toast('Erro: '+e.message)).then(()=>{mo=new MutationObserver(ver); mo.observe(document.body,{childList:true}); ver()})}
+function tarVoltaPill(t){const v=$('#tarvolta'); if(v) v.remove(); const b=document.createElement('div'); b.id='tarvolta';
+  b.innerHTML=`<button class="btn sm" data-tv>↩ Voltar à tarefa<span style="display:block;font-size:12px;font-weight:500;opacity:.85;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.titulo||'')}${t.cliente?' · '+esc(t.cliente):''}</span></button><button class="chip" data-tvx aria-label="Fechar">✕</button>`;
+  b.onclick=e=>{if(e.target.closest('[data-tvx]')) return b.remove(); if(e.target.closest('[data-tv]')){b.remove(); abrirTarefa(t.id)}}; document.body.appendChild(b)}
+/*TARVOLTA-FIM*/
 async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?select=*&id=eq.${t}`))[0]}catch(e){} if(!t) return}
+  {const v=$('#tarvolta'); if(v) v.remove()}
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between;align-items:flex-start"><b style="font-size:18px">${esc(TT[t.tipo]||'✔️ Tarefa')} · ${esc(t.titulo)}</b><button class="chip" data-x>✕</button></div>
    ${fichaTopo([['Quando',t.vence.split('-').reverse().join('/')+(t.hora?' · '+t.hora+'–'+mh(tFim(t)):''),0],['Responsável',t.responsavel_nome||'Equipe'],['Cliente',t.cliente||'—'],['Representada',t.rep?repName(t.rep):'—']])}
    ${t.obs?`<div class="card" style="white-space:pre-wrap">${esc(t.obs)}</div>`:'<p class="hint" style="margin:0">Sem observações.</p>'}
@@ -3880,7 +3891,7 @@ async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?
    ${t.feita?'':`<label class="f">Resultado (opcional)<input id="tres" placeholder="ex.: cliente aprovou, vai enviar OC"></label><div class="row"><button class="btn" data-tok>✓ Concluir</button><button class="chip" data-ad="1">Amanhã</button><button class="chip" data-ad="3">+3 dias</button><button class="chip" data-ad="7">+7 dias</button><input id="tnd" type="date" style="width:auto"><input id="tnh" type="time" value="${esc(t.hora||'')}" style="width:auto"><button class="chip" data-rag>Reagendar</button></div>`}</div>`; document.body.appendChild(ov);
   const fim=()=>{ov.remove(); contaTarefas(); if(route==='tar') tarefasView()};
   ov.onclick=async e=>{const x=e.target; if(x.closest('[data-x]')||x===ov) return ov.remove();
-    try{if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')){ov.remove(); return detOrc(t.orcamento_id)} if(x.closest('[data-tf]')){ov.remove(); return go('cli',{cnpj:t.cnpj})} if(x.closest('[data-tr]')){ov.remove(); return painelCliente(t.cnpj)}
+    try{if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')) return tarPorCima(ov,t,()=>detOrc(t.orcamento_id)); if(x.closest('[data-tf]')){ov.remove(); go('cli',{cnpj:t.cnpj}); return tarVoltaPill(t)} if(x.closest('[data-tr]')) return tarPorCima(ov,t,()=>painelCliente(t.cnpj))
       if(x.closest('[data-tok]')){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:ov.querySelector('#tres').value.trim()||null})}); toast('Tarefa concluída'); return fim()}
       const a=x.closest('[data-ad]'); if(a){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+a.dataset.ad)})}); toast('Reagendada'); return fim()}
       if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); if(h){const c=await conflitos(d||t.vence,h,+t.duracao||30,t.responsavel,t.id); if(c.bate.length&&!confirm(`Esse horário já tem: ${c.bate.map(x=>x.hora+' '+x.titulo).join('; ')}. Reagendar mesmo assim?`)) return} await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}

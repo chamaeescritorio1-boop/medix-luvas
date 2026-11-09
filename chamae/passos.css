@@ -133,3 +133,15 @@
 .mlv-gr0{grid-column:1/-1;font-size:14px}
 .mlv-ac{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 @media(max-width:760px){.mlv-it{grid-template-columns:72px minmax(0,1fr);padding:12px}.mlv-im img{width:68px;height:62px}.mlv-pr{grid-column:1/-1;justify-items:end}.mlv-t{font-size:16px}.mlv-gc{width:52px}}
+
+/* último preço pago pelo cliente no item (09/11/2026) */
+.oult{font-size:13px;line-height:1.35;padding:5px 9px;border-radius:8px;background:#5aa9ff1a;border-left:3px solid #5aa9ff;justify-self:start;max-width:100%}
+.oult b{font-weight:800}
+.oult0{background:transparent;border-left-color:var(--line);color:var(--muted,#888)}
+.oult-up{color:var(--warn);font-weight:700}
+.oult-dn{color:#2fb46e;font-weight:700}
+.oult-eq{color:var(--muted,#888)}
+.mlv-tx .oult{margin-top:4px}
+.opas-p .oult{font-size:12px;padding:3px 7px}
+.ogr-row .oult{justify-self:end;text-align:right;border-left:0;border-right:3px solid #5aa9ff}
+.ogr-row .oult0{border-right-color:var(--line)}

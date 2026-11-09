@@ -14,7 +14,7 @@
    "data": "2026-11-09",
    "tipo": "novo",
    "titulo": "O.C do cliente em destaque no PDF",
-   "texto": "Quando o cliente manda a ordem de compra (O.C), o número dela aparece em destaque na faixa azul do alto do PDF do orçamento e do pedido.",
+   "texto": "Quando o cliente manda a ordem de compra (O.C), o número dela aparece em destaque no alto do PDF do orçamento e do pedido, logo abaixo de ORÇAMENTO/PEDIDO, no lugar do nosso número interno.",
    "onde": "Orçamento › PDF"
   },
   {

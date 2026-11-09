@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026110911",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "PDF com faixa do encarte e encarte para imprimir",
+   "texto": "No PDF do orçamento, o quadro da representada agora tem a mesma cor do balão do preço e o topo azul ganhou um filete dourado embaixo, igual ao do encarte. No PDF promoção do encarte dá para marcar \"🖨 Fundo branco para impressão\": só o topo fica azul e gasta bem menos tinta."
+  },
+  {
    "id": "2026110906",
    "data": "2026-11-09",
    "tipo": "correcao",

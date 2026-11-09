@@ -806,13 +806,10 @@ async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); awai
   const RD=on('rep')?repDados(o.rep,t.repG):null; const rlogo=RD&&RD.logo?await imgData(RD.logo,400):null;
   const head=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24);
     doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text(PED?'PEDIDO':'ORÇAMENTO',W-M,13,{align:'right'});
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Nº ${num}  ·  ${new Date().toLocaleDateString('pt-BR')}`,W-M,19,{align:'right'});doc.text('Produtos '+RN,W-M,24,{align:'right'});
-    /* O.C do cliente em destaque na faixa azul (pedido do Clayton via Victor, 09/11) */
-    if(OC){doc.setFont('helvetica','bold');doc.setFontSize(16); let rw=doc.getTextWidth(PED?'PEDIDO':'ORÇAMENTO'); doc.setFont('helvetica','normal');doc.setFontSize(9); rw=Math.max(rw,doc.getTextWidth(`Nº ${num}  ·  ${new Date().toLocaleDateString('pt-BR')}`),doc.getTextWidth('Produtos '+RN));
-      const x1=M+(logo?69:0), x2=W-M-rw-4, bw=Math.min(66,x2-x1); if(bw>=30){const bx=x1+(x2-x1-bw)/2; doc.setFillColor(...GOLD);doc.roundedRect(bx,5,bw,20,2.5,2.5,'F');
-        doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text('ORDEM DE COMPRA DO CLIENTE',bx+bw/2,10.2,{align:'center'});
-        let fs=16; doc.setFontSize(fs); while(fs>10&&doc.getTextWidth(OC)>bw-5){fs-=.5;doc.setFontSize(fs)} const ol=doc.getTextWidth(OC)>bw-5?doc.splitTextToSize(OC,bw-5).slice(0,2):[OC]; if(ol.length>1){doc.setFontSize(9.5);doc.text(ol,bx+bw/2,15.6,{align:'center',lineHeightFactor:1.1})} else doc.text(OC,bx+bw/2,19.8,{align:'center'});
-        doc.setFont('helvetica','normal');doc.setTextColor(255)}}};
+    /* com O.C do cliente, ela entra no lugar do nosso nº, em destaque (pedido do Clayton via Victor, 09/11) */
+    const dtH=new Date().toLocaleDateString('pt-BR'); if(OC){doc.setTextColor(...GOLD);doc.setFont('helvetica','bold'); let fs=11.5; doc.setFontSize(fs); const tx=`O.C ${OC}  ·  ${dtH}`; while(fs>7&&doc.getTextWidth(tx)>W-M-(M+70)){fs-=.5;doc.setFontSize(fs)} doc.text(tx,W-M,19.4,{align:'right'}); doc.setTextColor(255)}
+    else{doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Nº ${num}  ·  ${dtH}`,W-M,19,{align:'right'})}
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Produtos '+RN,W-M,24.5,{align:'right'});};
   head(); let y=38; doc.setTextColor(30);
   if(RD){const tw=W-2*M-8-(rlogo?30:0), x0=M+4+(rlogo?30:0); const L3=[RD.doc,[RD.end,RD.cid].filter(Boolean).join('  ·  '),RD.con].filter(Boolean); doc.setFontSize(8.3); const L4=L3.map(l=>doc.splitTextToSize(l,tw)[0]); const h=Math.max(rlogo?22:0,12.5+L4.length*3.9);
     doc.setFillColor(250,247,240);doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,h,2,2,'FD');

@@ -80,3 +80,14 @@
 .pzsel-o.on{background:var(--surface2)} .pzsel-o.on b{color:var(--ok,#1f9d5c)}
 .pzsel-o small{color:var(--muted);font-size:14px;text-align:right}
 .pzsel-o[data-opzo]{border-top:1px solid var(--line);border-radius:0 0 10px 10px}
+/* último preço pago pelo cliente no item (09/11/2026) */
+.oult{font-size:13px;line-height:1.35;padding:5px 9px;border-radius:8px;background:#5aa9ff1a;border-left:3px solid #5aa9ff;justify-self:start;max-width:100%}
+.oult b{font-weight:800}
+.oult0{background:transparent;border-left-color:var(--line);color:var(--muted,#888)}
+.oult-up{color:var(--warn);font-weight:700}
+.oult-dn{color:#2fb46e;font-weight:700}
+.oult-eq{color:var(--muted,#888)}
+.mlv-tx .oult{margin-top:4px}
+.opas-p .oult{font-size:12px;padding:3px 7px}
+.ogr-row .oult{justify-self:end;text-align:right;border-left:0;border-right:3px solid #5aa9ff}
+.ogr-row .oult0{border-right-color:var(--line)}

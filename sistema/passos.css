@@ -80,6 +80,60 @@
 .pzsel-o.on{background:var(--surface2)} .pzsel-o.on b{color:var(--ok,#1f9d5c)}
 .pzsel-o small{color:var(--muted);font-size:14px;text-align:right}
 .pzsel-o[data-opzo]{border-top:1px solid var(--line);border-radius:0 0 10px 10px}
+.r2[hidden],details[hidden]{display:none!important}
+.opas{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+@media(max-width:760px){.opas-b{font-size:11px}}
+/* histórico de prazos e últimos pedidos no orçamento (04/11/2026) */
+.ohist{display:grid;gap:8px;margin-top:4px}
+.ohist-d{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface2)}
+.ohist-d>summary{cursor:pointer;font-weight:700;font-size:15px}
+.ohist-d[open]>summary{margin-bottom:8px}
+.ohist-pzl{display:flex;flex-wrap:wrap;gap:8px}
+.ohist-pz{display:grid;gap:2px;text-align:left;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;max-width:100%}
+.ohist-pz b{font-size:16px;overflow-wrap:anywhere} .ohist-pz small{font-size:13px;color:var(--muted)}
+.ohist-pz:hover{border-color:var(--accent)}
+.ohist-pz.on{border-color:var(--accent);background:#f2b6321f}
+.ohist-pl{display:grid;gap:6px}
+.ohist-p{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.ohist-p>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 12px}
+.ohist-p>summary::-webkit-details-marker{display:none}
+.ohist-p>summary small{grid-column:1/-1;color:var(--muted);font-size:13px}
+.ohist-pt{min-width:0;overflow-wrap:anywhere}
+.ohist-its{display:grid;gap:4px;padding:0 12px 10px;font-size:14px}
+.ohist-its>div{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:4px}
+.ohist-its>div span:last-child{white-space:nowrap;font-weight:700}
+.opas-pz3{gap:12px}
+@media(max-width:760px){.opas-ja .qty{min-width:0;width:100%;display:flex}.opas-ja .qty input{min-width:0;width:0;flex:1 1 0}.opas-ja .qty button{flex:none;width:38px}.opas-ja{min-width:0}}
+/* grade do item exatamente como no conversor (04/11/2026) */
+.gsum{min-width:0;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:8px 10px;font-size:13px;font-variant-numeric:tabular-nums}
+.gsum>span{min-width:0}
+/* item Marluvas igual ao cartão do conversor (04/11/2026) */
+.mlv-it{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:6px 18px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--surface)}
+.mlv-im{grid-row:1;display:flex;align-items:flex-start;justify-content:center}
+.mlv-im img{width:100px;height:90px;object-fit:contain;cursor:zoom-in;border-radius:8px;background:#fff}
+.mlv-tx{min-width:0;display:grid;gap:3px;align-content:start}
+.mlv-t{font-size:18px}
+.mlv-n{font-size:15px;color:var(--ink)}
+.mlv-s{font-size:13.5px;color:var(--muted)}
+.mlv-ca{display:flex;flex-wrap:wrap;gap:0 8px;margin-top:4px;font-size:14.5px}
+.mlv-pr{display:grid;justify-items:end;align-content:start;gap:3px;text-align:right;font-variant-numeric:tabular-nums}
+.mlv-pb{display:flex;align-items:center;gap:6px;background:#f2b6322e;border-radius:12px;padding:8px 14px;cursor:text}
+.mlv-pb span{font-weight:800;font-size:20px}
+.mlv-pb input{width:110px;border:0!important;box-shadow:none!important;outline:0;background:transparent!important;text-align:right;font-size:22px;font-weight:800;color:var(--ink);padding:0;min-height:0}
+.mlv-pb input:focus{outline:2px solid var(--accent);border-radius:6px}
+.mlv-pb.neg input,.mlv-pb.neg span{color:var(--warn)}
+.mlv-pr small{font-size:12.5px;color:var(--muted)}
+.mlv-neg{font-size:12px;color:var(--warn);font-weight:700}
+.mlv-cn{font-size:14.5px;margin-top:4px}
+.mlv-tt{font-size:19px}
+.mlv-gr{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mlv-gc{display:grid;width:64px;text-align:center;font-variant-numeric:tabular-nums}
+.mlv-gc span{background:var(--surface2);color:var(--muted);font-size:13px;padding:4px 0}
+.mlv-gc b{font-size:17px;padding:5px 0}
+.mlv-gr0{grid-column:1/-1;font-size:14px}
+.mlv-ac{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:760px){.mlv-it{grid-template-columns:72px minmax(0,1fr);padding:12px}.mlv-im img{width:68px;height:62px}.mlv-pr{grid-column:1/-1;justify-items:end}.mlv-t{font-size:16px}.mlv-gc{width:52px}}
+
 /* último preço pago pelo cliente no item (09/11/2026) */
 .oult{font-size:13px;line-height:1.35;padding:5px 9px;border-radius:8px;background:#5aa9ff1a;border-left:3px solid #5aa9ff;justify-self:start;max-width:100%}
 .oult b{font-weight:800}

@@ -1,0 +1,11 @@
+/* Financeiro: barra de filtros das contas e recibos (03/11/2026) */
+.ffil{padding:12px 14px;margin-bottom:12px}
+.ffil-top{display:grid;grid-template-columns:minmax(220px,2.2fr) repeat(4,minmax(130px,1fr));gap:10px;align-items:end}
+.ffil-mais{margin-top:10px}.ffil-mais>summary{cursor:pointer;color:var(--muted);font-size:13px;list-style:none;display:inline-flex;gap:6px;align-items:center}
+.ffil-mais>summary::before{content:'▸';transition:transform .15s}.ffil-mais[open]>summary::before{transform:rotate(90deg)}
+.ffil-mais>.ffil-top{margin-top:8px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.ffil-res{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ffil-res .chip[hidden]{display:none}
+.rec-top{grid-template-columns:1fr auto}
+.rec-tipo .chip{flex:1;justify-content:center;text-align:center;padding:10px}
+@media(max-width:760px){.ffil-top{grid-template-columns:1fr 1fr}.ffil-q{grid-column:1/-1}.ffil-mais>.ffil-top{grid-template-columns:1fr}.rec-top{grid-template-columns:1fr}.rec-top .row{justify-content:flex-end}}

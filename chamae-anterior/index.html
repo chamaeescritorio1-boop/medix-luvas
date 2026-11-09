@@ -24,6 +24,7 @@ main{max-width:1100px;margin:0 auto;padding:14px 16px}
 .btn.ghost{background:var(--surface2);color:var(--ink)} .btn.sm{padding:7px 11px;font-size:13px} .btn:disabled{opacity:.5}
 .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:7px 12px;font-size:13px;cursor:pointer;font-family:inherit}
 .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.resc{display:inline-flex;align-items:center;gap:6px}.resc i{width:10px;height:10px;border-radius:50%;flex:none}.resc.on i{box-shadow:0 0 0 2px var(--accent-ink)}
 input,select,textarea{font-family:inherit;font-size:15px;padding:11px;border-radius:12px;border:1px solid var(--line);background:#11152a;color:var(--ink);min-width:0}
 label.f{display:grid;gap:5px;font-size:12px;color:var(--muted)}
 .hint{color:var(--muted);font-size:13px}
@@ -160,7 +161,7 @@ table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[typ
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202611091430dup"></script>
+<script src="app.js?v=202611091700rep"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

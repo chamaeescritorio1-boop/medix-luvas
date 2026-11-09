@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026110910",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Ver o endereço e a fachada do cliente no Maps",
+   "texto": "Na ficha do cliente aparece o endereço com 3 botões: 🗺️ Abrir no Maps (abre o endereço no Google Maps, no celular abre o aplicativo), 🏠 Ver fachada (abre a foto da rua, o Street View, na frente do cliente) e Mapa aqui (mostra o mapa dentro da própria ficha).",
+   "onde": "Clientes, ficha do cliente e Bater carteira"
+  },
+  {
    "id": "2026110909",
    "data": "2026-11-09",
    "tipo": "novo",

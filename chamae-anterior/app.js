@@ -510,32 +510,36 @@ async function encCatalogo(rep,o,its,P,btn,paraEmail){const bt0=btn.textContent;
 function encPromoForm(rep,o,its,P,paraEmail){const ov=document.createElement('div'); ov.className='ov'; const pr=p=>(P[p.id]||{}).liq||0;
   ov.innerHTML=`<div class="sh"><div class="sec" style="font-size:20px">Promoção de volume</div><p class="hint">O primeiro item é o destaque; os demais entram como ofertas complementares. Use o preço da tabela ou digite um menor.</p>
    <label class="f">Válida até<input id="pv" type="date"></label>
+   <label class="row" style="gap:8px;margin-top:8px;cursor:pointer"><input id="pbr" type="checkbox" style="width:20px;height:20px"${(()=>{try{return localStorage.getItem('encBranco')==='1'?' checked':''}catch(_){return ''}})()}><span><b>🖨 Fundo branco para impressão</b><br><small class="hint">Só o topo fica azul; o resto sai branco e gasta bem menos tinta.</small></span></label>
    ${its.map((p,k)=>`<div class="card" style="margin-top:8px;display:grid;gap:6px"><b>${k?'Complementar':'Destaque'}: ${esc(p.cod)}</b><small class="hint">${esc(p.descricao)} · tabela ${brl(pr(p))}</small><div class="r2"><label class="f">Quantidade<input data-pq="${k}" type="number" inputmode="numeric" placeholder="${k?'':'ex.: 50'}"></label><label class="f">Preço da oferta (R$)<input data-pp="${k}" inputmode="decimal" value="${pr(p).toFixed(2).replace('.',',')}"></label></div></div>`).join('')}
    <div class="row" style="margin-top:12px"><button class="btn" id="pgo">Gerar PDF</button><button class="btn ghost" id="pno">Cancelar</button></div></div>`;
   document.body.appendChild(ov); $('#pno').onclick=()=>ov.remove();
   $('#pgo').onclick=async()=>{const num=v=>+String(v||'').replace(/\./g,'').replace(',','.')||0; const rows=its.map((p,k)=>({p,q:num(ov.querySelector(`[data-pq="${k}"]`).value),pr:num(ov.querySelector(`[data-pp="${k}"]`).value),de:pr(p)}));
-    try{await encPromo(rep,o,rows,$('#pv').value,paraEmail); ov.remove()}catch(e){toast('Erro: '+e.message)}}}
-async function encPromo(rep,o,rows,val,paraEmail){await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,H=297,M=12; const logo=await imgData('logo.jpg',900);
+    const br=$('#pbr').checked; try{localStorage.setItem('encBranco',br?'1':'0')}catch(_){}
+    try{await encPromo(rep,o,rows,$('#pv').value,paraEmail,br); ov.remove()}catch(e){toast('Erro: '+e.message)}}}
+/* br = fundo branco para impressão (Drauzio 09/11: o azul gasta muita tinta): só o topo fica azul, com o logo */
+async function encPromo(rep,o,rows,val,paraEmail,br){await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,H=297,M=12; const logo=await imgData('logo.jpg',900);
   const [m,...cs]=rows; const im=m.p.img?await imgData(m.p.img,900):null; const cim=await Promise.all(cs.map(c=>c.p.img?imgData(c.p.img,400):null));
-  const bg=()=>{doc.setFillColor(...PNAVY); doc.rect(0,0,W,H,'F')}; bg(); if(logo) doc.addImage(logo.d,'JPEG',M,8,55,20);
+  const TX=br?PNAVY:[255,255,255], TX2=br?PGREY:[220,220,220], TX3=br?PGREY:[210,210,210], OURO=br?[200,130,0]:PGOLD;
+  const bg=p1=>{if(!br){doc.setFillColor(...PNAVY); doc.rect(0,0,W,H,'F')} else if(p1){doc.setFillColor(...PNAVY); doc.rect(0,0,W,30,'F'); doc.setFillColor(...PGOLD); doc.rect(0,30,W,1.2,'F')}}; bg(true); if(logo) doc.addImage(logo.d,'JPEG',M,br?5:8,55,20);
   if(val){doc.setFont('helvetica','bold'); doc.setFontSize(9); const t='Válida até '+val.split('-').reverse().join('/'); const w=doc.getTextWidth(t)+8; doc.setFillColor(...PGOLD); doc.roundedRect(W-M-w,12,w,9,4.5,4.5,'F'); doc.setTextColor(...PNAVY); doc.text(t,W-M-w+4,17.9)}
-  doc.setTextColor(255); doc.setFont('helvetica','normal'); doc.setFontSize(9.5); if(o.cli) doc.text(doc.splitTextToSize('Oferta exclusiva para '+o.cli.n,120)[0],M,35);
-  doc.setFont('helvetica','bold'); doc.setFontSize(40); doc.text('OFERTA DE',M,52); doc.setTextColor(...PGOLD); doc.text('VOLUME',M+doc.getTextWidth('OFERTA DE '),52);
-  doc.setTextColor(220); doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(repName(rep)+' · preço especial para compra fechada',M,59);
-  const by=66,bh=108; doc.setFillColor(255,255,255); doc.roundedRect(M,by,W-2*M,bh,6,6,'F'); doc.setFillColor(...PSOFT); doc.roundedRect(M,by,84,bh,6,6,'F'); doc.rect(M+78,by,6,bh,'F'); fitImg(doc,im,M+6,by+10,72,bh-20);
+  doc.setTextColor(...TX); doc.setFont('helvetica','normal'); doc.setFontSize(9.5); if(o.cli) doc.text(doc.splitTextToSize('Oferta exclusiva para '+o.cli.n,120)[0],M,br?38:35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(40); doc.setTextColor(...TX); doc.text('OFERTA DE',M,52); doc.setTextColor(...OURO); doc.text('VOLUME',M+doc.getTextWidth('OFERTA DE '),52);
+  doc.setTextColor(...TX2); doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(repName(rep)+' · preço especial para compra fechada',M,59);
+  const by=66,bh=108; doc.setFillColor(255,255,255); doc.roundedRect(M,by,W-2*M,bh,6,6,'F'); doc.setFillColor(...PSOFT); doc.roundedRect(M,by,84,bh,6,6,'F'); doc.rect(M+78,by,6,bh,'F'); if(br){doc.setDrawColor(...PLINE); doc.setLineWidth(.4); doc.roundedRect(M,by,W-2*M,bh,6,6,'S')} fitImg(doc,im,M+6,by+10,72,bh-20);
   const rx=M+92,rw=W-M-rx-8; let y=by+12; doc.setTextColor(...PGREY); doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.text(`Cód. ${m.p.cod}${m.p.attrs&&m.p.attrs.ean?' · EAN '+m.p.attrs.ean:''}`,rx,y); y+=9;
   doc.setTextColor(...PNAVY); doc.setFontSize(15); const nm=doc.splitTextToSize(String(m.p.descricao||'').toUpperCase(),rw).slice(0,3); doc.text(nm,rx,y); y+=nm.length*6.5+3;
   doc.setFillColor(...PGOLD); doc.roundedRect(rx,y,rw,27,4,4,'F'); doc.setTextColor(...PNAVY); doc.setFontSize(9); doc.text(m.q?`COMPRANDO ${m.q.toLocaleString('pt-BR')} UNIDADES`:'PREÇO ESPECIAL',rx+5,y+7); doc.setFontSize(28); doc.text(brl(m.pr),rx+5,y+21); doc.setFontSize(9); doc.text('s/ IPI',rx+8+doc.getTextWidth(brl(m.pr))*28/9,y+21);
   y+=34; doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...PGREY);
   if(m.de>m.pr){doc.text('De ',rx,y); const dw=doc.getTextWidth('De '), dt=brl(m.de); doc.text(dt,rx+dw,y); doc.line(rx+dw,y-1.2,rx+dw+doc.getTextWidth(dt),y-1.2); doc.setFont('helvetica','bold'); doc.setTextColor(29,107,56); doc.text(`Economia de ${Math.round((1-m.pr/m.de)*100)}%`,rx+rw,y,{align:'right'}); y+=6}
   doc.setFont('helvetica','normal'); doc.setTextColor(...PGREY); doc.text(`IPI ${pct(m.p.ipi)}${m.q?' · Total do lote: '+brl(m.q*m.pr)+' s/ IPI':''}`,rx,y);
-  if(cs.length){let cy=by+bh+12; doc.setTextColor(...PGOLD); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('APROVEITE E COMPLETE O PEDIDO',M,cy); cy+=5; const cw=(W-2*M-6)/2,chh=34;
-    cs.forEach((c,i)=>{const col=i%2; if(col===0&&i>0) cy+=chh+5; if(cy+chh>H-22){doc.addPage(); bg(); cy=16} const cx=M+col*(cw+6); doc.setFillColor(42,49,87); doc.roundedRect(cx,cy,cw,chh,4,4,'F'); doc.setFillColor(255,255,255); doc.roundedRect(cx+3,cy+3,28,28,3,3,'F'); fitImg(doc,cim[i],cx+4,cy+4,26,26);
-      doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.text(String(c.p.cod),cx+35,cy+8.5); doc.setFont('helvetica','normal'); doc.setFontSize(7.4); doc.setTextColor(210); doc.text(doc.splitTextToSize(String(c.p.descricao||''),cw-38).slice(0,2),cx+35,cy+13); if(c.q) doc.text('A partir de '+c.q.toLocaleString('pt-BR'),cx+35,cy+21.5);
-      doc.setTextColor(...PGOLD); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text(brl(c.pr),cx+35,cy+29)})}
-  doc.setDrawColor(61,70,117); doc.line(M,H-18,W-M,H-18); doc.setTextColor(210); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.text('Condição válida para pedido único na quantidade indicada · Preços sem IPI · Sujeito à disponibilidade.',M,H-12); doc.text((meuNome()?'Vendedor: '+perfil.nome+'  ·  ':'')+'Chamae Representações · '+new Date().toLocaleDateString('pt-BR'),M,H-7);
-  if(paraEmail){await encGuardar(repName(rep),'Promoção '+repName(rep)+' '+m.p.cod,doc.output('blob'),{tipo:'promo',val:val||null,its:rows.map(r=>({cod:String(r.p.cod),ds:r.p.descricao||'',pr:r.pr,q:r.q}))}); toast('Oferta guardada: já aparece nos E-mails do dia'); return}
-  doc.save(`Promocao_${repName(rep)}_${m.p.cod}.pdf`); toast('PDF salvo')}
+  if(cs.length){let cy=by+bh+12; doc.setTextColor(...OURO); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('APROVEITE E COMPLETE O PEDIDO',M,cy); cy+=5; const cw=(W-2*M-6)/2,chh=34;
+    cs.forEach((c,i)=>{const col=i%2; if(col===0&&i>0) cy+=chh+5; if(cy+chh>H-22){doc.addPage(); bg(false); cy=16} const cx=M+col*(cw+6); if(br){doc.setFillColor(246,247,251); doc.setDrawColor(...PLINE); doc.setLineWidth(.3); doc.roundedRect(cx,cy,cw,chh,4,4,'FD')} else {doc.setFillColor(42,49,87); doc.roundedRect(cx,cy,cw,chh,4,4,'F')} doc.setFillColor(255,255,255); doc.roundedRect(cx+3,cy+3,28,28,3,3,'F'); fitImg(doc,cim[i],cx+4,cy+4,26,26);
+      doc.setTextColor(...TX); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.text(String(c.p.cod),cx+35,cy+8.5); doc.setFont('helvetica','normal'); doc.setFontSize(7.4); doc.setTextColor(...TX3); doc.text(doc.splitTextToSize(String(c.p.descricao||''),cw-38).slice(0,2),cx+35,cy+13); if(c.q) doc.text('A partir de '+c.q.toLocaleString('pt-BR'),cx+35,cy+21.5);
+      doc.setTextColor(...OURO); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text(brl(c.pr),cx+35,cy+29)})}
+  doc.setDrawColor(...(br?PLINE:[61,70,117])); doc.setLineWidth(.3); doc.line(M,H-18,W-M,H-18); doc.setTextColor(...TX3); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.text('Condição válida para pedido único na quantidade indicada · Preços sem IPI · Sujeito à disponibilidade.',M,H-12); doc.text((meuNome()?'Vendedor: '+perfil.nome+'  ·  ':'')+'Chamae Representações · '+new Date().toLocaleDateString('pt-BR'),M,H-7);
+  if(paraEmail){await encGuardar(repName(rep),'Promoção '+repName(rep)+' '+m.p.cod,doc.output('blob'),{tipo:'promo',branco:!!br,val:val||null,its:rows.map(r=>({cod:String(r.p.cod),ds:r.p.descricao||'',pr:r.pr,q:r.q}))}); toast('Oferta guardada: já aparece nos E-mails do dia'); return}
+  doc.save(`Promocao_${repName(rep)}_${m.p.cod}${br?'_impressao':''}.pdf`); toast('PDF salvo')}
 
 /* ---------- orçamento ---------- */
 /* ---------- orçamento padrão (modelo Medix) para todas as representadas ---------- */
@@ -801,10 +805,10 @@ function repDados(rep,rg){const r=(REPS||[]).find(x=>x.id===rep)||{}; const g=rg
     doc:[g.cnpj?'CNPJ '+fmtCnpj(g.cnpj):'',g.ie?'IE '+g.ie:''].filter(Boolean).join('  ·  '),end:[g.endereco,g.bairro].filter(Boolean).join(' - '),cid:[cu.cidade&&cu.uf?cu.cidade+'/'+cu.uf:cu.cidade||cu.uf,g.cep?'CEP '+g.cep:''].filter(Boolean).join('  ·  '),
     con:[fmtFone(g.telefone),g.email,g.site].filter(Boolean).join('  ·  ')}}
 async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); await loadJsPDF(); const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'});
-  const W=210,M=12; const NAVY=[28,35,64],GOLD=[224,161,0],GREY=[110,104,98],LINE=[221,214,207]; const c=o.cli; const num=o.num||new Date().toISOString().replace(/\D/g,'').slice(2,12); const RN=repName(o.rep);
+  const W=210,M=12; const NAVY=[28,35,64],GOLD=[224,161,0],GREY=[110,104,98],LINE=[221,214,207],BAL=[253,244,214]/* cor do balão do preço, também no cartão da representada (Drauzio 09/11) */,LARANJA=[240,125,30]; const c=o.cli; const num=o.num||new Date().toISOString().replace(/\D/g,'').slice(2,12); const RN=repName(o.rep);
   const logo=await imgData('logo.jpg',900); const rg=regra(o.rep); const uf=c?ufOf(c.cid):''; const ic=icmsUF(uf,o.rep); const gur=ehGurO(o,t.tab); if(gur) rg.frete=gurFrete; const pzT=gur?gurPrazo(o.prazo):o.prazo; const F=pdfCfg(o.rep,t.cfg), on=F.on; const PED=ehPed(o.status); const OC=on('oc')&&o.oc?String(o.oc).trim().replace(/^o\.?\s*c\.?\s*(n[ºo°.]*\s*)?[-:#]?\s*(?=\S)/i,''):''; if(t.aj==null){const A_=ajPz(o.rep,o.prazo,t.sub,t.ipi); t={...t,aj:A_.aj,lbl:A_.lbl}} rg.min=minPz(o.rep,o.prazo);
   const RD=on('rep')?repDados(o.rep,t.repG):null; const rlogo=RD&&RD.logo?await imgData(RD.logo,400):null;
-  const head=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24);
+  const head=()=>{doc.setFillColor(...NAVY);doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24); /* faixa laranja embaixo do azul (Drauzio 09/11, teste para aprovação) */ doc.setFillColor(...LARANJA);doc.rect(0,30,W,2.2,'F');
     doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text(PED?'PEDIDO':'ORÇAMENTO',W-M,13,{align:'right'});
     /* com O.C do cliente, ela entra no lugar do nosso nº, em destaque (pedido do Clayton via Victor, 09/11) */
     const dtH=new Date().toLocaleDateString('pt-BR'); if(OC){/* só o número da O.C, curto e sempre do mesmo tamanho (Victor 09/11: nada de texto enorme) */ const tk=OC.split(/\s+/).find(w=>/\d/.test(w))||OC; const ocC=tk.replace(/[-_.\/]+[^\d]*$/,'').slice(0,18); doc.setTextColor(...GOLD);doc.setFont('helvetica','bold');doc.setFontSize(11.5);doc.text(`O.C ${ocC}  ·  ${dtH}`,W-M,19.4,{align:'right'}); doc.setTextColor(255)}
@@ -812,7 +816,7 @@ async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); awai
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Produtos '+RN,W-M,24.5,{align:'right'});};
   head(); let y=38; doc.setTextColor(30);
   if(RD){const tw=W-2*M-8-(rlogo?30:0), x0=M+4+(rlogo?30:0); const L3=[RD.doc,[RD.end,RD.cid].filter(Boolean).join('  ·  '),RD.con].filter(Boolean); doc.setFontSize(8.3); const L4=L3.map(l=>doc.splitTextToSize(l,tw)[0]); const h=Math.max(rlogo?22:0,12.5+L4.length*3.9);
-    doc.setFillColor(250,247,240);doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,h,2,2,'FD');
+    doc.setFillColor(...BAL);doc.setDrawColor(...LINE);doc.roundedRect(M,y,W-2*M,h,2,2,'FD');
     if(rlogo){const bw=26,bh=h-6,k=Math.min(bw/rlogo.w,bh/rlogo.h); doc.addImage(rlogo.d,'JPEG',M+4+(bw-rlogo.w*k)/2,y+3+(bh-rlogo.h*k)/2,rlogo.w*k,rlogo.h*k)}
     doc.setFontSize(7);doc.setTextColor(...GREY);doc.text('REPRESENTADA / FABRICANTE',x0,y+5.2);doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(doc.splitTextToSize(RD.razao,tw)[0],x0,y+10);
     doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(60);L4.forEach((l,k)=>doc.text(l,x0,y+14.4+k*3.9)); y+=h+4}
@@ -839,7 +843,7 @@ async function pdf(o,rows,t){if(!rows.length) throw new Error('sem itens'); awai
     doc.setFontSize(7.8);doc.setTextColor(...GREY);sl=doc.splitTextToSize(spec,104).slice(0,2); doc.text(sl,x0,y+14.5+tl.length*3.8); tb=y+14.5+tl.length*3.8+Math.max(0,sl.length-1)*3.3;}
     if(fUrl&&on('ficha')){const fy=Math.max(y+31,tb+4.8); doc.setFontSize(8.2);doc.setTextColor(30,80,180);doc.textWithLink('Ficha técnica (PDF) - clique para abrir',x0,fy,{url:fUrl});const lw=doc.getTextWidth('Ficha técnica (PDF) - clique para abrir');doc.setDrawColor(30,80,180);doc.setLineWidth(.2);doc.line(x0,fy+.6,x0+lw,fy+.6); tb=fy}
     if(cpo){doc.setFillColor(232,84,40);doc.roundedRect(W-M-44,y-2.6,40,5.4,1.5,1.5,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('CAMPANHA'+(cpo.fim?' ATÉ '+dbr(cpo.fim):''),W-M-24,y+1.1,{align:'center'});doc.setFont('helvetica','normal')}
-    doc.setFillColor(253,244,214);doc.roundedRect(W-M-44,y+3,40,11,2,2,'F');
+    doc.setFillColor(...BAL);doc.roundedRect(W-M-44,y+3,40,11,2,2,'F');
     doc.setTextColor(30);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(pu?brl(pu):'a consultar',W-M-6,y+10.6,{align:'right'});
     doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GREY);doc.text(+it.ipi&&on('cipi')?`unit. s/ IPI · c/ IPI ${brl(pu*(1+it.ipi/100))}`:ML?'preço unitário (par)':'preço unitário',W-M-6,y+17.2,{align:'right'});
     doc.setTextColor(30);doc.setFontSize(8.5);doc.text(`${qt} ${ML?(qt===1?'par':'pares'):String(it.un||'un.').toLowerCase().slice(0,6)} x ${pu?brl(pu):'-'} =`,W-M-6,y+21.8,{align:'right'});

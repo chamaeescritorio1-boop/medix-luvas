@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026110924",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Um só retorno por orçamento + “E agora?” ao concluir",
+   "texto": "Cada orçamento agora tem uma única tarefa de retorno na Agenda. Ao registrar o contato depois de salvar, o retorno que já existia muda para a data escolhida, sem criar outra tarefa. Ao concluir a tarefa, escolha o que fazer: Fechou pedido (abre o Transmitir), Perdeu (pergunta o motivo), Sem próximo passo ou Retornar de novo (amanhã, 3 dias, 7 dias ou dia e hora)."
+  },
+  {
    "id": "2026110923",
    "data": "2026-11-09",
    "tipo": "correcao",

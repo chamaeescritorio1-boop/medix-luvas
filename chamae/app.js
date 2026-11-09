@@ -791,7 +791,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
     if(id==='opdf'||id==='owa'){const r_=gerar(id==='owa'?'wa':'dl',b); ov.remove(); return r_}
     ov.remove();
     if(id==='fim'){await limparCarrinho(rep,true); ctx.ot=null; ctx.rep=null; go('home'); return toast('Orçamento salvo · carrinho zerado')}
-    if(id==='otar'){await save('rascunho'); return formTarefa({titulo:`Follow-up orçamento ${repName(rep)}${o.cli?' – '+(o.cli.fa||o.cli.n):''}`,tipo:'followup',cnpj:o.cli&&o.cli.cnpj,cliente:o.cli&&o.cli.n,rep,orcamento_id:o.sid,vence:maisDias(+(L('fupDias')??3)||3)})}
+    if(id==='otar'){await save('rascunho'); {const ex=await fupAberta(o.sid); if(ex){toast('Este orçamento já tem retorno na Agenda — ajuste a data'); return formTarefa(ex)}} return formTarefa({titulo:`Retorno de orçamento ${repName(rep)}${o.cli?' – '+(o.cli.fa||o.cli.n):''}`,tipo:'followup',cnpj:o.cli&&o.cli.cnpj,cliente:o.cli&&o.cli.n,rep,orcamento_id:o.sid,vence:maisDias(+(L('fupDias')??3)||3)})}
     if(id==='omail'){if(!rows.length) return toast('Adicione itens antes'); if(!confValores(o,rows)||!(await confDivergencias(o,rows))) return; await save('rascunho'); return enviarEmail({cnpj:o.cli&&o.cli.cnpj,cliente:o.cli&&(o.cli.fa||o.cli.n),assunto:`${DocNm(o)} ${repName(rep)}${o.num?' Nº '+o.num:''}${o.oc?' – O.C '+o.oc:''}${o.cli?' – '+(o.cli.fa||o.cli.n):''}`,texto:`Prezado(a) cliente,\n\nSegue em anexo o ${docNm(o)} ${repName(rep)}${ehPed(o)?'':' solicitado'}, no valor de ${brl(sub+ipi+aj+fr)}${o.prazo?', prazo '+o.prazo:''}.\n\nQualquer dúvida estou à disposição.\n\nAtenciosamente,\n${vendNome(o)}\nChamae Representações`,gerarPDF:()=>pdf(o,rows,{...tt,tab,tr:tr[o.transp],mode:'blob'}),ref:{tipo:'orcamento',id:o.sid||'',cnpj:o.cli&&o.cli.cnpj}}).then(ok=>{if(ok){o._env=true; save('enviado')} if(route==='orc'&&p.isConnected) posSalvar(ok||o._env)})}}};
   p.onchange=e=>{const t=e.target; if(t.dataset.opqt){const it=o.itens.find(i=>i.pid==t.dataset.opqt); if(it){it.qt=Math.max(0,+t.value||0); if(!it.qt) o.itens=o.itens.filter(i=>i!==it); saveQ(o)} return orc()} if(t.dataset.odc||t.dataset.odp){const it=o.itens.find(i=>i.pid==(t.dataset.odc||t.dataset.odp)); if(it){it[t.dataset.odc?'dc':'dp']=t.checked||undefined; saveQ(o)} return orc()} if(t.dataset.opu){negociarPreco(o,+t.dataset.opu,t.value,+t.dataset.ptab); return orc()} if(t.dataset.oq){const it=o.itens.find(i=>i.pid==t.dataset.oq); it.qt=Math.max(0,+t.value||0); if(!it.qt) o.itens=o.itens.filter(i=>i!==it); saveQ(o); return orc()}
     if(t.id==='otab'){const nt=+t.value; if(NIV_REP(rep)&&o.itens.length){const dif=o.itens.some(i=>(i.tab||o.tabela)!=nt); if(dif&&confirm('Aplicar este nível de comissão a todos os itens do orçamento?\n\nOK = todos os itens · Cancelar = só os próximos itens que você adicionar')) o.itens.forEach(i=>{if((i.tab||o.tabela)!=nt) delete i.pu; delete i.tab}); else o.itens.forEach(i=>{if(!i.tab) i.tab=o.tabela})} o.tabela=nt; saveQ(o); lembrarTabela(rep,o.cli,o.tabela); return orc()} if(t.id==='opz'){o.prazo=t.value; saveQ(o); return orc()} if(t.id==='ovend'){o.vend=t.value; saveQ(o); return orc()}
@@ -2904,7 +2904,7 @@ async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje
     const nv=t.closest('[data-nav]'); if(nv){AG.dia=+nv.dataset.nav?addD(AG.dia,+nv.dataset.nav*passo):hoje(); return tarefasView()}
     const gd=t.closest('[data-agdia]'); if(gd){AG.dia=gd.dataset.agdia; f.modo='dia'; LS('tarF',f); return tarefasView()}
     if(t.id==='tnova') return formTarefa(ag?{vence:AG.dia<hoje()?hoje():AG.dia}:{});
-    const ck=t.closest('[data-tok]'); if(ck){const fr=await formulario('Concluir tarefa',[{k:'r',l:'Como foi? (opcional)',ph:'ex.: pediu orçamento, ligar semana que vem'}],'Concluir'); if(!fr) return; const res=fr.r||''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
+    const ck=t.closest('[data-tok]'); if(ck){const tt=(rows||[]).find(x=>x.id==ck.dataset.tok); if(tt&&tt.orcamento_id) return abrirTarefa(tt); const fr=await formulario('Concluir tarefa',[{k:'r',l:'Como foi? (opcional)',ph:'ex.: pediu orçamento, ligar semana que vem'}],'Concluir'); if(!fr) return; const res=fr.r||''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
     const ad=t.closest('[data-tadia]'); if(ad){await api(`tarefas?id=eq.${ad.dataset.tadia}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+ad.dataset.d)})}); toast('Reagendada'); contaTarefas(); return tarefasView()}
     const cl=t.closest('[data-tcli]'); if(cl) return go('cli',{cnpj:cl.dataset.tcli});
     const oo=t.closest('[data-torc]'); if(oo){const tt=(rows||[]).find(x=>x.id==oo.closest('[data-tid]').dataset.tid); return detOrc(tt.orcamento_id)}
@@ -2921,7 +2921,7 @@ async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje
   p+=f.ab==='feitas'?'&feita=eq.true&order=feita_em.desc':f.ab==='atr'?`&feita=eq.false&vence=lt.${h}`:f.ab==='hoje'?`&feita=eq.false&vence=eq.${h}`:`&feita=eq.false&vence=gt.${h}`;
   try{rows=await api(p.replace('&order=vence,hora&limit=300'+quem+'&feita=eq.true&order=feita_em.desc',quem+'&feita=eq.true&order=feita_em.desc&limit=100'))}catch(e){$('#tl').innerHTML=`<p class="warn">${SQL6}</p>`;return}
   if(!m.isConnected) return;
-  $('#tl').innerHTML=rows.map(t=>`<div class="card" data-tid="${t.id}" style="cursor:pointer;margin-bottom:8px;${t.vence<h&&!t.feita?'border-color:var(--bad)':''}"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(TT[t.tipo]||t.tipo||'')} · ${esc(t.titulo)}</b>
+  $('#tl').innerHTML=rows.map(t=>`<div class="card" data-tid="${t.id}" style="cursor:pointer;margin-bottom:8px;${t.vence<h&&!t.feita?'border-color:var(--bad)':''}"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(TT[t.tipo]||t.tipo||'')} · ${esc(tTit(t))}</b>
      <div class="hint">${esc(t.vence.split('-').reverse().join('/'))}${t.hora?' '+esc(t.hora)+'–'+mh(tFim(t)):''}${t.rep?' · '+esc(repName(t.rep)):''}${f.quem==='todos'&&t.responsavel_nome?' · '+esc(t.responsavel_nome):''}${t.feita&&t.resultado?' · '+esc(t.resultado):''}</div>${t.obs?`<div style="font-size:13px">${esc(t.obs)}</div>`:''}
      <div class="row" style="margin-top:6px">${t.cnpj?`<button class="chip" data-tcli="${esc(t.cnpj)}">${esc(t.cliente||'Cliente')} ›</button>`:''}${t.orcamento_id?`<button class="chip" data-torc="1" data-q="${esc(t.cliente||'')}">Ver orçamento</button>`:''}</div></div>
      ${t.feita?'<span class="tag ok">feita</span>':`<div class="grid" style="gap:4px;justify-items:end"><button class="btn sm" data-tok="${t.id}">✓ Concluir</button><div class="row" style="gap:4px"><button class="chip" data-tadia="${t.id}" data-d="1">+1d</button><button class="chip" data-tadia="${t.id}" data-d="7">+7d</button></div></div>`}</div></div>`).join('')||'<p class="hint">Nada aqui. 🎉</p>'}
@@ -2974,8 +2974,11 @@ async function formTarefa(pre){const ed=!!pre.id; const ov=document.createElemen
       catch(err){toast(/duracao/.test(err.message)?'Falta a coluna duracao na tabela tarefas (Supabase)':/relation|does not exist|tarefas/.test(err.message)?'Rode o SQL 6 no Supabase para ativar tarefas':'Erro: '+err.message)}}};
   ver()}
 /* follow-up automático quando o orçamento é enviado */
+const tTit=t=>t.tipo==='followup'?String(t.titulo||'').replace(/^(Retorno de orçamento|Follow-up orçamento)\s*/i,'')||t.titulo:t.titulo;
+/* uma tarefa de retorno por orçamento (09/11): acha a que está aberta */
+async function fupAberta(sid){if(!sid) return null; try{return (await api(`tarefas?select=*&orcamento_id=eq.${encodeURIComponent(sid)}&feita=eq.false&tipo=eq.followup&order=vence,criado_em.desc&limit=1`))[0]||null}catch(e){return null}}
 async function followUpOrc(o,total){if(!o||!o.sid) return; const dias_=+(L('fupDias')??3); if(!dias_) return; try{const ex=await api(`tarefas?select=id&orcamento_id=eq.${encodeURIComponent(o.sid)}&feita=eq.false`); if(ex.length) return;
-  await novaTarefa({titulo:`Follow-up orçamento ${repName(o.rep)} – ${o.cli?o.cli.fa||o.cli.n:'cliente'} (${brl(total)})`,tipo:'followup',cnpj:o.cli&&o.cli.cnpj||null,cliente:o.cli&&o.cli.n||null,rep:o.rep,orcamento_id:o.sid,vence:maisDias(dias_)}); contaTarefas()}catch(e){}}
+  await novaTarefa({titulo:`Retorno de orçamento ${repName(o.rep)} – ${o.cli?o.cli.fa||o.cli.n:'cliente'} (${brl(total)})`,tipo:'followup',cnpj:o.cli&&o.cli.cnpj||null,cliente:o.cli&&o.cli.n||null,rep:o.rep,orcamento_id:o.sid,vence:maisDias(dias_)}); contaTarefas()}catch(e){}}
 async function fecharFollowUps(sid,res){try{await api(`tarefas?orcamento_id=eq.${encodeURIComponent(sid)}&feita=eq.false`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res})})}catch(e){}}
 
 /* ================= Bater carteira: painel rápido do cliente ================= */
@@ -3070,11 +3073,13 @@ function regOrcHtml(st){const P=st.p; if(P) return `<div class="card regc" style
    <textarea data-rcx rows="2" placeholder="Algo a mais? (opcional: comprador, urgência, concorrente…)">${esc(st.tx||'')}</textarea>
    <div class="row" style="align-items:center"><span class="hint">Retornar:</span>${[[0,'Não'],[1,'Amanhã'],[3,'3 dias'],[7,'7 dias']].map(([d,l])=>`<button class="chip${!st.dh&&d===st.ret?' on':''}" data-rcn="${d}">${l}</button>`).join('')}<button class="chip${st.dh?' on':''}" data-rcdh>📅 Dia e hora</button></div>
    <div data-rcdhb class="grid"${st.dh?'':' hidden'}><div class="r2"><label class="f">Dia<input data-rcd type="date" min="${hoje()}" value="${esc(st.d||maisDias(st.ret||1))}"></label><label class="f">Hora<input data-rch type="time" step="300" value="${esc(st.h||'')}"></label></div><span data-rcc class="hint">Escolha o dia e, se quiser, o horário.</span></div>
+   ${st.ex?`<div class="hint" data-rcex>🔁 Este orçamento já tem retorno na Agenda (<b>${esc(st.ex.vence.split('-').reverse().join('/'))}</b>). ${!st.dh&&!st.ret?'Com “Não”, esse retorno é dado como feito.':'Ao registrar, ele <b>muda para a data escolhida</b> — não cria outro.'}</div>`:''}
    <div class="row"><button class="btn" data-rcs>✓ Registrar contato</button><button class="btn ghost" data-rcia>🎙️ Enviar gravação</button></div></div></details>`}
 function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli; if(!c||!c.cnpj){box.innerHTML=''; return}
   const K=o.sid||o.num||''; const feitos=L('regOrc')||{};
   const pend=L('ligPend'); const ligou=pend&&pend.cnpj===c.cnpj&&Date.now()-pend.t<3*36e5;
-  const st={ab:ligou||!matchMedia('(max-width:699px)').matches,tipo:'ligacao',res:'Pediu orçamento',ret:+(L('fupDias')??3)||3,dh:false,tx:'',p:K&&feitos[K]||null}; st.re=repEscSt(c,[repName(rep)]);
+  const st={ab:ligou||!matchMedia('(max-width:699px)').matches,tipo:'ligacao',res:'Pediu orçamento',ret:+(L('fupDias')??3)||3,dh:false,tx:'',p:K&&feitos[K]||null,ex:null}; st.re=repEscSt(c,[repName(rep)]);
+  if(o.sid&&!st.p) setTimeout(()=>fupAberta(o.sid).then(x=>{st.ex=x; if(x&&!st.p&&box.isConnected) pinta()}),1500);
   const g=s=>box.querySelector(s);
   const pinta=()=>{const x=g('[data-rcx]'); if(x){st.tx=x.value; if(st.dh&&g('[data-rcd]')){st.d=g('[data-rcd]').value; st.h=g('[data-rch]').value}} box.innerHTML=regOrcHtml(st); if(st.dh&&!st.p) ver()};
   let bate=[];
@@ -3089,7 +3094,7 @@ function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli;
     if(b=t.closest('[data-rcn]')){st.ret=+b.dataset.rcn; st.dh=false; return pinta()}
     if(t.closest('[data-rcdh]')){st.dh=!st.dh; pinta(); if(st.dh) g('[data-rch]').focus(); return}
     if(t.closest('[data-rcia]')){const ov=box.closest('.ov'); if(ov) ov.remove(); return ligIA({cnpj:c.cnpj,n:c.n,fa:c.fa||''})}
-    if(t.closest('[data-rcdesf]')){const P=st.p; if(!P) return; try{if(P.id) await api(`contatos?id=eq.${P.id}`,{method:'DELETE',headers:{Prefer:'return=minimal'}}); if(P.tid) await api(`tarefas?id=eq.${P.tid}`,{method:'DELETE',headers:{Prefer:'return=minimal'}}); const f=L('regOrc')||{}; delete f[K]; LS('regOrc',f); st.p=null; contaTarefas(); toast('Registro desfeito'); return pinta()}catch(err){return toast('Erro: '+err.message)}}
+    if(t.closest('[data-rcdesf]')){const P=st.p; if(!P) return; try{if(P.id) await api(`contatos?id=eq.${P.id}`,{method:'DELETE',headers:{Prefer:'return=minimal'}}); if(P.tid){if(P.mv) await api(`tarefas?id=eq.${P.tid}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(P.mv)}); else await api(`tarefas?id=eq.${P.tid}`,{method:'DELETE',headers:{Prefer:'return=minimal'}})} const f=L('regOrc')||{}; delete f[K]; LS('regOrc',f); st.p=null; contaTarefas(); toast('Registro desfeito'); return pinta()}catch(err){return toast('Erro: '+err.message)}}
     if(!(b=t.closest('[data-rcs]'))) return;
     const extra=g('[data-rcx]').value.trim(); const dd=st.dh?g('[data-rcd]').value:'', hh=st.dh?g('[data-rch]').value:''; if(st.dh&&!dd) return toast('Escolha o dia do retorno');
     if(st.dh&&hh){await ver(); if(bate.length&&!confirm(`Nesse horário você já tem: ${bate.map(x=>String(x.hora).slice(0,5)+' '+x.titulo).join('; ')}. Marcar mesmo assim?`)) return}
@@ -3098,8 +3103,11 @@ function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli;
     const texto=resumo+(extra?'\n'+extra:''); b.disabled=true;
     try{const corpo={cnpj:c.cnpj,tipo:st.tipo,texto,resultado:st.res||null,retorno:vence,representada:st.re.txt()||repName(rep),usuario_nome:meuNome()};
       const [ct]=await api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(corpo)}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({cnpj:c.cnpj,tipo:st.tipo,texto,retorno:vence})}));
-      let tid=null; if(vence){const r=await novaTarefa({titulo:`Retorno de orçamento ${repName(rep)} – ${c.fa||c.n}`,tipo:'followup',cnpj:c.cnpj,cliente:c.n,rep,orcamento_id:o.sid||null,vence,...(hh?{hora:hh,duracao:30}:{}),obs:texto}).catch(()=>null); tid=r&&r[0]&&r[0].id||null}
-      st.p={id:ct&&ct.id||null,tid,ret:vence,h:hh}; if(K){const f=L('regOrc')||{}; f[K]=st.p; const ks=Object.keys(f); if(ks.length>60) delete f[ks[0]]; LS('regOrc',f)}
+      let tid=null, mv=null; const ex=await fupAberta(o.sid);
+      if(ex){const pt=vence?{vence,hora:hh||null,obs:texto,...(hh?{duracao:30}:{})}:{feita:true,feita_em:new Date().toISOString(),resultado:st.res||'Sem retorno'};
+        try{await api(`tarefas?id=eq.${ex.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(pt)}); tid=ex.id; mv=vence?{vence:ex.vence,hora:ex.hora,obs:ex.obs,duracao:ex.duracao}:{feita:false,feita_em:null,resultado:null}}catch(e){}}
+      else if(vence){const r=await novaTarefa({titulo:`Retorno de orçamento ${repName(rep)} – ${c.fa||c.n} (${brl(total)})`,tipo:'followup',cnpj:c.cnpj,cliente:c.n,rep,orcamento_id:o.sid||null,vence,...(hh?{hora:hh,duracao:30}:{}),obs:texto}).catch(()=>null); tid=r&&r[0]&&r[0].id||null}
+      st.ex=null; st.p={id:ct&&ct.id||null,tid,mv,ret:vence,h:hh}; if(K){const f=L('regOrc')||{}; f[K]=st.p; const ks=Object.keys(f); if(ks.length>60) delete f[ks[0]]; LS('regOrc',f)}
       if(ligou) LS('ligPend',null); contaTarefas(); toast('Contato registrado'+(vence?' + retorno '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):'')); pinta()}catch(err){toast('Erro: '+err.message); b.disabled=false}};
   pinta()}
 /*REGORC-FIM*/
@@ -3887,18 +3895,52 @@ function tarVoltaPill(t){const v=$('#tarvolta'); if(v) v.remove(); const b=docum
   b.innerHTML=`<button class="btn sm" data-tv>↩ Voltar à tarefa<span style="display:block;font-size:12px;font-weight:500;opacity:.85;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.titulo||'')}${t.cliente?' · '+esc(t.cliente):''}</span></button><button class="chip" data-tvx aria-label="Fechar">✕</button>`;
   b.onclick=e=>{if(e.target.closest('[data-tvx]')) return b.remove(); if(e.target.closest('[data-tv]')){b.remove(); abrirTarefa(t.id)}}; document.body.appendChild(b)}
 /*TARVOLTA-FIM*/
+/*EAGORA-INICIO*/
+/* Ao concluir a tarefa (09/11, pedido do Victor): "E agora?" — Fechou pedido, Perdeu, Sem próximo passo ou Retornar de novo.
+   Uma tarefa de retorno por orçamento: retornar de novo conclui esta e cria a próxima com o mesmo orçamento. */
+function eaHtml(t,ea){const dl=ea.dh?(ea.dd?ea.dd.split('-').reverse().join('/')+(ea.hh?' '+ea.hh:''):'…'):maisDias(ea.d).split('-').reverse().join('/');
+  const lb=ea.k==='ret'?`✓ Concluir e retornar ${dl}`:ea.k==='fechou'?'✓ Concluir · fechou pedido':ea.k==='perdeu'?'✓ Concluir · perdeu':'✓ Concluir';
+  return `<div class="card" style="background:var(--surface2);padding:10px 12px;display:grid;gap:8px"><b>E agora?</b>
+   <div class="row">${t.orcamento_id?`<button class="chip${ea.k==='fechou'?' on':''}" data-ea="fechou">✅ Fechou pedido</button><button class="chip${ea.k==='perdeu'?' on':''}" data-ea="perdeu">❌ Perdeu</button>`:''}<button class="chip${ea.k==='nada'?' on':''}" data-ea="nada">🤝 Sem próximo passo</button></div>
+   <div class="row" style="align-items:center"><span class="hint">Retornar de novo:</span>${[[1,'Amanhã'],[3,'3 dias'],[7,'7 dias']].map(([d,l])=>`<button class="chip${ea.k==='ret'&&!ea.dh&&ea.d===d?' on':''}" data-ean="${d}">${l}</button>`).join('')}<button class="chip${ea.k==='ret'&&ea.dh?' on':''}" data-eadh>📅 Dia e hora</button></div>
+   ${ea.k==='ret'&&ea.dh?`<div class="r2"><label class="f">Dia<input data-ead type="date" min="${hoje()}" value="${esc(ea.dd)}"></label><label class="f">Hora<input data-eah type="time" step="300" value="${esc(ea.hh)}"></label></div>`:''}
+   <span class="hint">${ea.k==='fechou'?'Conclui e abre o Transmitir do orçamento.':ea.k==='perdeu'?'Pergunta o motivo e marca o orçamento como perdido.':ea.k==='ret'?'Conclui esta e já deixa a próxima na Agenda.':'Só conclui, sem nova tarefa.'}</span>
+   <div class="row"><button class="btn" data-tok>${esc(lb)}</button></div></div>`}
+function eaClick(x,ov,t,ea){const box=ov.querySelector('[data-eab]'); if(!box||!box.contains(x)) return false; let b;
+  const lerDH=()=>{const d=box.querySelector('[data-ead]'), h=box.querySelector('[data-eah]'); if(d) ea.dd=d.value; if(h) ea.hh=h.value};
+  lerDH();
+  if(b=x.closest('[data-ea]')){ea.k=b.dataset.ea; ea.dh=false}
+  else if(b=x.closest('[data-ean]')){ea.k='ret'; ea.d=+b.dataset.ean; ea.dh=false}
+  else if(x.closest('[data-eadh]')){ea.k='ret'; ea.dh=true; if(!ea.dd) ea.dd=maisDias(ea.d)}
+  else return false;
+  box.innerHTML=eaHtml(t,ea); return true}
+async function eaConcluir(ov,t,ea,fim){const res=(ov.querySelector('#tres')||{}).value; const r=(res||'').trim(); const bt=ov.querySelector('[data-tok]'); const box=ov.querySelector('[data-eab]');
+  if(box){const d=box.querySelector('[data-ead]'), h=box.querySelector('[data-eah]'); if(d) ea.dd=d.value; if(h) ea.hh=h.value}
+  const feita=resultado=>api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:resultado||null})});
+  if(ea.k==='perdeu'){try{await setStatus(t.orcamento_id,'cancelado')}catch(e){return toast(e.message)} await feita('Perdeu'+(r?' · '+r:'')); toast('Orçamento marcado como perdido'); return fim()}
+  if(ea.k==='fechou'){await feita('Fechou pedido'+(r?' · '+r:'')); fim(); toast('Concluída · agora transmita o pedido'); try{const o=(await api(`orcamentos?select=*&id=eq.${encodeURIComponent(t.orcamento_id)}`))[0]; if(o) return transmitir(o)}catch(e){} return detOrc(t.orcamento_id)}
+  if(ea.k==='ret'){const vence=ea.dh?ea.dd:maisDias(ea.d), hh=ea.dh?ea.hh:''; if(!vence) return toast('Escolha o dia do retorno');
+    if(hh){const c=await conflitos(vence,hh,+t.duracao||30,t.responsavel); if(c.bate.length&&!confirm(`Nesse horário já tem: ${c.bate.map(x=>String(x.hora).slice(0,5)+' '+x.titulo).join('; ')}. Marcar mesmo assim?`)) return}
+    if(bt) bt.disabled=true;
+    const dt=new Date().toLocaleDateString('pt-BR').slice(0,5); const obs=[t.obs||'',r?`${dt}: ${r}`:''].filter(Boolean).join('\n');
+    try{await novaTarefa({titulo:t.titulo,tipo:t.tipo,cnpj:t.cnpj||null,cliente:t.cliente||null,rep:t.rep||null,orcamento_id:t.orcamento_id||null,vence,...(hh?{hora:hh,duracao:+t.duracao||30}:{}),obs:obs||null,...(t.responsavel?{responsavel:t.responsavel,responsavel_nome:t.responsavel_nome}:{})}); await feita(r||'Retornar de novo')}catch(e){if(bt) bt.disabled=false; return toast('Erro: '+e.message)}
+    toast('Concluída · próximo retorno '+vence.split('-').reverse().join('/')+(hh?' '+hh:'')); return fim()}
+  await feita(r); toast('Tarefa concluída'); return fim()}
+/*EAGORA-FIM*/
 async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?select=*&id=eq.${t}`))[0]}catch(e){} if(!t) return}
   {const v=$('#tarvolta'); if(v) v.remove()}
-  const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between;align-items:flex-start"><b style="font-size:18px">${esc(TT[t.tipo]||'✔️ Tarefa')} · ${esc(t.titulo)}</b><button class="chip" data-x>✕</button></div>
+  const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between;align-items:flex-start"><b style="font-size:18px">${esc(TT[t.tipo]||'✔️ Tarefa')} · ${esc(tTit(t))}</b><button class="chip" data-x>✕</button></div>
    ${fichaTopo([['Quando',t.vence.split('-').reverse().join('/')+(t.hora?' · '+t.hora+'–'+mh(tFim(t)):''),0],['Responsável',t.responsavel_nome||'Equipe'],['Cliente',t.cliente||'—'],['Representada',t.rep?repName(t.rep):'—']])}
    ${t.obs?`<div class="card" style="white-space:pre-wrap">${esc(t.obs)}</div>`:'<p class="hint" style="margin:0">Sem observações.</p>'}
    ${t.feita?`<p class="ok">✓ Concluída ${t.feita_em?new Date(t.feita_em).toLocaleString('pt-BR'):''}${t.resultado?' · '+esc(t.resultado):''}</p>`:''}
    <div class="row">${t.feita?'':'<button class="btn ghost" data-ted>✏️ Editar / mudar horário</button>'}${t.orcamento_id?'<button class="btn ghost" data-to>📄 Abrir orçamento</button>':''}${t.cnpj?'<button class="btn ghost" data-tf>👤 Ficha do cliente</button><button class="btn ghost" data-tr>📞 Registrar contato</button>':''}</div>
-   ${t.feita?'':`<label class="f">Resultado (opcional)<input id="tres" placeholder="ex.: cliente aprovou, vai enviar OC"></label><div class="row"><button class="btn" data-tok>✓ Concluir</button><button class="chip" data-ad="1">Amanhã</button><button class="chip" data-ad="3">+3 dias</button><button class="chip" data-ad="7">+7 dias</button><input id="tnd" type="date" style="width:auto"><input id="tnh" type="time" value="${esc(t.hora||'')}" style="width:auto"><button class="chip" data-rag>Reagendar</button></div>`}</div>`; document.body.appendChild(ov);
+   ${t.feita?'':`<label class="f">Como foi? (opcional)<input id="tres" placeholder="ex.: comprador ainda comparando preço"></label><div data-eab></div>
+   <details class="hint"><summary style="cursor:pointer">Não conseguiu falar? Só mudar a data desta tarefa</summary><div class="row" style="margin-top:6px"><button class="chip" data-ad="1">Amanhã</button><button class="chip" data-ad="3">+3 dias</button><button class="chip" data-ad="7">+7 dias</button><input id="tnd" type="date" style="width:auto"><input id="tnh" type="time" value="${esc(t.hora||'')}" style="width:auto"><button class="chip" data-rag>Reagendar</button></div></details>`}</div>`; document.body.appendChild(ov);
+  const ea={k:t.tipo==='followup'||t.orcamento_id?'ret':'nada',d:3,dh:false,dd:'',hh:''}; const eab=ov.querySelector('[data-eab]'); if(eab){eab.innerHTML=eaHtml(t,ea); eab.addEventListener('change',()=>{const d=eab.querySelector('[data-ead]'), h=eab.querySelector('[data-eah]'); if(d) ea.dd=d.value; if(h) ea.hh=h.value; eab.innerHTML=eaHtml(t,ea)})}
   const fim=()=>{ov.remove(); contaTarefas(); if(route==='tar') tarefasView()};
   ov.onclick=async e=>{const x=e.target; if(x.closest('[data-x]')||x===ov) return ov.remove();
-    try{if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')) return tarPorCima(ov,t,()=>detOrc(t.orcamento_id)); if(x.closest('[data-tf]')){ov.remove(); go('cli',{cnpj:t.cnpj}); return tarVoltaPill(t)} if(x.closest('[data-tr]')) return tarPorCima(ov,t,()=>painelCliente(t.cnpj))
-      if(x.closest('[data-tok]')){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:ov.querySelector('#tres').value.trim()||null})}); toast('Tarefa concluída'); return fim()}
+    try{if(eaClick(x,ov,t,ea)) return; if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')) return tarPorCima(ov,t,()=>detOrc(t.orcamento_id)); if(x.closest('[data-tf]')){ov.remove(); go('cli',{cnpj:t.cnpj}); return tarVoltaPill(t)} if(x.closest('[data-tr]')) return tarPorCima(ov,t,()=>painelCliente(t.cnpj))
+      if(x.closest('[data-tok]')) return eaConcluir(ov,t,ea,fim);
       const a=x.closest('[data-ad]'); if(a){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+a.dataset.ad)})}); toast('Reagendada'); return fim()}
       if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); if(h){const c=await conflitos(d||t.vence,h,+t.duracao||30,t.responsavel,t.id); if(c.bate.length&&!confirm(`Esse horário já tem: ${c.bate.map(x=>x.hora+' '+x.titulo).join('; ')}. Reagendar mesmo assim?`)) return} await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}
 

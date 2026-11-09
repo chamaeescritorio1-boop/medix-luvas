@@ -83,16 +83,19 @@ async function contexto(cnpj: string) {
 }
 
 const lista = { type: 'array', items: { type: 'string' } };
+// fábricas que a Chamae representa (mesmos nomes do Sistema, para o vendedor já ver marcado de qual falou)
+const REPRESENTADAS = ['Marcon', 'Marluvas', 'Medix', 'Sigma Tools', 'Camper', 'ZM Bombas', 'Terra', 'Fortlev', 'Pegorari', 'Valcan', 'CID', 'Chemicals 4U'];
 const ESQUEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['tipo_audio', 'resumo', 'pontos_chave', 'proximos_passos', 'resultado', 'proximo_contato', 'feedback', 'alertas'],
+  required: ['tipo_audio', 'resumo', 'pontos_chave', 'proximos_passos', 'resultado', 'representadas', 'proximo_contato', 'feedback', 'alertas'],
   properties: {
     tipo_audio: { type: 'string', enum: ['conversa', 'resumo_do_vendedor', 'sem_conteudo'] },
     resumo: { type: 'string' },
     pontos_chave: lista,
     proximos_passos: lista,
     resultado: { type: 'string', enum: ['Pediu orçamento', 'Vai comprar', 'Sem demanda agora', 'Não atendeu', 'Retornar depois', 'Outro'] },
+    representadas: { type: 'array', items: { type: 'string', enum: REPRESENTADAS } },
     proximo_contato: {
       type: 'object', additionalProperties: false, required: ['data', 'hora', 'motivo'],
       properties: { data: { type: 'string' }, hora: { type: 'string' }, motivo: { type: 'string' } },
@@ -114,6 +117,7 @@ Responda em português do Brasil, direto e prático, como um gerente de vendas e
 - pontos_chave: fatos concretos ditos (produtos, quantidades, preços, prazos, concorrente citado, objeções, pessoa de contato, prazo de compra). Só o que foi dito.
 - proximos_passos: ações claras que o vendedor precisa fazer, em ordem.
 - resultado: a opção que melhor descreve como terminou a conversa.
+- representadas: de quais fábricas se falou na conversa, pelo nome da marca ou pelos produtos (use o histórico de pedidos do cliente para saber de qual fábrica é cada produto). Use só nomes desta lista: ${REPRESENTADAS.join(', ')}. Lista vazia se não der para saber.
 - proximo_contato: data (AAAA-MM-DD) e hora (HH:MM) do próximo contato. Use o que foi combinado na conversa; se nada foi combinado, sugira uma data razoável para o caso (dia útil). Hora vazia se não foi combinada. Data vazia só se não fizer sentido voltar a ligar. motivo: o que fazer nesse contato.
 - feedback: com base no que aparece na transcrição, pontos_fortes do vendedor e o que ele poderia ter feito diferente (melhorar), sempre citando o momento da conversa. Pense em: descobrir necessidade e volume, oferecer itens que o cliente costuma comprar ou complementares, tratar objeção de preço, criar urgência, fechar com um próximo passo e data. frase_sugerida: uma frase pronta que o vendedor poderia ter usado. Se o áudio for só um resumo do vendedor, diga que o feedback é limitado e foque no que ele contou.
 - alertas: riscos ou oportunidades importantes (cliente insatisfeito, comprando de concorrente, pedido grande à vista, reclamação). Lista vazia se não houver.
@@ -155,7 +159,7 @@ async function analisarGroq(msg: string) {
       const arr = (x: unknown) => Array.isArray(x) ? x.map(String) : [];
       const pc = o.proximo_contato || {}, fb = o.feedback || {};
       return { tipo_audio: String(o.tipo_audio || 'conversa'), resumo: String(o.resumo || ''), pontos_chave: arr(o.pontos_chave), proximos_passos: arr(o.proximos_passos),
-        resultado: String(o.resultado || 'Outro'), proximo_contato: { data: String(pc.data || ''), hora: String(pc.hora || ''), motivo: String(pc.motivo || '') },
+        resultado: String(o.resultado || 'Outro'), representadas: arr(o.representadas).filter((r) => REPRESENTADAS.includes(r)), proximo_contato: { data: String(pc.data || ''), hora: String(pc.hora || ''), motivo: String(pc.motivo || '') },
         feedback: { pontos_fortes: arr(fb.pontos_fortes), melhorar: arr(fb.melhorar), frase_sugerida: String(fb.frase_sugerida || '') }, alertas: arr(o.alertas),
         modelo: JSON.parse(tx).model };
     } catch (_) { ultimo = 'resposta fora do formato'; }

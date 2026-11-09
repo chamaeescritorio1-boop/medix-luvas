@@ -1583,7 +1583,7 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
     box.onclick=e=>{if(e.target.closest('[data-semab]')){LS('semAb',!semAb()); return minhaSemana(box,priv)} const t=e.target.closest('[data-sm]'); if(t){LS('soMeus',t.dataset.sm==='1'); return minhaSemana(box,priv)} if(e.target.closest('[data-gometas]')){e.preventDefault(); e.stopPropagation(); return go('metas')}
       if(e.target.closest('[data-nhm]')){todos=!todos; box.querySelector('[data-nh]').innerHTML=nhHtml(); return} const vb=e.target.closest('[data-vir],[data-vim]'); if(vb){if(vb.dataset.vir!=null){viR=vb.dataset.vir; viT=false} else viT=!viT; box.querySelector('[data-vi]').innerHTML=viHtml(); return}
       if(e.target.closest('[data-gorep]')){e.preventDefault(); e.stopPropagation(); return go('reps')}
-      const c=e.target.closest('[data-pc]'); if(c){e.stopPropagation(); return painelCliente(c.dataset.pc,(c.dataset.pl?VI.L.filter(x=>!viR||x.rep===viR):NH).map(x=>x.cnpj))}
+      const c=e.target.closest('[data-pc]'); if(c){e.stopPropagation(); {const LL=c.dataset.pl?VI.L.filter(x=>!viR||x.rep===viR):NH, it=LL.find(x=>x.cnpj===c.dataset.pc); return painelCliente(c.dataset.pc,LL.map(x=>x.cnpj),{reps:it&&it.rep?[it.rep]:[]})}}
       const o=e.target.closest('[data-bo]'); if(o){e.stopPropagation(); LS('pedF',{...(L('pedF')||{}),q:o.dataset.bo,tipo:'orc',mo:-1}); go('ped')}}}
   catch(e){box.innerHTML=''}}
 
@@ -1686,7 +1686,7 @@ async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ge
       if(g('[data-agab]')){LS('agAb',L('agAb')!==true); aberto=null; return draw('')}
       if(x=n('[data-agx]')){LS('agAb',true); aberto=L2.indexOf(x); draw(''); const el=box.querySelector(`[data-agi="${aberto}"]`); if(el) el.scrollIntoView({block:'center'}); return}
       if(x=n('[data-agv]')){const i=L2.indexOf(x); aberto=aberto===i?null:i; return draw('')}
-      if(x=n('[data-agc]')){e.stopPropagation(); return painelCliente(x.cnpj,L2.map(y=>y.cnpj))}
+      if(x=n('[data-agc]')){e.stopPropagation(); return painelCliente(x.cnpj,L2.map(y=>y.cnpj),{reps:x.rep?[x.rep]:[]})}
       if(x=n('[data-ago]')){e.stopPropagation(); return detOrc(x.oid)}
       if(x=n('[data-agt]')){e.stopPropagation(); return formTarefa({cnpj:x.cnpj,cliente:x.razao||x.n,rep:Object.keys(HIST_REP).find(k=>HIST_REP[k]===x.rep)||null,orcamento_id:x.oid||null,tipo:'ligacao',titulo:x.ag==='orc'?`Cobrar orçamento ${x.rep} (${brl(x.v)})`:`Retomar compras ${x.rep}`})}
       if(n('[data-agl]')||n('[data-agw]')) return; /* deixa o link abrir */
@@ -2501,9 +2501,10 @@ async function fichaCliente(cnpj,novo){const m=$('#main'); m.innerHTML='<p class
    <div class="card grid" data-cp="l" hidden><div id="ligbox"></div></div>
    <div class="card grid" data-cp="t" hidden><div id="ctpbox"><p class="hint">Carregando…</p></div></div>
    <div class="card grid" data-cp="b" hidden><p class="hint" style="margin:0">Libere o e-mail do comprador. Ele entra em <b>chamaeescritorio1-boop.github.io/medix-luvas/b2b/</b>, cria a senha no primeiro acesso, vê os preços da tabela dele e manda pedidos que chegam aqui como “Aguardando aprovação”.</p><div id="b2bbox"><p class="hint">Carregando…</p></div></div>
-   <div class="card grid" data-cp="n" hidden><div class="r2"><select id="nt"><option value="visita">Visita</option><option value="ligacao">Ligação</option><option value="whatsapp">WhatsApp</option><option value="anotacao">Anotação</option></select><label class="f">Retornar em<input id="nr" type="date"></label></div><textarea id="nx" rows="2" placeholder="O que foi conversado / próximo passo"></textarea><button class="btn sm" id="nadd"${!cnpj?' disabled':''}>Registrar</button>
+   <div class="card grid" data-cp="n" hidden><div class="r2"><select id="nt"><option value="visita">Visita</option><option value="ligacao">Ligação</option><option value="whatsapp">WhatsApp</option><option value="anotacao">Anotação</option></select><label class="f">Retornar em<input id="nr" type="date"></label></div><div id="nrep"></div><textarea id="nx" rows="2" placeholder="O que foi conversado / próximo passo"></textarea><button class="btn sm" id="nadd"${!cnpj?' disabled':''}>Registrar</button>
      <b style="margin-top:6px">Tudo o que já foi falado com o cliente</b><span class="hint" style="margin-top:-6px">Registros do Bater carteira, da ficha e das ligações enviadas, do mais novo para o mais antigo.</span>
-     ${ativ.map(a=>`<div class="cvr"><div class="row" style="gap:6px"><b>${esc(TT[a.tipo]||a.tipo||'Anotação')}</b>${a.resultado?`<span class="tag">${esc(a.resultado)}</span>`:''}<span class="hint">${dbr(a.criado_em)} ${new Date(a.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${a.usuario_nome?' · '+esc(a.usuario_nome):''}${a.retorno?' · retornar '+esc(a.retorno.split('-').reverse().join('/')):''}</span></div>${a.texto&&a.texto!==a.resultado?`<div class="cvt">${esc(a.texto)}</div>`:''}</div>`).join('')||'<p class="hint">Nenhuma conversa registrada ainda.</p>'}</div>`;
+     ${ativ.map(a=>`<div class="cvr"><div class="row" style="gap:6px"><b>${esc(TT[a.tipo]||a.tipo||'Anotação')}</b>${repTagsTxt(a.representada)}${a.resultado?`<span class="tag">${esc(a.resultado)}</span>`:''}<span class="hint">${dbr(a.criado_em)} ${new Date(a.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${a.usuario_nome?' · '+esc(a.usuario_nome):''}${a.retorno?' · retornar '+esc(a.retorno.split('-').reverse().join('/')):''}</span></div>${a.texto&&a.texto!==a.resultado?`<div class="cvt">${esc(a.texto)}</div>`:''}</div>`).join('')||'<p class="hint">Nenhuma conversa registrada ainda.</p>'}</div>`;
+  const NREP=repEscMount(m.querySelector('#nrep'),base,[]);
   if(ctx.aba){const ab=ctx.aba; delete ctx.aba; setTimeout(()=>{const b=m.querySelector(`[data-ct="${ab}"]`); if(b){b.click(); b.scrollIntoView({block:'nearest'})}},0)}
   m.querySelectorAll('[data-cf="cnpj"],[data-cf="cep"]').forEach(i=>{if(i.readOnly) return; let ult=''; i.addEventListener('input',()=>{const d=i.value.replace(/\D/g,''); const k=i.dataset.cf; if(d!==ult&&d.length===(k==='cnpj'?14:8)){ult=d; (k==='cnpj'?buscaCnpj:buscaCep)(m,false)}})});
   m.onclick=async e=>{const t=e.target; const tb=t.closest('[data-ct]'); if(tb){m.querySelectorAll('[data-ct]').forEach(x=>x.classList.toggle('on',x===tb)); m.querySelectorAll('[data-cp]').forEach(x=>x.hidden=x.dataset.cp!==tb.dataset.ct); if(tb.dataset.ct==='b') b2bCliente(cnpj,v('razao',base.n),v('fantasia',base.fa)); if(tb.dataset.ct==='t') condCliente(cnpj); if(tb.dataset.ct==='l') ligLista($('#ligbox'),{cnpj,n:v('razao',base.n),fa:v('fantasia',base.fa)}); return}
@@ -2529,7 +2530,7 @@ async function fichaCliente(cnpj,novo){const m=$('#main'); m.innerHTML='<p class
     const ao=t.closest('[data-aopen]'); if(ao){try{const tk=await token(); const r=await fetch(`${SB}/storage/v1/object/sign/arquivos/${ao.dataset.aopen}`,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:3600})}); const j=await r.json(); window.open(SB+'/storage/v1'+j.signedURL,'_blank')}catch(err){toast('Não consegui abrir')} return}
     const ad=t.closest('[data-adel]'); if(ad){if(!confirm('Apagar este arquivo?')) return; try{const tk=await token(); await fetch(`${SB}/storage/v1/object/arquivos/${ad.dataset.apath}`,{method:'DELETE',headers:{apikey:KEY,Authorization:'Bearer '+tk}}); await api(`cliente_arquivos?id=eq.${ad.dataset.adel}`,{method:'DELETE'}); fichaCliente(cnpj)}catch(err){toast('Erro: '+err.message)} return}
     const pdd=t.closest('[data-pd]'); if(pdd) return detalhe(pdd.dataset.pd);
-    if(t.id==='nadd'){const x=$('#nx').value.trim(); if(!x) return toast('Escreva a anotação'); try{await api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo:$('#nt').value,texto:x,retorno:$('#nr').value||null,usuario_nome:meuNome()})}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo:$('#nt').value,texto:x,retorno:$('#nr').value||null})})); toast('Registrado'); ctx.aba='n'; fichaCliente(cnpj)}catch(err){toast('Erro: '+err.message)}}};
+    if(t.id==='nadd'){const x=$('#nx').value.trim(); if(!x) return toast('Escreva a anotação'); try{await api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo:$('#nt').value,texto:x,retorno:$('#nr').value||null,representada:NREP.txt(),usuario_nome:meuNome()})}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo:$('#nt').value,texto:x,retorno:$('#nr').value||null})})); toast('Registrado'); ctx.aba='n'; fichaCliente(cnpj)}catch(err){toast('Erro: '+err.message)}}};
   const af=$('#afile'); if(af) af.onchange=async e=>{const fs=[...e.target.files]; const st=$('#ast'); try{const tk=await token(); for(const f of fs){st.textContent='Enviando '+f.name+'…'; const path=`clientes/${cnpj}/${Date.now()}-${f.name.normalize('NFD').replace(/[^\w.-]+/g,'_')}`;
       const r=await fetch(`${SB}/storage/v1/object/arquivos/${path}`,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tk,'Content-Type':f.type||'application/octet-stream','x-upsert':'true'},body:f}); if(!r.ok) throw new Error((await r.text()).slice(0,200));
       await api('cliente_arquivos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,nome:f.name,caminho:path,tamanho:f.size,tipo:f.type})})} toast('Arquivo(s) guardado(s)'); fichaCliente(cnpj)}catch(err){st.textContent=''; toast('Erro: '+err.message)}};
@@ -2979,6 +2980,26 @@ async function itensQueCompra(rep,cli,o){
 const LIG_ST={enviado:'Enviando…',transcrevendo:'Transcrevendo o áudio…',analisando:'A IA está lendo a conversa…'};
 const LIG_RES=['Pediu orçamento','Vai comprar','Sem demanda agora','Não atendeu','Retornar depois','Outro'];
 function ligDur(s){s=+s||0; return s?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:''}
+/*REPESC-INICIO*/
+/* De qual(is) representada(s) o vendedor falou (09/11, opção A aprovada pelo Victor): botões com as fábricas que o cliente
+   compra (com a cor de cada uma) + "+ outras". Dá para marcar várias. Grava em contatos.representada ("Medix, Marluvas"). */
+const repCor=r=>((REPS||[]).find(x=>x.nome===r||x.id===r)||{}).cor||'#9aa1b8';
+function repTodas(){const a=(REPS||[]).filter(r=>r.ativa!==false).map(r=>r.nome).filter(Boolean); return a.length?a:REPLIST}
+function repEscSt(c,ini,prim){const todas=repTodas(); const comp=Object.keys((c&&c.reps)||{}).filter(r=>todas.includes(r)).sort((a,b)=>todas.indexOf(a)-todas.indexOf(b));
+  const sel=[...new Set((ini||[]).filter(r=>todas.includes(r)))]; const P=[...new Set([...(prim||[]),...sel,...comp])].filter(r=>todas.includes(r)), O=todas.filter(r=>!P.includes(r));
+  const st={sel,mais:!P.length};
+  const ch=r=>{const on=st.sel.includes(r); return `<button type="button" class="chip resc${on?' on':''}" data-resc="${esc(r)}" title="${esc(r)}"><i style="background:${esc(repCor(r))}"></i>${esc(RCURTO[r]||r)}${on?' ✓':''}</button>`};
+  return {st,
+    html:()=>`<div class="rescb"><div class="hint" style="margin-bottom:4px">🏭 <b>De qual representada você falou?</b> · pode marcar mais de uma</div><div class="row">${(st.mais?[...P,...O]:P).map(ch).join('')}${O.length&&P.length?`<button type="button" class="chip" data-rescm>${st.mais?'menos ▴':'+ outras ▾'}</button>`:''}</div></div>`,
+    click(e){const b=e.target.closest('[data-resc]'); if(b){const r=b.dataset.resc; st.sel=st.sel.includes(r)?st.sel.filter(x=>x!==r):[...st.sel,r]; return true} if(e.target.closest('[data-rescm]')){st.mais=!st.mais; return true} return false},
+    txt:()=>st.sel.join(', ')||null}}
+/* monta num elemento que não é redesenhado pelo resto da tela */
+function repEscMount(el,c,ini,prim){const o=repEscSt(c,ini,prim); if(!el) return o; el.innerHTML=o.html(); el.addEventListener('click',e=>{if(o.click(e)){e.stopPropagation(); el.innerHTML=o.html()}}); return o}
+const repTagsTxt=s=>String(s||'').split(/\s*,\s*/).filter(Boolean).map(r=>`<span class="tag" style="border-left:3px solid ${esc(repCor(r))}">${esc(RCURTO[r]||r)}</span>`).join('');
+/* a IA da ligação marca as fábricas de que se falou; se ela não disser, procura os nomes no texto */
+function repDoTexto(tx){const s=String(tx||''); const al={'Sigma Tools':'Sigma','ZM Bombas':'ZM','Chemicals 4U':'Chemicals'};
+  return repTodas().filter(r=>{const k=al[r]||r; return /^(Terra|CID|ZM)$/.test(k)?new RegExp('\\b'+k+'\\b').test(s):new RegExp('\\b'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(s)})}
+/*REPESC-FIM*/
 /*REGORC-INICIO*/
 /* Registrar o contato logo depois de salvar o orçamento (04/11, pedido do vendedor):
    o cliente liga, o vendedor monta o orçamento na hora e já registra a conversa na mesma janela.
@@ -2986,6 +3007,7 @@ function ligDur(s){s=+s||0; return s?`${Math.floor(s/60)}:${String(s%60).padStar
 function regOrcHtml(st){const P=st.p; if(P) return `<div class="card regc" style="background:var(--surface2);padding:10px 12px"><div class="row" style="justify-content:space-between;align-items:center"><span>✓ <b>Contato registrado</b>${P.ret?` · retorno <b>${esc(P.ret.split('-').reverse().join('/')+(P.h?' '+P.h:''))}</b> na Agenda`:''}</span><button class="chip" data-rcdesf>Desfazer</button></div></div>`;
   return `<details class="card regc" style="background:var(--surface2);padding:12px"${st.ab?' open':''}><summary style="cursor:pointer"><b>📞 Registrar o contato com o cliente</b> <span class="hint">· vai para 📝 Conversas</span></summary><div class="grid" style="gap:8px;margin-top:8px">
    <div class="row">${['ligacao','whatsapp','visita','email'].map(k=>`<button class="chip${k===st.tipo?' on':''}" data-rct="${k}">${TT[k]}</button>`).join('')}</div>
+   ${st.re?st.re.html():''}
    <div class="row">${['Pediu orçamento','Vai comprar','Vai pensar','Fechou pedido'].map(k=>`<button class="chip${k===st.res?' on':''}" data-rcr="${k}">${k}</button>`).join('')}</div>
    <textarea data-rcx rows="2" placeholder="Algo a mais? (opcional: comprador, urgência, concorrente…)">${esc(st.tx||'')}</textarea>
    <div class="row" style="align-items:center"><span class="hint">Retornar:</span>${[[0,'Não'],[1,'Amanhã'],[3,'3 dias'],[7,'7 dias']].map(([d,l])=>`<button class="chip${!st.dh&&d===st.ret?' on':''}" data-rcn="${d}">${l}</button>`).join('')}<button class="chip${st.dh?' on':''}" data-rcdh>📅 Dia e hora</button></div>
@@ -2994,7 +3016,7 @@ function regOrcHtml(st){const P=st.p; if(P) return `<div class="card regc" style
 function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli; if(!c||!c.cnpj){box.innerHTML=''; return}
   const K=o.sid||o.num||''; const feitos=L('regOrc')||{};
   const pend=L('ligPend'); const ligou=pend&&pend.cnpj===c.cnpj&&Date.now()-pend.t<3*36e5;
-  const st={ab:ligou||!matchMedia('(max-width:699px)').matches,tipo:'ligacao',res:'Pediu orçamento',ret:+(L('fupDias')??3)||3,dh:false,tx:'',p:K&&feitos[K]||null};
+  const st={ab:ligou||!matchMedia('(max-width:699px)').matches,tipo:'ligacao',res:'Pediu orçamento',ret:+(L('fupDias')??3)||3,dh:false,tx:'',p:K&&feitos[K]||null}; st.re=repEscSt(c,[repName(rep)]);
   const g=s=>box.querySelector(s);
   const pinta=()=>{const x=g('[data-rcx]'); if(x){st.tx=x.value; if(st.dh&&g('[data-rcd]')){st.d=g('[data-rcd]').value; st.h=g('[data-rch]').value}} box.innerHTML=regOrcHtml(st); if(st.dh&&!st.p) ver()};
   let bate=[];
@@ -3003,6 +3025,7 @@ function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli;
   box.addEventListener('change',e=>{if(e.target.matches('[data-rcd],[data-rch]')) ver()});
   box.addEventListener('toggle',e=>{if(e.target.matches('details.regc')) st.ab=e.target.open},true);
   box.onclick=async e=>{const t=e.target; let b;
+    if(st.re.click(e)) return pinta();
     if(b=t.closest('[data-rct]')){st.tipo=b.dataset.rct; return pinta()}
     if(b=t.closest('[data-rcr]')){st.res=st.res===b.dataset.rcr?'':b.dataset.rcr; return pinta()}
     if(b=t.closest('[data-rcn]')){st.ret=+b.dataset.rcn; st.dh=false; return pinta()}
@@ -3015,7 +3038,7 @@ function regContatoOrc(box,{rep,o,total,nItens}){if(!box) return; const c=o.cli;
     const vence=st.dh?dd:(st.ret?maisDias(st.ret):null);
     const resumo=`${st.res||'Contato'} · orçamento ${repName(rep)}${o.num?' nº '+o.num:''} · ${brl(total)} · ${nItens} item(ns)`;
     const texto=resumo+(extra?'\n'+extra:''); b.disabled=true;
-    try{const corpo={cnpj:c.cnpj,tipo:st.tipo,texto,resultado:st.res||null,retorno:vence,representada:repName(rep),usuario_nome:meuNome()};
+    try{const corpo={cnpj:c.cnpj,tipo:st.tipo,texto,resultado:st.res||null,retorno:vence,representada:st.re.txt()||repName(rep),usuario_nome:meuNome()};
       const [ct]=await api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(corpo)}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({cnpj:c.cnpj,tipo:st.tipo,texto,retorno:vence})}));
       let tid=null; if(vence){const r=await novaTarefa({titulo:`Retorno de orçamento ${repName(rep)} – ${c.fa||c.n}`,tipo:'followup',cnpj:c.cnpj,cliente:c.n,rep,orcamento_id:o.sid||null,vence,...(hh?{hora:hh,duracao:30}:{}),obs:texto}).catch(()=>null); tid=r&&r[0]&&r[0].id||null}
       st.p={id:ct&&ct.id||null,tid,ret:vence,h:hh}; if(K){const f=L('regOrc')||{}; f[K]=st.p; const ks=Object.keys(f); if(ks.length>60) delete f[ks[0]]; LS('regOrc',f)}
@@ -3058,6 +3081,7 @@ function ligRevisao(ov,lig,c){const a=lig.analise||{}, f=a.feedback||{}, pc=a.pr
   const txt0=[a.resumo||'',(a.proximos_passos||[]).length?'Próximos passos:\n'+a.proximos_passos.map(x=>'- '+x).join('\n'):''].filter(Boolean).join('\n\n');
   sh.innerHTML=`<div class="row" style="justify-content:space-between"><div style="min-width:0"><b style="font-size:17px">🎙️ ${esc(c.fa||c.n||lig.cliente||'Ligação')}</b><div class="hint">${dbr(lig.criado_em)} · ${esc(lig.usuario_nome||'')}${lig.duracao_seg?' · '+ligDur(lig.duracao_seg):''}${lig.origem==='resumo_falado'?' · resumo falado':''}${salvo?' · <span class="ok">salvo no histórico</span>':''}</div></div><button class="chip" data-x>✕</button></div>
    ${(a.alertas||[]).length?`<div class="pcb" style="border-color:var(--warn)"><b class="warn">⚠️ Atenção</b>${li(a.alertas,'•')}</div>`:''}
+   <div class="pcb" data-lgrep></div>
    <label class="f">Resumo (vai para o histórico do cliente)<textarea id="lgx" rows="7">${esc(txt0)}</textarea></label>
    ${(a.pontos_chave||[]).length?`<details class="pcb"><summary><b>Pontos da conversa</b> <span class="hint">${a.pontos_chave.length}</span></summary>${li(a.pontos_chave,'•')}</details>`:''}
    <div class="row">${LIG_RES.map(k=>`<button class="chip${k===res?' on':''}" data-lr="${esc(k)}">${esc(k)}</button>`).join('')}</div>
@@ -3065,12 +3089,16 @@ function ligRevisao(ov,lig,c){const a=lig.analise||{}, f=a.feedback||{}, pc=a.pr
    <div class="pcb"><b>📈 Feedback da ligação</b>${(f.pontos_fortes||[]).length?`<div class="hint" style="margin-top:6px">Foi bem</div>${li(f.pontos_fortes,'✅')}`:''}${(f.melhorar||[]).length?`<div class="hint" style="margin-top:6px">Poderia ter feito diferente</div>${li(f.melhorar,'💡')}`:''}${f.frase_sugerida?`<div class="hint" style="margin-top:6px">Frase que poderia usar</div><div><i>“${esc(f.frase_sugerida)}”</i></div>`:''}</div>
    <details class="pcb"><summary><b>Transcrição</b> <span class="hint">feita automaticamente, pode ter erros</span></summary><div style="white-space:pre-wrap;font-size:13px">${esc(lig.transcricao||'')}</div>${lig.audio_path?'<button class="chip" data-la style="margin-top:6px">▶ Ouvir áudio</button>':''}</details>
    <div class="row"><button class="btn" id="lgs"${salvo?' disabled':''}>${salvo?'Já salvo':'Salvar no histórico'+(pc.data?' e na Agenda':'')}</button><button class="btn ghost" id="lgn">Analisar de novo</button></div>`;
+  /* representadas: a IA marca as de que se falou (ou o nome aparece na conversa); o vendedor confere */
+  const rIA=Array.isArray(a.representadas)&&a.representadas.length?a.representadas:repDoTexto([lig.transcricao,a.resumo,(a.pontos_chave||[]).join(' ')].join(' '));
+  const RE=repEscMount(sh.querySelector('[data-lgrep]'),c.reps?c:((CLIS||[]).find(x=>x.cnpj===c.cnpj)||c),rIA);
+  if(rIA.length) sh.querySelector('[data-lgrep]').insertAdjacentHTML('beforeend','<div class="hint" style="margin-top:4px;font-size:12px">A IA marcou pelo que foi falado. Confira antes de salvar.</div>');
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')) return ov.remove();
     const r=t.closest('[data-lr]'); if(r){res=res===r.dataset.lr?'':r.dataset.lr; ov.querySelectorAll('[data-lr]').forEach(x=>x.classList.toggle('on',x.dataset.lr===res)); return}
     if(t.closest('[data-la]')){try{const j=await fetch(`${SB}/storage/v1/object/sign/arquivos/${lig.audio_path}`,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+await token(),'Content-Type':'application/json'},body:JSON.stringify({expiresIn:3600})}).then(r=>r.json()); const au=document.createElement('audio'); au.controls=true; au.style.width='100%'; au.src=SB+'/storage/v1'+j.signedURL; t.replaceWith(au); au.play().catch(()=>{})}catch(err){toast('Não consegui abrir o áudio')} return}
     if(t.id==='lgn'){if(!confirm('Pedir para a IA analisar de novo? (usa a mesma transcrição)')) return; sh.innerHTML='<p class="hint" id="lgst">⏳ Analisando de novo…</p>'; await fetch(`${SB}/functions/v1/analisar-ligacao`,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+await token(),'Content-Type':'application/json'},body:JSON.stringify({id:lig.id,reanalisar:true})}).catch(()=>{}); const t0=Date.now(); while(ov.isConnected&&Date.now()-t0<5*60e3){await new Promise(r=>setTimeout(r,2500)); const [l2]=await api(`ligacoes?id=eq.${lig.id}&select=*`).catch(()=>[]); if(l2&&l2.status==='pronto'&&l2.analise) return ligRevisao(ov,l2,c); if(l2&&l2.status==='erro'){sh.innerHTML=`<p class="bad">${esc(l2.erro||'Erro')}</p><button class="btn ghost" data-x>Fechar</button>`; return}} return}
     if(t.id==='lgs'){const tx=ov.querySelector('#lgx').value.trim(), d=ov.querySelector('#lgd').value, h=ov.querySelector('#lgh').value, mo=ov.querySelector('#lgm').value.trim(); if(!tx) return toast('O resumo está vazio'); if(!c.cnpj) return toast('Escolha o cliente antes de salvar'); t.disabled=true;
-      try{const [ct]=await api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({cnpj:c.cnpj,tipo:'ligacao',texto:'🎙️ '+tx,resultado:res||null,retorno:d||null,usuario_nome:meuNome()})});
+      try{const [ct]=await api('contatos',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({cnpj:c.cnpj,tipo:'ligacao',texto:'🎙️ '+tx,resultado:res||null,retorno:d||null,representada:RE.txt(),usuario_nome:meuNome()})});
         let tf=null; if(d){const cf=await api(`tarefas?select=id,titulo,hora,duracao&feita=eq.false&vence=eq.${d}&responsavel=eq.${sess.uid}`).catch(()=>[]); const choca=h&&cf.find(x=>x.hora&&Math.abs(ligMin(x.hora)-ligMin(h))<(+x.duracao||30)); if(choca&&!confirm(`Você já tem "${choca.titulo}" às ${choca.hora} nesse dia. Agendar mesmo assim?`)){t.disabled=false; return}
           [tf]=await novaTarefa({titulo:`Retornar ${c.fa||c.n}${mo?' – '+mo:''}`.slice(0,200),tipo:'ligacao',cnpj:c.cnpj,cliente:c.n,vence:d,hora:h||null,obs:tx.slice(0,1000)})}
         await api(`ligacoes?id=eq.${lig.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({salvo:true,contato_id:ct&&ct.id,tarefa_id:tf&&tf.id,atualizado_em:new Date().toISOString()})});
@@ -3089,7 +3117,7 @@ function ctLista(c,pes){const num=(x,wa)=>{const d=String(x||'').replace(/\D/g,'
   const emp=bl('Empresa','telefone do cadastro',num(c.tel)+mail(c.em));
   const ps=pes.map(p=>{const t=String(p.telefone||'').replace(/\D/g,''), w=String(p.whatsapp||'').replace(/\D/g,''); return bl(esc(p.nome)+(p.principal?' ⭐':''),esc(p.cargo||''),num(p.telefone)+(w&&w!==t?num(p.whatsapp):'')+mail(p.email)||'<div class="hint">sem telefone ou e-mail</div>')}).join('');
   return (emp+ps||'<p class="hint">Nenhum contato cadastrado ainda.</p>')+`<button class="chip" data-ctfic style="margin-top:8px">＋ Cadastrar / editar contatos na ficha ›</button>`}
-async function painelCliente(cnpj,lista){const C=await clientes(); const idx=lista?lista.indexOf(cnpj):-1; const c=C.find(x=>x.cnpj===cnpj)||{cnpj,n:cnpj,reps:{}};
+async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promise.all([clientes(),reps().catch(()=>null)]); const idx=lista?lista.indexOf(cnpj):-1; const c=C.find(x=>x.cnpj===cnpj)||{cnpj,n:cnpj,reps:{}};
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML='<div class="sh"><p class="hint">Carregando…</p></div>'; document.body.appendChild(ov);
   const [pes,ativ,tar,peds]=await Promise.all([api(`cliente_pessoas?select=*&cnpj=eq.${cnpj}&order=principal.desc,nome&limit=40`).catch(()=>[]),api(`contatos?select=*&cnpj=eq.${cnpj}&order=criado_em.desc&limit=3`).catch(()=>[]),api(`tarefas?select=*&cnpj=eq.${cnpj}&feita=eq.false&order=vence&limit=3`).catch(()=>[]),
     api(`pedidos?select=id,num,data,valor,representada,prazo,tabela,pedido_itens(cod,descricao,qtd,preco)&cnpj=eq.${cnpj}&or=(status.is.null,status.eq.finalizado,status.like.APROVADO*)&order=data.desc&limit=40`).catch(()=>[])]);
@@ -3110,19 +3138,23 @@ async function painelCliente(cnpj,lista){const C=await clientes(); const idx=lis
    <div class="tags" style="margin-bottom:6px">${repTags(c)||'<span class="hint">Nunca comprou</span>'}</div>
    ${tar.length?`<div class="hint">Pendente: ${tar.map(t=>esc(t.titulo)+' ('+esc(t.vence.split('-').reverse().join('/'))+(t.hora?' '+esc(String(t.hora).slice(0,5)):'')+')').join(' · ')}</div>`:''}
    <div class="pcb"><div class="row" style="justify-content:space-between"><b>Último contato</b>${u0?'<button class="chip" data-hist>📝 ver todas as conversas ›</button>':''}</div>
-    ${u0?`<div class="hint">${dbr(u0.criado_em)} (há ${dias(String(u0.criado_em).slice(0,10))}d) · ${esc(TT[u0.tipo]||u0.tipo||'')}${u0.usuario_nome?' · '+esc(u0.usuario_nome):''}</div><div>${u0.resultado?`<span class="tag">${esc(u0.resultado)}</span> `:''}${u0.texto&&u0.texto!==u0.resultado?esc(String(u0.texto).slice(0,240)):''}</div>`:'<div class="hint">Nenhum contato registrado ainda.</div>'}</div>
+    ${u0?`<div class="hint">${dbr(u0.criado_em)} (há ${dias(String(u0.criado_em).slice(0,10))}d) · ${esc(TT[u0.tipo]||u0.tipo||'')}${u0.usuario_nome?' · '+esc(u0.usuario_nome):''}</div><div>${repTagsTxt(u0.representada)} ${u0.resultado?`<span class="tag">${esc(u0.resultado)}</span> `:''}${u0.texto&&u0.texto!==u0.resultado?esc(String(u0.texto).slice(0,240)):''}</div>`:'<div class="hint">Nenhum contato registrado ainda.</div>'}</div>
    <details class="pcb"><summary><b>Último pedido por fábrica</b> <span class="hint">${UP.length?UP.slice(0,3).map(p=>esc(RCURTO[p.representada]||p.representada)+' '+dbr(p.data).slice(0,5)+' '+brl(p.valor)).join(' · ')+(UP.length>3?' …':''):'nenhum pedido'}</span></summary>
     ${UP.map((p,k)=>`<div class="pcl"><div style="min-width:0"><b>${esc(p.representada)}</b> <span class="hint">${dbr(p.data)} (há ${dias(p.data)}d) · nº ${esc(p.num||'—')}</span><div><b>${brl(p.valor)}</b> <span class="hint">· ${(p.pedido_itens||[]).length} item(ns)</span> <button class="chip" data-vped="${esc(p.id)}">ver itens</button></div></div><button class="btn sm" data-rped="${k}">↻ Repetir pedido</button></div>`).join('')}</details>
    <details class="pcb"><summary><b>Mais comprados</b> <span class="hint">${TOP.length?TOP.length+' itens · '+TOP.slice(0,3).map(a=>esc(a.cod)).join(', '):'sem histórico'}</span></summary>
     ${TOP.map((a,k)=>`<div class="pcl"><div style="min-width:0"><b>${esc(a.cod)}</b> <span class="tag">${esc(RCURTO[a.rep]||a.rep)}</span><div class="hint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(descCurta(a))}</div><div class="hint">${a.n} pedido(s) · média ${a.qm} un · última ${dbr(a.ult)} · ${brl(a.pu)}</div></div><button class="btn sm" data-addit="${k}" title="Adicionar ao orçamento">＋</button></div>`).join('')}<div id="pcsel" class="row" style="margin-top:8px"></div></details>
    <div class="card grid" style="margin-top:10px;background:var(--surface2)"><b>Registrar contato</b>
     <div class="row">${['ligacao','whatsapp','visita','email'].map(k=>`<button class="chip${k===tipo?' on':''}" data-rt2="${k}">${TT[k]}</button>`).join('')}</div>
+    <div data-pcrep></div>
     <div class="row">${['Pediu orçamento','Vai comprar','Sem demanda agora','Não atendeu','Retornar depois'].map(k=>`<button class="chip" data-rr2="${k}">${k}</button>`).join('')}</div>
     <textarea id="pcx" rows="2" placeholder="Anotação rápida (o que foi falado, próximo passo)"></textarea><span class="hint" style="margin-top:-6px">Fica salvo na ficha do cliente, em 📝 Conversas.</span>
     <div class="row"><span class="hint">Próximo contato:</span>${[[0,'Nenhum'],[1,'Amanhã'],[3,'3d'],[7,'7d'],[15,'15d'],[30,'30d']].map(([d,l])=>`<button class="chip${d===0?' on':''}" data-pn="${d}">${l}</button>`).join('')}<button class="chip" data-pdh>📅 Dia e hora</button></div>
     <div id="pcdh" class="grid" hidden><div class="r2"><label class="f">Dia<input id="pcdd" type="date" min="${hoje()}" value="${hoje()}"></label><label class="f">Hora<input id="pcdhh" type="time" step="300"></label></div><span id="pcdc" class="hint">Escolha o dia e, se quiser, o horário. Vai para a Agenda.</span></div>
     <button class="btn" id="pcs">Salvar registro</button></div>
    <div class="row" style="margin-top:10px"><button class="btn ghost" id="pco">+ Orçamento</button><button class="btn ghost" id="pcf">Ficha completa</button>${lista&&idx>=0&&idx<lista.length-1?'<button class="btn ghost" id="pcn">Próximo cliente ›</button>':''}</div>`;
+  /* representada já marcada quando a tela de onde veio é de uma fábrica só (pasta do plano do dia, filtro do Bater carteira, Vai inativar) */
+  const rIni=(PL_DICA[cnpj]&&PL_DICA[cnpj].r)?[PL_DICA[cnpj].r]:(opt.reps||[]).length===1?opt.reps:[];
+  const RE=repEscMount(ov.querySelector('[data-pcrep]'),c,rIni,opt.reps);
   ov.addEventListener('change',e=>{if(e.target.id==='pcdd'||e.target.id==='pcdhh') dhVer()});
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')||t===ov) return ov.remove();
     if(t.closest('[data-pltroca]')){const d=PL_DICA[cnpj]; ov.remove(); if(d&&d.troca) d.troca(); return}
@@ -3138,15 +3170,15 @@ async function painelCliente(cnpj,lista){const C=await clientes(); const idx=lis
       const dd=dh?ov.querySelector('#pcdd').value:'', hh=dh?ov.querySelector('#pcdhh').value:''; if(dh&&!dd) return toast('Escolha o dia do próximo contato');
       if(dh&&hh){await dhVer(); if(bate.length&&!confirm(`Nesse horário você já tem: ${bate.map(x=>String(x.hora).slice(0,5)+' '+x.titulo).join('; ')}. Marcar mesmo assim?`)) return}
       const vence=dh?dd:(ret?maisDias(ret):null); t.disabled=true;
-      try{await api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo,texto:tx||res,resultado:res||null,retorno:vence,usuario_nome:meuNome()})}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo,texto:(res?res+'. ':'')+tx,retorno:vence})}));
-        if(vence) await novaTarefa({titulo:`Retornar ${c.fa||c.n}${res?' – '+res:''}`,tipo,cnpj,cliente:c.n,vence,...(hh?{hora:hh,duracao:30}:{}),obs:tx||null}).catch(()=>{});
-        toast('Registrado'+(vence?' + tarefa '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):'')); contaTarefas(); if(res==='Pediu orçamento'){ov.remove(); return orcParaCliente(c)} if(lista&&idx<lista.length-1){ov.remove(); return painelCliente(lista[idx+1],lista)} ov.remove()}catch(err){toast('Erro: '+err.message); t.disabled=false} return}
+      try{await api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo,texto:tx||res,resultado:res||null,retorno:vence,representada:RE.txt(),usuario_nome:meuNome()})}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo,texto:(res?res+'. ':'')+tx,retorno:vence})}));
+        if(vence) await novaTarefa({titulo:`Retornar ${c.fa||c.n}${res?' – '+res:''}${RE.txt()?' ('+RE.st.sel.map(r=>RCURTO[r]||r).join(', ')+')':''}`,tipo,cnpj,cliente:c.n,vence,...(hh?{hora:hh,duracao:30}:{}),obs:tx||null}).catch(()=>{});
+        toast('Registrado'+(vence?' + tarefa '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):'')); contaTarefas(); if(res==='Pediu orçamento'){ov.remove(); return orcParaCliente(c)} if(lista&&idx<lista.length-1){ov.remove(); return painelCliente(lista[idx+1],lista,{reps:opt.reps})} ov.remove()}catch(err){toast('Erro: '+err.message); t.disabled=false} return}
     if(t.closest('[data-hist]')){ov.remove(); return go('cli',{cnpj,aba:'n'})}
     const vp=t.closest('[data-vped]'); if(vp) return detalhe(vp.dataset.vped);
     const rp=t.closest('[data-rped]'); if(rp){const p=UP[+rp.dataset.rped]; rp.disabled=true; if(await itensParaOrc(p.representada,c,(p.pedido_itens||[]).map(i=>({cod:i.cod,desc:i.descricao,qt:+i.qtd,pu:+i.preco})),{prazo:p.prazo,tabela:p.tabela})) ov.remove(); else rp.disabled=false; return}
     const ad=t.closest('[data-addit]'); if(ad){const a=TOP[+ad.dataset.addit]; const l=sel[a.rep]=sel[a.rep]||[]; const j=l.findIndex(x=>x.cod===a.cod); if(j>=0){l.splice(j,1); ad.textContent='＋'; ad.classList.remove('ghost')} else {l.push({cod:a.cod,desc:a.desc,qt:a.qm,pu:a.pu}); ad.textContent='✓'; ad.classList.add('ghost')} return desenhaSel()}
     const ab=t.closest('[data-abrsel]'); if(ab){const r=ab.dataset.abrsel; ab.disabled=true; if(await itensParaOrc(r,c,sel[r],prazoDe(r))) ov.remove(); else ab.disabled=false; return}
-    if(t.id==='pco'){ov.remove(); return orcParaCliente(c)} if(t.id==='pcf'){ov.remove(); return go('cli',{cnpj})} if(t.id==='pcn'){ov.remove(); return painelCliente(lista[idx+1],lista)}}}
+    if(t.id==='pco'){ov.remove(); return orcParaCliente(c)} if(t.id==='pcf'){ov.remove(); return go('cli',{cnpj})} if(t.id==='pcn'){ov.remove(); return painelCliente(lista[idx+1],lista,{reps:opt.reps})}}}
 async function orcParaCliente(c){const R=(await reps()).filter(r=>r.ativa); const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><b>Orçamento para ${esc(c.fa||c.n)}</b><div class="reps">${R.map(r=>`<button class="rep" style="--c:${esc(r.cor||'#2a3157')};min-height:80px" data-or="${r.id}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,28)}<b>${esc(r.nome)}</b></span></button>`).join('')}</div><button class="btn ghost" data-x>Cancelar</button></div>`; document.body.appendChild(ov);
   ov.onclick=async e=>{if(e.target.closest('[data-x]')||e.target===ov) return ov.remove(); const b=e.target.closest('[data-or]'); if(!b) return; const rep=b.dataset.or; const qq=Q(); if(qq[rep]&&qq[rep].itens.length){if(!confirm(`Há um carrinho ${repName(rep)} em andamento. Guardar como rascunho e começar este?`)) return; await limparCarrinho(rep,true)} else {delete qq[rep]; setQ(qq)}
     const o=curQ(rep); o.vend=meuNome(); saveQ(o); await escolherCliente(rep,o,c.cnpj); if(!o.cli){o.cli={cnpj:c.cnpj,n:c.n,fa:c.fa||'',cid:c.cid||'',tel:c.tel||'',em:c.em||''}; saveQ(o)} ov.remove(); go('rep',{rep})}}
@@ -3242,7 +3274,7 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
   const fez=x=>{const e=plEst(S,x.cnpj); return e!=='pend'&&e!=='tent'};
   const ICO={feito:'<span class="ok">✓</span>',tent:'<span class="warn" title="Não atendeu, tente de novo">☎️</span>',orc:'<span class="ok" title="Orçamento feito">📝</span>',ped:'<span class="ok" title="Pedido">🎉</span>'};
   /* a ficha rápida mostra o "o que falar" e o Trocar dos clientes do plano */
-  const dicas=()=>{PL_DICA={}; pl.itens.forEach((x,i)=>{const t=texto(x); PL_DICA[x.cnpj]={rep:curto(x.rep),ag:AG_NOME[x.ag]||'',porque:t.porque,falar:t.falar,troca:fez(x)?null:()=>trocar(i)}}); pl.ret.forEach(x=>{if(!PL_DICA[x.cnpj]) PL_DICA[x.cnpj]={rep:'',ag:'Retorno marcado',porque:x.titulo||'',falar:'',troca:null}})};
+  const dicas=()=>{PL_DICA={}; pl.itens.forEach((x,i)=>{const t=texto(x); PL_DICA[x.cnpj]={rep:curto(x.rep),r:x.rep,ag:AG_NOME[x.ag]||'',porque:t.porque,falar:t.falar,troca:fez(x)?null:()=>trocar(i)}}); pl.ret.forEach(x=>{if(!PL_DICA[x.cnpj]) PL_DICA[x.cnpj]={rep:'',ag:'Retorno marcado',porque:x.titulo||'',falar:'',troca:null}})};
   const linha=(x,tag)=>{const e=plEst(S,x.cnpj), t=texto(x), f=fez(x), cor=x.ag==='ret'?'var(--brand)':AG_COR[x.ag]||'#9aa1b8', mot=x.ag==='ret'?(x.titulo||'Retorno marcado'):t.porque;
     return `<button class="chip" data-plc="${esc(x.cnpj)}" style="text-align:left;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%${f?';opacity:.55':''}"><span style="min-width:0;display:flex;gap:10px;align-items:center"><i style="width:8px;height:8px;border-radius:50%;background:${cor};flex:0 0 auto"></i><span style="min-width:0"><b>${esc(x.n)}</b>${x.ag==='ret'?` <span class="tag" style="font-size:11px">🔔 ${x.hora?esc(x.hora):'hoje'}</span>`:tag?` <span class="tag" style="font-size:11px">${esc(curto(x.rep))}</span>`:''}<span class="hint" style="font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(mot)}</span></span></span><span style="white-space:nowrap">${ICO[e]||'<span class="hint">›</span>'}</span></button>`};
   /* em "Todos" as pastas se alternam (uma de cada), para o dia não começar todo numa fábrica só */
@@ -3376,8 +3408,8 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     if(g('[data-cfrok]')) return aplica();
     if(g('[data-cczero]')){LS(cartPosK(f.vend),{zero:new Date().toISOString(),f:null}); return sv(f.pg)}
     const cc=g('[data-ccont]'); if(cc){const nx=cc.dataset.ccont, P=L(cartPosK(f.vend)); if(P&&P.f&&!P.zero&&!box._ccr){const k=JSON.stringify({...P.f,pg:0}); if(k!==JSON.stringify({...f,pg:0})){box._ccr=1; Object.assign(f,P.f); f.pg=0; LS('cartF',f); return carteira(box).then(()=>{const b=box.querySelector('[data-ccont]'); if(b) b.click(); else toast('Já falou com todos desta lista 👏')})}}
-      const ix=lista.indexOf(nx); if(ix>=0){f.pg=Math.floor(ix/POR_PAG); LS('cartF',f)} box.dataset.cov='1'; return painelCliente(nx,lista)}
-    const pgb=g('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=g('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=g('[data-pc]'); if(p){LS(cartPosK(f.vend),{f:{...f},t:new Date().toISOString()}); box.dataset.cov='1'; return painelCliente(p.dataset.pc,lista)}};
+      const ix=lista.indexOf(nx); if(ix>=0){f.pg=Math.floor(ix/POR_PAG); LS('cartF',f)} box.dataset.cov='1'; return painelCliente(nx,lista,{reps:f.reps})}
+    const pgb=g('[data-pg]'); if(pgb){sv(+pgb.dataset.pg); return window.scrollTo(0,0)} const x=g('[data-fx]'); if(x){f.fx=x.dataset.fx; return sv()} const p=g('[data-pc]'); if(p){LS(cartPosK(f.vend),{f:{...f},t:new Date().toISOString()}); box.dataset.cov='1'; return painelCliente(p.dataset.pc,lista,{reps:f.reps})}};
   /* ao fechar a ficha rápida, a lista se atualiza (quem acabou de receber contato desce com ✓) */
   if(!box._covObs){box._covObs=new MutationObserver(()=>{if(!box.isConnected){box._covObs.disconnect(); box._covObs=null; return} if(!document.querySelector('.ov')&&box.dataset.cov==='1'){box.dataset.cov=''; setTimeout(()=>{if(box.isConnected) carteira(box)},500)}}); box._covObs.observe(document.body,{childList:true})}}
 /* contatos dos últimos 7 dias: hoje (qualquer pessoa da equipe) e o histórico do vendedor */

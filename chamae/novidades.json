@@ -2,12 +2,12 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
-   "id": "2026110921",
+   "id": "2026110922",
    "data": "2026-11-09",
    "tipo": "novo",
-   "titulo": "Assinatura do e-mail igual à do Outlook",
-   "texto": "Monte sua assinatura com foto, cargo, telefones, e-mail, endereço, logo Chamae e as empresas representadas, mais o significado do nome e o aviso de confidencialidade. Ela vai no fim dos E-mails do dia e dos orçamentos enviados por e-mail. O gestor pode montar a de cada vendedor.",
-   "onde": "Mais › Ajustes › ✍️ Montar assinatura igual ao Outlook"
+   "titulo": "Assinatura do e-mail",
+   "texto": "Suba a imagem da assinatura que você já usa no Outlook. Ela vai no fim dos E-mails do dia e dos orçamentos enviados por e-mail. O gestor pode subir a de cada vendedor.",
+   "onde": "Mais › Ajustes › ⬆ Subir imagem da assinatura"
   },
   {
    "id": "2026110920",
@@ -57,14 +57,6 @@
    "onde": "Bater carteira, ficha do cliente, Orçamento salvo e 🎙️ Enviar ligação"
   },
   {
-   "id": "2026110906",
-   "data": "2026-11-09",
-   "tipo": "correcao",
-   "titulo": "Pedido transmitido conta nas vendas",
-   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
-   "onde": "Pedidos › Transmitir"
-  },
-  {
    "id": "2026110907",
    "data": "2026-11-09",
    "tipo": "novo",
@@ -72,6 +64,14 @@
    "titulo": "Aviso de pedido em dobro",
    "texto": "Se um pedido transmitido pelo Sistema também for finalizado no Reprio, aparece um aviso no Início e no Painel do mês para deixar só um contando.",
    "onde": "Início e Relatórios › Painel do mês"
+  },
+  {
+   "id": "2026110906",
+   "data": "2026-11-09",
+   "tipo": "correcao",
+   "titulo": "Pedido transmitido conta nas vendas",
+   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
+   "onde": "Pedidos › Transmitir"
   },
   {
    "id": "2026110904",

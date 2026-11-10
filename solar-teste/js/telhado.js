@@ -43,7 +43,11 @@
     if (!proj.mppt.mod || proj.mppt.mod.potW !== proj.layout.modulo.potW) { const fm = raiz.Catalogo && raiz.Catalogo.fichaModulo ? raiz.Catalogo.fichaModulo(proj.layout.modulo.potW) : { voc: 45, vmp: 37.5, isc: 14 }; proj.mppt.mod = { potW: proj.layout.modulo.potW, voc: fm.voc, vmp: fm.vmp, isc: fm.isc, estimada: true }; }
     const limiteAguas = () => { const f = proj.mppt.ficha; proj.layout.maxAguas = f && f.tipo === 'string' && raiz.Mppt ? raiz.Mppt.totalEntradas(f) : 0; };
     limiteAguas();
-    const st = { aba: aba || (proj.blocos.length ? 'telhados' : 'foto'), ferr: null, sel: null, des: [], ponteiro: null, view: { esc: 14, ox: 0, oz: 0 }, vagas: [], escolhidas: [], analisado: false, ocupado: false, ver: 0, di: 6, hora: 9.5, play: false, regua: [], alfaDrone: 1, corPlacas: 'tsrf', mapas: false, imgsNovas: {}, oriMao: 'retrato' };
+    /* modo do 3D: 'drone' (a foto do drone é a base; o satélite só ajuda a conferir) ou 'satelite' (telhado do Google pelo endereço).
+       Projeto novo começa sem modo: o vendedor escolhe no passo 1. Projeto antigo: deduz pelo que já tem. */
+    proj.modo = proj.modo || (auto ? 'satelite' : proj.drone ? 'drone' : proj.fundo ? 'satelite' : null);
+    const NOME_MODO = { drone: '🚁 Foto do drone', satelite: '🛰️ Satélite' };
+    const st = { aba: aba && (proj.modo || proj.blocos.length) ? aba : (proj.blocos.length ? 'telhados' : 'foto'), pendente: null, ferr: null, sel: null, des: [], ponteiro: null, view: { esc: 14, ox: 0, oz: 0 }, vagas: [], escolhidas: [], analisado: false, ocupado: false, ver: 0, di: 6, hora: 9.5, play: false, regua: [], alfaDrone: 1, corPlacas: 'tsrf', mapas: false, imgsNovas: {}, oriMao: 'retrato' };
 
     const ov = document.createElement('div'); ov.className = 't3-ov';
     ov.innerHTML = `<div class="t3-caixa" role="dialog" aria-label="Projeto 3D do telhado">
@@ -60,7 +64,7 @@
         <div class="t3-dir">
           <div class="t3-3d" id="t3Cena"><span class="mini t3-carr">carregando o 3D…</span></div>
           <div id="t3Lado"></div>
-          <div class="acoes-r"><button class="btn vidro pequeno" id="t3Auto" title="Busca o telhado pelo endereço, põe as placas do kit nos melhores lugares e calcula a sombra do ano">⚡ Montar sozinho</button><button class="btn vidro pequeno" id="t3Video" title="Vídeo de 14 s girando a casa com o sol do dia, para mandar no WhatsApp">🎬 Vídeo</button><button class="btn vidro pequeno" id="t3Topo">Vista de cima</button><button class="btn sol" id="t3Salvar">Salvar no orçamento</button></div>
+          <div class="acoes-r"><button class="btn vidro pequeno" id="t3Auto" title="Pelo modo escolhido no passo 1 (foto do drone ou satélite): acha o telhado, põe as placas do kit nos melhores lugares e calcula a sombra do ano">⚡ Montar sozinho</button><button class="btn vidro pequeno" id="t3Video" title="Vídeo de 14 s girando a casa com o sol do dia, para mandar no WhatsApp">🎬 Vídeo</button><button class="btn vidro pequeno" id="t3Topo">Vista de cima</button><button class="btn sol" id="t3Salvar">Salvar no orçamento</button></div>
         </div>
       </div></div>`;
     document.body.appendChild(ov);
@@ -98,7 +102,8 @@
       const encaixe = st.ferr === 'encaixar', soDrone = encaixe && st.enc.length % 2 === 0, soSat = encaixe && st.enc.length % 2 === 1;
       if (imgFundo && proj.fundo && !soDrone) { const L = proj.fundo.ladoM, a = m2tela([-L / 2, -L / 2]); g.drawImage(imgFundo, a[0], a[1], L * st.view.esc, L * st.view.esc); }
       if (imgDrone && proj.drone && !soSat) { const d = proj.drone, c = m2tela([d.cx || 0, d.cz || 0]); g.save(); g.globalAlpha = st.aba === 'foto' ? st.alfaDrone : 1; g.translate(c[0], c[1]); g.rotate((d.rot || 0) * Math.PI / 180); const e = d.escala * st.view.esc; g.drawImage(imgDrone, -d.w / 2 * e, -d.h / 2 * e, d.w * e, d.h * e); g.restore(); }
-      if (!imgFundo && !imgDrone) { g.fillStyle = '#fff8'; g.font = '15px system-ui'; g.textAlign = 'center'; g.fillText('Busque o satélite ou envie a foto do drone (passo 1)', w / 2, h / 2); }
+      if (!imgFundo && !imgDrone) { g.fillStyle = '#fff8'; g.font = '15px system-ui'; g.textAlign = 'center'; g.fillText(proj.modo === 'drone' ? 'Envie a foto do drone (passo 1)' : proj.modo === 'satelite' ? 'Busque o satélite pelo endereço (passo 1)' : 'Escolha como montar: foto do drone ou satélite (passo 1)', w / 2, h / 2); }
+      if (st.pendente && imgFundo) { const c = m2tela([0, 0]); g.strokeStyle = '#ff3df0'; g.lineWidth = 3; g.beginPath(); g.arc(c[0], c[1], 16, 0, 7); g.moveTo(c[0] - 26, c[1]); g.lineTo(c[0] + 26, c[1]); g.moveTo(c[0], c[1] - 26); g.lineTo(c[0], c[1] + 26); g.stroke(); rotulo('o endereço caiu aqui', c[0], c[1] - 32, '#ff3df0'); }
       const escurecer = st.aba === 'placas' || st.aba === 'sol' || st.aba === 'cabos'; if (escurecer) { g.fillStyle = '#0006'; g.fillRect(0, 0, w, h); }
       // blocos
       const todasFaces = U.faces(proj);
@@ -148,7 +153,7 @@
       const alvo = 80 / st.view.esc, pass = [0.5, 1, 2, 5, 10, 20, 50].find((v) => v >= alvo) || 50, bw = pass * st.view.esc;
       g.fillStyle = '#000a'; g.fillRect(10, h - 30, bw + 56, 22); g.fillStyle = '#fff'; g.fillRect(16, h - 22, bw, 5); g.font = '12px system-ui'; g.textAlign = 'left'; g.fillText(n(pass, pass < 1 ? 1 : 0) + ' m', 22 + bw, h - 15);
       g.font = 'bold 15px system-ui'; g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText('N ↑', w - 12, 22);
-      if (proj.fonte === 'google' && imgFundo) { g.font = '11px system-ui'; g.fillStyle = '#fffc'; g.fillText('Imagens © Google', w - 12, h - 10); }
+      if (proj.fundo && imgFundo) { g.font = '11px system-ui'; g.fillStyle = '#fffc'; g.fillText('Imagens © Google', w - 12, h - 10); }
     }
     function caminho(pts, fechar = true) { g.beginPath(); pts.forEach((p, k) => { const q = m2tela(p); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); if (fechar) g.closePath(); }
     function seta(c, d, L, cor) { const L2 = Math.hypot(d[0], d[1]) || 1, ux = d[0] / L2, uy = d[1] / L2; g.strokeStyle = cor; g.fillStyle = cor; g.lineWidth = 3; g.beginPath(); g.moveTo(c[0] - ux * L, c[1] - uy * L); g.lineTo(c[0] + ux * L, c[1] + uy * L); g.stroke(); g.beginPath(); g.moveTo(c[0] + ux * L, c[1] + uy * L); g.lineTo(c[0] + ux * (L - 9) - uy * 6, c[1] + uy * (L - 9) + ux * 6); g.lineTo(c[0] + ux * (L - 9) + uy * 6, c[1] + uy * (L - 9) - ux * 6); g.closePath(); g.fill(); }
@@ -391,7 +396,7 @@
     function irAba(a) {
       st.aba = a; st.ferr = a === 'telhados' ? (proj.blocos.length ? 'ajustar' : 'ret') : a === 'obst' ? 'ajustar' : null; st.des = []; st.regua = [];
       ov.querySelectorAll('[data-aba]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.aba === a)));
-      const dica = { cabos: temKit('micro') && !temKit('string') ? 'Toque em <b>Onde fica o quadro</b> e marque no desenho o quadro de ligação: o sistema mede o cabo tronco e o CA dos micros.' : 'Toque em <b>Onde fica o inversor</b> e marque no desenho: o sistema mede o cabo de cada string pelo caminho da estrutura e das paredes.', foto: proj.drone ? 'Ajuste a escala com a <b>régua</b> (toque nas 2 pontas de uma medida conhecida) e gire até o <b>norte</b> ficar para cima.' : 'Busque o satélite pelo endereço e, se tiver, envie a <b>foto de cima do drone</b> (câmera a 90°, 40 a 60 m de altura).', telhados: 'Desenhe cada parte do telhado com <b>3 toques</b>: 2 cantos de uma parede e o terceiro para a profundidade. Os cantos grudam nos telhados vizinhos.', obst: "Toque no tipo e depois no lugar: caixa d'água, condensadora, antena, boiler, coletor de aquecimento, árvore ou prédio vizinho (a altura faz a sombra). Para um lugar onde não pode ter placa, use <b>🚫 Área sem placa</b> e desenhe.", placas: 'As placas usam a medida da placa do kit. Toque em <b>Calcular o melhor sol</b>: o sistema testa todas as posições e escolhe as melhores.', sol: 'Veja o sol passar no dia escolhido. Placa vermelha = na sombra naquele horário.' }[a];
+      const dica = { cabos: temKit('micro') && !temKit('string') ? 'Toque em <b>Onde fica o quadro</b> e marque no desenho o quadro de ligação: o sistema mede o cabo tronco e o CA dos micros.' : 'Toque em <b>Onde fica o inversor</b> e marque no desenho: o sistema mede o cabo de cada string pelo caminho da estrutura e das paredes.', foto: !proj.modo ? 'Escolha como montar este 3D: pela <b>foto do drone</b> ou pelo <b>satélite</b> do endereço.' : proj.modo === 'drone' ? (proj.drone ? 'Ajuste a escala com a <b>régua</b> (toque nas 2 pontas de uma medida conhecida) e gire até o <b>norte</b> ficar para cima.' : 'Envie a <b>foto de cima do drone</b> (câmera a 90°, 40 a 60 m de altura). Mande o arquivo original, não pelo WhatsApp.') : 'Busque o satélite pelo endereço e confira se a casa marcada é a do cliente.', telhados: 'Desenhe cada parte do telhado com <b>3 toques</b>: 2 cantos de uma parede e o terceiro para a profundidade. Os cantos grudam nos telhados vizinhos.', obst: "Toque no tipo e depois no lugar: caixa d'água, condensadora, antena, boiler, coletor de aquecimento, árvore ou prédio vizinho (a altura faz a sombra). Para um lugar onde não pode ter placa, use <b>🚫 Área sem placa</b> e desenhe.", placas: 'As placas usam a medida da placa do kit. Toque em <b>Calcular o melhor sol</b>: o sistema testa todas as posições e escolhe as melhores.', sol: 'Veja o sol passar no dia escolhido. Placa vermelha = na sombra naquele horário.' }[a];
       if ((a === 'placas' || a === 'sol' || a === 'cabos') && proj.blocos.length && !st.enquadrado) { st.enquadrado = true; centralizar(); }
       st.enc = [];
       msg(dica); painel(); refazer();
@@ -425,21 +430,42 @@
       const el = $('#t3Painel', ov), A = st.aba;
       if (A === 'foto') {
         const d = proj.drone;
-        el.innerHTML = `<div class="t3-linha"><input type="text" id="t3End" placeholder="Rua, número, bairro, cidade" value="${esc(proj.endereco || enderecoOrc())}"><button class="btn sol pequeno" data-acao="buscar">🛰️ Satélite</button></div>
-          <div class="t3-linha"><label class="btn vidro pequeno" style="cursor:pointer">📷 ${d ? 'Trocar' : 'Enviar'} foto do drone<input type="file" id="t3Arq" accept="image/*" hidden></label>${d ? '<button class="link" data-acao="tirarDrone">tirar a foto do drone</button>' : ''}</div>
+        if (!proj.modo) {
+          el.innerHTML = `<p style="margin:0 0 8px"><b>Como você quer montar este 3D?</b></p>
+            <div class="t3-modos">
+              <button data-acao="modo" data-v="drone"><span>🚁</span><b>Pela foto do drone</b><small>A foto é a base. O sistema não busca nada no satélite sozinho. Mais detalhe e sem risco de pegar a casa errada.</small></button>
+              <button data-acao="modo" data-v="satelite"><span>🛰️</span><b>Pelo satélite</b><small>Busca a casa pelo endereço e o telhado no Google. Você confirma se é a casa certa antes de montar.</small></button>
+            </div>`;
+          return;
+        }
+        const end = `<div class="t3-linha"><input type="text" id="t3End" placeholder="Rua, número, bairro, cidade" value="${esc(proj.endereco || enderecoOrc())}"><button class="btn ${proj.modo === 'drone' ? 'vidro' : 'sol'} pequeno" data-acao="buscar">🛰️ ${proj.modo === 'drone' ? (proj.fundo ? 'Buscar de novo' : 'Buscar satélite') : 'Buscar'}</button></div>`;
+        const topo = `<div class="t3-linha"><span class="mini">Montando por:</span><div class="t3-chips">${['drone', 'satelite'].map((v) => `<button class="t3-chip" data-acao="modo" data-v="${v}" aria-pressed="${proj.modo === v}">${NOME_MODO[v]}</button>`).join('')}</div></div>`;
+        if (proj.modo === 'satelite') {
+          const r = st.pendente;
+          el.innerHTML = `${topo}${end}
+            ${r ? `<div class="t3-confirma"><b>É esta a casa do cliente?</b> <span class="mini">Veja a mira rosa no meio da foto.${r.precisao && r.precisao !== 'ROOFTOP' ? ' <b>O Google achou o endereço por aproximação</b>: confira com atenção.' : ''}</span>
+              <div class="t3-linha"><button class="btn sol pequeno" data-acao="confirmarCasa">✅ É esta: montar o telhado</button><button class="link" data-acao="casaErrada">não é: corrigir o endereço</button></div></div>` : ''}
+            <p class="mini">Tem foto do drone? Troque para <button class="link" data-acao="modo" data-v="drone">🚁 Foto do drone</button>: fica mais preciso.</p>`;
+          return;
+        }
+        el.innerHTML = `${topo}
+          <div class="t3-linha"><label class="btn ${d ? 'vidro' : 'sol'} pequeno" style="cursor:pointer">📷 ${d ? 'Trocar' : 'Enviar'} foto do drone<input type="file" id="t3Arq" accept="image/*" hidden></label>${d ? '<button class="link" data-acao="tirarDrone">tirar a foto do drone</button>' : ''}</div>
           ${d ? `<div class="t3-ferr"><button data-ferr="regua" aria-pressed="${st.ferr === 'regua'}">📏 Régua (escala)</button><button data-ferr="moverDrone" aria-pressed="${st.ferr === 'moverDrone'}">✋ Mover a foto</button>${proj.fundo ? `<button data-ferr="encaixar" aria-pressed="${st.ferr === 'encaixar'}">📍 Encaixar no satélite (2 pontos)</button>` : ''}</div>
             ${st.ferr === 'encaixar' ? `<p class="mini"><b>${['1º canto na FOTO DO DRONE', 'o mesmo 1º canto no SATÉLITE', '2º canto na FOTO DO DRONE (longe do 1º)', 'o mesmo 2º canto no SATÉLITE'][st.enc.length] || ''}</b>: toque num canto bem visível (quina da casa, do muro ou da piscina). A escala e o norte saem do satélite, sem trena.</p>` : ''}
             ${st.ferr === 'regua' ? `<div class="t3-linha"><span class="mini">${st.regua.length < 2 ? 'Toque nas 2 pontas de uma medida que você conhece (uma parede medida na trena, a piscina, a frente do lote).' : `Medida tocada: ${n(Math.hypot(st.regua[1][0] - st.regua[0][0], st.regua[1][1] - st.regua[0][1]), 2)} m na foto. Quanto mede de verdade?`}</span>${st.regua.length === 2 ? '<input type="text" inputmode="decimal" id="t3Real" placeholder="metros" style="width:90px" autocomplete="off"><button class="btn sol pequeno" data-acao="aplicarRegua">Aplicar</button>' : ''}</div>` : ''}
             <label class="campo"><span>Norte da foto: girar <b id="t3RotO">${n(d.rot || 0, 1)}°</b>${d.auto && d.auto.rot ? '<small>veio da bússola do drone</small>' : '<small>deixe a frente da casa como ela é na rua: norte para cima</small>'}</span><input type="range" id="t3Rot" min="-180" max="180" step="0.5" value="${d.rot || 0}"></label>
             <div class="t3-linha"><button class="link" data-acao="rot-90">↺ 90°</button><button class="link" data-acao="rot90">↻ 90°</button><span class="mini">escala: ${n(d.escala * 100, 2)} cm por ponto · a foto cobre ${n(d.w * d.escala, 1)} × ${n(d.h * d.escala, 1)} m${d.escalaConferida ? ' · <b style="color:var(--verde,#3ddc97)">conferida na régua</b>' : d.auto && d.auto.escala ? ' · pela altura do voo' : ' · <b style="color:var(--laranja)">confira na régua</b>'}</span></div>
             ${proj.fundo ? `<label class="campo"><span>Transparência para encaixar no satélite</span><input type="range" id="t3Alfa" min="0.2" max="1" step="0.05" value="${st.alfaDrone}"></label>` : ''}` : ''}
+          <details class="t3-opc"${proj.fundo ? ' open' : ''}><summary class="mini">🛰️ Satélite para conferir (opcional)${proj.fundo ? ' · carregado' : ''}</summary>
+            <p class="mini">Só mostra o satélite por baixo, para encaixar a foto e pegar a posição. Não monta telhado nenhum sozinho.</p>${end}
+            ${proj.fundo ? '<button class="link" data-acao="tirarFundo">tirar o satélite</button>' : ''}</details>
           <p class="mini">Dica: foto do drone bem de cima (câmera a 90°) e o norte para cima. Com o satélite junto, deixe a foto meio transparente e encaixe as bordas da casa.</p>`;
       } else if (A === 'telhados') {
         const b = st.sel && st.sel.t === 'b' ? bloco(st.sel.id) : null;
         const desenhando = (st.ferr === 'ret' || st.ferr === 'pol') && st.des.length;
         el.innerHTML = `<div class="t3-ferr">${imgDrone || imgFundo ? `<button data-ferr="magica" aria-pressed="${st.ferr === 'magica'}">🪄 Tocar no telhado</button>` : ''}<button data-ferr="ret" aria-pressed="${st.ferr === 'ret'}">▭ Retângulo (3 toques)</button><button data-ferr="pol" aria-pressed="${st.ferr === 'pol'}">⬠ Formato livre</button><button data-ferr="ajustar" aria-pressed="${st.ferr === 'ajustar'}">✋ Ajustar</button></div>
           ${desenhando ? `<div class="t3-linha"><span class="mini">${st.ferr === 'ret' ? ['', 'Toque no outro canto da mesma parede.', 'Agora toque do outro lado, para dar a profundidade.'][st.des.length] : `${st.des.length} ponto(s). Toque no primeiro ponto para fechar.`}</span><button class="link" data-acao="desfazerPonto">desfazer ponto</button>${st.ferr === 'pol' && st.des.length >= 3 ? '<button class="btn sol pequeno" data-acao="fecharPol">Fechar o telhado</button>' : ''}<button class="link" data-acao="cancelarDes">cancelar</button></div>` : ''}
-          <div class="t3-chips">${proj.blocos.map((x, i) => `<button class="t3-chip" data-acao="sel-b" data-id="${x.id}" style="border-color:${CORES[i % CORES.length]}" aria-pressed="${!!(b && b.id === x.id)}">${esc(x.nome)}</button>`).join('')}</div>
+          <div class="t3-chips">${proj.blocos.map((x, i) => `<button class="t3-chip" data-acao="sel-b" data-id="${x.id}" style="border-color:${CORES[i % CORES.length]}" aria-pressed="${!!(b && b.id === x.id)}">${esc(x.nome)}</button>`).join('')}${proj.blocos.length ? '<button class="link" data-acao="apagarTodos" title="Começar os telhados do zero">🗑️ apagar todos</button>' : ''}</div>
           ${b ? `${b.pts.length === 4 ? `<div class="t3-linha"><span class="mini">Forma:</span><div class="t3-chips">${[['1', '1 água / laje'], ['2', '2 águas'], ['4', '4 águas']].map(([v, t]) => `<button class="t3-chip" data-acao="forma" data-v="${v}" aria-pressed="${(b.forma || '1') === v}">${t}</button>`).join('')}</div>${b.forma === '2' ? `<select data-b="cumeeira" style="width:auto"><option value="longo" ${b.cumeeira !== 'curto' ? 'selected' : ''}>cumeeira no lado maior</option><option value="curto" ${b.cumeeira === 'curto' ? 'selected' : ''}>cumeeira no lado menor</option></select>` : ''}</div>` : ''}
             <div class="grade g2 t3-form">
             <label class="campo"><span>Nome</span><input data-b="nome" value="${esc(b.nome)}"></label>
@@ -591,6 +617,11 @@
     async function acao(a, el) {
       if (a === 'buscar') return buscar({ endereco: $('#t3End', ov).value });
       if (a === 'tirarDrone') { proj.drone = null; imgDrone = null; sujar(true); painel(); desenhar(); return; }
+      if (a === 'tirarFundo') { proj.fundo = null; imgFundo = null; st.ferr = null; st.enc = []; sujar(true); painel(); desenhar(); return; }
+      if (a === 'modo') return trocarModo(el.dataset.v);
+      if (a === 'confirmarCasa') { if (!st.pendente) return; montarDoGoogle(st.pendente); st.pendente = null; painel(); desenhar(); if (proj.blocos.length) { irAba('telhados'); msg(`${msgGoogle()} Depois toque em <b>⚡ Montar sozinho</b> para pôr as placas e calcular a sombra.`); } return; }
+      if (a === 'casaErrada') { st.pendente = null; proj.fundo = null; imgFundo = null; sujar(true); painel(); desenhar(); const i = $('#t3End', ov); if (i) { i.focus(); i.select(); } msg('Corrija o endereço (rua, número, bairro e cidade) e toque em <b>Buscar</b> de novo. Se o Google não achar a casa certa, use a <b>🚁 Foto do drone</b>.', true); return; }
+      if (a === 'apagarTodos') { if (!confirm(`Apagar os ${proj.blocos.length} telhado(s) e as placas colocadas? Os obstáculos ficam.`)) return; limparTelhados(false); st.ferr = 'ret'; painel(); desenhar(); msg('Telhados apagados. Desenhe de novo com <b>▭ Retângulo</b> ou <b>🪄 Tocar no telhado</b>.'); return; }
       if (a === 'aplicarRegua') {
         const real = Number(String($('#t3Real', ov).value).replace(',', '.')), med = Math.hypot(st.regua[1][0] - st.regua[0][0], st.regua[1][1] - st.regua[0][1]);
         if (!(real > 0) || !med) return msg('Digite a medida real em metros (ex.: 4,20).', true);
@@ -725,21 +756,55 @@
       const A = proj.drone.auto, achou = [A.escala && `escala pela altura do voo (${n(md.altRel, 0)} m)`, A.rot && 'norte pela bússola do drone', A.gps && 'posição pelo GPS'].filter(Boolean);
       msg(`${auto.inclinada ? '<b>Esta foto não está bem de cima (câmera a menos de 80°): as medidas saem tortas. Prefira uma foto com a câmera a 90°.</b> ' : ''}${achou.length ? `Foto do drone lida: ${achou.join(', ')}. <b>Confira com a régua</b> numa medida que você tem (uma parede, a piscina).` : 'Foto carregada (sem os dados do voo — mande o arquivo original do drone, não pelo WhatsApp, que apaga esses dados). <b>1)</b> <b>Régua</b>: toque nas 2 pontas de algo que você mediu (uma parede, a piscina) e digite a medida. <b>2)</b> Gire até o <b>norte</b> ficar para cima.'}`, !!auto.inclinada);
     }
-    async function buscar(q) {
+    /* busca pelo endereço. Modo satélite: mostra a foto com a mira e espera o vendedor confirmar a casa antes de montar
+       (confirmado: true pula a confirmação, no ⚡ 3D automático do orçamento). Modo drone: só a foto de fundo para conferir. */
+    async function buscar(q, { confirmado = false } = {}) {
       if (!B.telhado) { msg('A busca por satélite funciona na versão dentro do Chamae. Aqui no teste, use a foto do drone.', true); return; }
-      msg('Buscando o imóvel e o telhado no Google…');
+      const soFundo = proj.modo === 'drone', gpsDrone = soFundo && proj.fonte === 'drone' && proj.drone && proj.drone.auto && proj.drone.auto.gps;
+      msg(soFundo ? 'Buscando o satélite do endereço (só para conferir a foto do drone)…' : 'Buscando o imóvel e o telhado no Google…');
       try {
         const r = await B.telhado(q); if (r.erro) throw new Error(r.erro);
-        Object.assign(proj, { lat: r.lat, lng: r.lng, endereco: r.endereco || proj.endereco, qualidade: r.qualidade, data: r.data, precisao: r.precisao, fonte: 'google', kd: null, H: null });
+        // com o GPS do drone, o ponto do projeto é o do drone (a foto já está no lugar certo); senão, o do endereço
+        if (!gpsDrone) Object.assign(proj, { lat: r.lat, lng: r.lng, fonte: 'google', kd: null, H: null });
+        Object.assign(proj, { endereco: r.endereco || proj.endereco, qualidade: r.qualidade, data: r.data, precisao: r.precisao });
         msg('Baixando a foto de satélite…');
         const f = await U.fotoSatelite(proj, (z, x, y) => B.tile(z, x, y), 60);
         proj.fundo = { img: f.cheia, mini: f.mini, ladoM: 60 }; st.imgsNovas.fundo = true; imgFundo = await carregarImg(f.cheia);
-        proj.pistas = U.pistasGoogle(proj, r);
-        if (!proj.blocos.length) proj.blocos = U.blocosDoGoogle(proj, r);
-        sujar(true); centralizar(); painel();
-        const dt = r.data ? `${String(r.data.month).padStart(2, '0')}/${r.data.year}` : '';
-        msg(`${proj.blocos.length ? `O Google achou ${proj.pistas.length} água(s) (foto de ${dt}, precisão básica) e eu montei ${proj.blocos.length > 1 ? proj.blocos.length + ' contornos' : 'o contorno'} com ${proj.blocos.map((b) => (b.forma || '1') + (b.forma === '1' ? ' água' : ' águas')).join(', ')}. <b>Confira os cantos no passo 2</b>: as setas azuis são as águas que o Google viu.` : 'O Google não tem o desenho deste telhado: desenhe no passo 2.'} ${r.precisao && r.precisao !== 'ROOFTOP' ? '<b>O endereço foi achado por aproximação: confira se é esta casa.</b> ' : ''}Se tiver a foto do drone, envie para ganhar detalhe.`);
+        if (soFundo) {
+          st.pendente = null; if (proj.drone) st.alfaDrone = 0.6; sujar(true); centralizar(); painel();
+          msg(proj.drone ? 'Satélite carregado por baixo da foto. Use <b>📍 Encaixar no satélite (2 pontos)</b> ou a transparência para conferir. Nenhum telhado foi criado: eles saem da sua foto.' : 'Satélite carregado. Agora envie a <b>foto do drone</b>.');
+          return;
+        }
+        if (confirmado || proj.blocos.length) { montarDoGoogle(r); st.pendente = null; sujar(true); centralizar(); painel(); msg(msgGoogle()); return; }
+        st.pendente = r; sujar(true); centralizar(); painel(); desenhar();
+        msg(`Confira a foto: <b>a mira rosa é onde o endereço caiu</b>. É a casa do cliente? Toque em <b>✅ É esta</b> para montar o telhado, ou corrija o endereço.${r.precisao && r.precisao !== 'ROOFTOP' ? ' <b>O endereço foi achado por aproximação.</b>' : ''}`, r.precisao && r.precisao !== 'ROOFTOP');
       } catch (err) { msg('Não consegui buscar: ' + esc(err.message), true); }
+    }
+    function montarDoGoogle(r) {
+      proj.pistas = U.pistasGoogle(proj, r);
+      if (!proj.blocos.length) proj.blocos = U.blocosDoGoogle(proj, r).map((b) => Object.assign(b, { fonte: 'google' }));
+      st.ultimoGoogle = r; sujar(true);
+    }
+    function msgGoogle() {
+      const r = st.ultimoGoogle || {}, dt = r.data ? `${String(r.data.month).padStart(2, '0')}/${r.data.year}` : '';
+      return proj.blocos.length ? `O Google achou ${(proj.pistas || []).length} água(s) (foto de ${dt}, precisão básica) e eu montei ${proj.blocos.length > 1 ? proj.blocos.length + ' contornos' : 'o contorno'} com ${proj.blocos.map((b) => (b.forma || '1') + (b.forma === '1' ? ' água' : ' águas')).join(', ')}. <b>Confira os cantos no passo 2</b>: as setas azuis são as águas que o Google viu.` : 'O Google não tem o desenho deste telhado: desenhe no passo 2 (ou use a 🚁 foto do drone).';
+    }
+    function limparTelhados(tudo) {
+      proj.blocos = []; proj.pistas = []; const L = proj.layout; L.manuais = []; L.forcarOn = []; L.forcarOff = []; L.soMao = undefined; L.oriFace = {};
+      if (tudo) proj.obst = [];
+      st.sel = null; st.des = []; st.vagas = []; st.escolhidas = []; st.enquadrado = false; sujar(true);
+    }
+    /* trocar de modo: o que foi montado pelo outro modo sai junto, para não sobrar telhado "fantasma" */
+    function trocarModo(v) {
+      if (!NOME_MODO[v] || v === proj.modo) return;
+      const antes = proj.modo, temAlgo = proj.blocos.length || proj.obst.length || (v === 'satelite' && proj.drone);
+      if (antes && temAlgo && !confirm(`Trocar para ${NOME_MODO[v]}?\n\nIsso apaga ${[proj.blocos.length && `${proj.blocos.length} telhado(s)`, proj.obst.length && `${proj.obst.length} obstáculo(s)`, v === 'satelite' && proj.drone && 'a foto do drone'].filter(Boolean).join(', ')} e as placas, que foram montados pelo outro modo.`)) return;
+      if (antes) {
+        limparTelhados(true); st.pendente = null;
+        if (v === 'satelite') { proj.drone = null; imgDrone = null; proj.fundo = null; imgFundo = null; } // busca de novo e confirma a casa
+      }
+      proj.modo = v; st.ferr = null; st.enc = []; st.regua = []; sujar(true); irAba('foto'); desenhar();
+      if (v === 'satelite' && !proj.fundo && B.telhado && enderecoOrc()) buscar({ endereco: proj.endereco || enderecoOrc() });
     }
 
     /* ---------- salvar ---------- */
@@ -794,17 +859,36 @@
     async function montarSozinho(bt) {
       if (bt.disabled) return false; bt.disabled = true;
       try {
-        if (!proj.blocos.length) {
-          const end = enderecoOrc();
-          if (!end || !B.telhado) { msg('Para montar sozinho preciso do endereço do cliente (rua e número no contrato) ou de uma foto do drone: comece pelo passo 1.', true); return; }
-          await buscar({ endereco: end });
-          if (!proj.blocos.length) { msg('O Google não achou o telhado deste endereço: desenhe os telhados no passo 2 e toque de novo em ⚡.', true); return; }
+        if (!proj.modo) { irAba('foto'); msg('Primeiro escolha como montar: <b>🚁 pela foto do drone</b> ou <b>🛰️ pelo satélite</b>.', true); return false; }
+        if (proj.modo === 'drone' && !proj.blocos.length) {
+          const d = proj.drone;
+          if (!d) { irAba('foto'); msg('Envie a <b>foto do drone</b> primeiro (passo 1).', true); return false; }
+          if (!d.escalaConferida && !(d.auto && d.auto.escala) && !proj.fundo) { irAba('foto'); st.ferr = 'regua'; painel(); msg('Antes de montar, acerte a escala: <b>📏 Régua</b>, toque nas 2 pontas de algo que você mediu e digite a medida. Sem isso as placas saem do tamanho errado.', true); return false; }
+          // o telhado do meio da foto (o drone costuma ficar em cima da casa), achado pela cor da telha
+          // o meio pode cair numa claraboia ou caixa d'água: tenta também em volta (até 1/4 da foto)
+          irAba('telhados'); const cx = d.cx || 0, cz = d.cz || 0, R0 = Math.min(d.w, d.h) * d.escala;
+          for (const [fr, n8] of [[0, 1], [0.1, 8], [0.18, 8], [0.25, 8]]) {
+            for (let k = 0; k < n8 && !proj.blocos.length; k++) { const a = k * Math.PI / 4; varinha([cx + Math.cos(a) * fr * R0, cz + Math.sin(a) * fr * R0]); }
+            if (proj.blocos.length) break;
+          }
+          if (proj.blocos.length) { const b0 = proj.blocos[0]; b0.fonte = 'drone-auto'; }
+          if (!proj.blocos.length) { st.ferr = 'magica'; painel(); msg('Não achei o telhado sozinho no meio da foto. Toque em <b>🪄 Tocar no telhado</b> e toque em cada parte do telhado (ou desenhe com ▭ Retângulo). Depois toque de novo em ⚡.', true); return false; }
+        }
+        if (proj.modo === 'satelite' && !proj.blocos.length) {
+          if (st.pendente) { irAba('foto'); msg('Confira se é a casa certa e toque em <b>✅ É esta</b> (passo 1).', true); return false; }
+          const end = proj.endereco || enderecoOrc();
+          if (!end || !B.telhado) { irAba('foto'); msg('Para montar pelo satélite preciso do endereço do cliente (rua e número): digite no passo 1.', true); return false; }
+          if (st.aba !== 'foto') irAba('foto');
+          await buscar({ endereco: end }, { confirmado: auto });
+          if (st.pendente) return false; // espera o vendedor confirmar a casa
+          if (!proj.blocos.length) { msg('O Google não achou o telhado deste endereço: desenhe os telhados no passo 2 e toque de novo em ⚡.', true); return false; }
         }
         irAba('placas'); await esperarConta(); if (!st.analisado) { await analisar(); await esperarConta(); }
         if (!st.escolhidas.length) { msg('Não coube nenhuma placa: confira os telhados (passo 2).', true); return; }
         irAba('sol');
         const res = U.gerar(proj, st.escolhidas, { pvgis: proj.pvgis, hsp, pr });
-        msg(`⚡ Pronto: ${st.escolhidas.length} placa(s) nos melhores lugares do telhado e a sombra do ano inteiro calculada (${n(res.perdaSombra * 100, 1)}% de perda). Confira e toque em <b>Salvar no orçamento</b>.`);
+        const peloDrone = proj.blocos.some((b) => b.fonte === 'drone-auto');
+        msg(`${peloDrone ? '🚁 Achei o telhado pela cor da telha na foto do drone. <b>Confira o contorno, a altura e a inclinação no passo 2</b> (se faltou uma parte, use 🪄 nela). ' : ''}⚡ Pronto: ${st.escolhidas.length} placa(s) nos melhores lugares do telhado e a sombra do ano inteiro calculada (${n(res.perdaSombra * 100, 1)}% de perda). Confira e toque em <b>Salvar no orçamento</b>.`);
         return true;
       } catch (err) { msg('Não consegui montar sozinho: ' + esc(err.message), true); return false; }
       finally { bt.disabled = false; }
@@ -841,7 +925,7 @@
     irAba(st.aba);
     if (auto) { // ⚡ 3D automático (1 clique no orçamento): monta, salva e fecha; se faltar algo, fica aberto e explica
       (async () => { for (let i = 0; i < 60 && !viewer; i++) await new Promise((r) => setTimeout(r, 250)); if (await montarSozinho($('#t3Auto', ov))) await salvar(); })();
-    } else if (!proj.blocos.length && !proj.fundo && !proj.drone && B.telhado && orc.contrato && orc.contrato.rua && orc.contrato.numero) buscar({ endereco: enderecoOrc() }); // já tem o endereço: busca sozinho
+    } else if (proj.modo === 'satelite' && !proj.blocos.length && !proj.fundo && B.telhado && orc.contrato && orc.contrato.rua && orc.contrato.numero) buscar({ endereco: enderecoOrc() }); // modo satélite com endereço: busca sozinho (e pede para confirmar a casa)
   }
 
   raiz.Telhado = { abrir };

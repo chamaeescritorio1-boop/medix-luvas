@@ -2,18 +2,26 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111003",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Texto embaixo da assinatura",
+   "texto": "Suba só o cartão da sua assinatura. O significado do nome CHAMAE e o aviso de confidencialidade entram sozinhos embaixo dele, em texto, nos E-mails do dia e nos orçamentos por e-mail.",
+   "onde": "Mais › Ajustes › Assinatura do e-mail"
+  },
+  {
+   "id": "2026111003",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Pedido fechado conclui o retorno do orçamento",
+   "texto": "Quando o orçamento vira pedido (Aprovado para transmissão, Aguardando ATG ou Transmitido), a tarefa de retorno dele na Agenda é concluída sozinha, como já acontecia ao cancelar. Antes isso só acontecia no Transmitido."
+  },
+  {
    "id": "2026111002",
    "data": "2026-11-10",
    "tipo": "novo",
    "titulo": "Quem já comprou um produto (por região)",
    "texto": "Em Mais › Quem já comprou (ou Relatórios, ou na ficha do produto): digite o código ou o nome do modelo (ex.: PVX) e veja todos os clientes que já compraram, de todas as representadas, com data, quantidade, preço, cidade, distância e telefone. Dá para filtrar até 50/100/200 km da sua cidade, por período e por um produto só (ex.: cano longo G)."
-  },
-  {
-   "id": "2026111001",
-   "data": "2026-11-10",
-   "tipo": "correcao",
-   "titulo": "Pedido fechado conclui o retorno do orçamento",
-   "texto": "Quando o orçamento vira pedido (Aprovado para transmissão, Aguardando ATG ou Transmitido), a tarefa de retorno dele na Agenda é concluída sozinha, como já acontecia ao cancelar. Antes isso só acontecia no Transmitido."
   },
   {
    "id": "2026110924",

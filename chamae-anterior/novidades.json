@@ -2,12 +2,41 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
-   "id": "2026110921",
+   "id": "2026111002",
+   "data": "2026-11-10",
+   "tipo": "novo",
+   "titulo": "Quem já comprou um produto (por região)",
+   "texto": "Em Mais › Quem já comprou (ou Relatórios, ou na ficha do produto): digite o código ou o nome do modelo (ex.: PVX) e veja todos os clientes que já compraram, de todas as representadas, com data, quantidade, preço, cidade, distância e telefone. Dá para filtrar até 50/100/200 km da sua cidade, por período e por um produto só (ex.: cano longo G)."
+  },
+  {
+   "id": "2026111001",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Pedido fechado conclui o retorno do orçamento",
+   "texto": "Quando o orçamento vira pedido (Aprovado para transmissão, Aguardando ATG ou Transmitido), a tarefa de retorno dele na Agenda é concluída sozinha, como já acontecia ao cancelar. Antes isso só acontecia no Transmitido."
+  },
+  {
+   "id": "2026110924",
    "data": "2026-11-09",
    "tipo": "novo",
-   "titulo": "Assinatura do e-mail igual à do Outlook",
-   "texto": "Monte sua assinatura com foto, cargo, telefones, e-mail, endereço, logo Chamae e as empresas representadas, mais o significado do nome e o aviso de confidencialidade. Ela vai no fim dos E-mails do dia e dos orçamentos enviados por e-mail. O gestor pode montar a de cada vendedor.",
-   "onde": "Mais › Ajustes › ✍️ Montar assinatura igual ao Outlook"
+   "titulo": "Um só retorno por orçamento + “E agora?” ao concluir",
+   "texto": "Cada orçamento agora tem uma única tarefa de retorno na Agenda. Ao registrar o contato depois de salvar, o retorno que já existia muda para a data escolhida, sem criar outra tarefa. Ao concluir a tarefa, escolha o que fazer: Fechou pedido (abre o Transmitir), Perdeu (pergunta o motivo), Sem próximo passo ou Retornar de novo (amanhã, 3 dias, 7 dias ou dia e hora)."
+  },
+  {
+   "id": "2026110923",
+   "data": "2026-11-09",
+   "tipo": "correcao",
+   "titulo": "Fechar o orçamento volta para a tarefa",
+   "texto": "Na Agenda, ao abrir uma tarefa e tocar em Abrir orçamento ou Registrar contato, a janela abre por cima da tarefa. Ao tocar em Fechar ou ✕ você volta para a tarefa, pronto para registrar e concluir. Se for para outra tela (Ficha do cliente, editar orçamento), aparece embaixo o botão ↩ Voltar à tarefa.",
+   "onde": "Tarefas e agenda › tocar na tarefa"
+  },
+  {
+   "id": "2026110922",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Assinatura do e-mail",
+   "texto": "Suba a imagem da assinatura que você já usa no Outlook. Ela vai no fim dos E-mails do dia e dos orçamentos enviados por e-mail. O gestor pode subir a de cada vendedor.",
+   "onde": "Mais › Ajustes › ⬆ Subir imagem da assinatura"
   },
   {
    "id": "2026110920",
@@ -45,8 +74,8 @@
    "data": "2026-11-09",
    "tipo": "novo",
    "titulo": "Ver o endereço e a fachada do cliente no Maps",
-   "texto": "Na ficha do cliente aparece o endereço com 3 botões: 🗺️ Abrir no Maps (abre o endereço no Google Maps, no celular abre o aplicativo), 🏠 Ver fachada (abre a foto da rua, o Street View, na frente do cliente) e Mapa aqui (mostra o mapa dentro da própria ficha).",
-   "onde": "Clientes, ficha do cliente e Bater carteira"
+   "texto": "Toque no 📍 ao lado do cliente (Lista e filtros e Bater carteira) ou em 📍 Endereço e mapa na ficha: abre o endereço com 🗺️ Abrir no Maps (no celular abre o aplicativo), 🏠 Ver fachada (a foto da rua, o Street View, na frente do cliente) e Mapa aqui (o mapa dentro do Sistema). Fechado, não ocupa espaço.",
+   "onde": "Clientes (Lista e filtros e Bater carteira) e ficha do cliente"
   },
   {
    "id": "2026110908",
@@ -57,14 +86,6 @@
    "onde": "Bater carteira, ficha do cliente, Orçamento salvo e 🎙️ Enviar ligação"
   },
   {
-   "id": "2026110906",
-   "data": "2026-11-09",
-   "tipo": "correcao",
-   "titulo": "Pedido transmitido conta nas vendas",
-   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
-   "onde": "Pedidos › Transmitir"
-  },
-  {
    "id": "2026110907",
    "data": "2026-11-09",
    "tipo": "novo",
@@ -72,6 +93,14 @@
    "titulo": "Aviso de pedido em dobro",
    "texto": "Se um pedido transmitido pelo Sistema também for finalizado no Reprio, aparece um aviso no Início e no Painel do mês para deixar só um contando.",
    "onde": "Início e Relatórios › Painel do mês"
+  },
+  {
+   "id": "2026110906",
+   "data": "2026-11-09",
+   "tipo": "correcao",
+   "titulo": "Pedido transmitido conta nas vendas",
+   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
+   "onde": "Pedidos › Transmitir"
   },
   {
    "id": "2026110904",

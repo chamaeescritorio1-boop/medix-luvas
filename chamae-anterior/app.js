@@ -247,7 +247,7 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView,ajuda:ajudaView,limites:limitesView}[r]||home)()}
+function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView,ajuda:ajudaView,limites:limitesView,quem:quemComprouView}[r]||home)()}
 $('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; {const ab=$('#ajudaBtn'); if(ab) ab.onclick=ajudaDaTela} $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
@@ -264,6 +264,7 @@ const NAVOPC=[['estr','E-mails','<rect x="3" y="5" width="18" height="14" rx="2"
   ['metas','Metas','<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'],
   ['reps','Representadas','<path d="M3 21V10l6 3V8l6 3V4h6v17z"/>'],
   ['busca','Buscar','<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6"/>'],
+  ['quem','Quem comprou','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15 5h6M15 9h6M17 13h4"/>'],
   ['tec','Busca técnica','<rect x="4" y="3" width="12" height="16" rx="2"/><path d="M7 8h6M7 12h4"/><circle cx="16.5" cy="16.5" r="3.5"/><path d="M19 19l2.5 2.5"/>']];
 const NAVPAD=['cli','tar','orc','ped','prod'], NAVMAX=6;
 const navOk=k=>NAVOPC.some(o=>o[0]===k)&&(k!=='fin'||FIN_ON());
@@ -1150,7 +1151,7 @@ async function detOrc(id,o0){if(String(id).startsWith('rp:')) return detalhe(id.
     if(e.target.closest('[data-ab]')){if(!confirm('Abrir este orçamento para editar? Ele substitui o orçamento em andamento desta representada.')) return; const q=Q(); q[o.dados.rep]={...o.dados,id:o.id.split('-').slice(2).join('-')||o.dados.id}; setQ(q); ov.remove(); go('orc',{rep:o.dados.rep})}}}
 
 /* ---------- relatórios ---------- */
-const RELS=[['painel','Painel do mês'],['conv','Conversão e positivação'],['perdas','Motivos de perda'],['mes','Vendas mensais'],['rep','Por representada'],['vend','Por vendedor'],['abcc','Curva ABC de clientes'],['abcp','Curva ABC de produtos'],['prod','Produtos vendidos × clientes'],['queda','Clientes em queda'],['recompra','Recompra atrasada'],['cross','Oportunidades entre representadas'],['nunca','Quem não comprou um produto']];
+const RELS=[['painel','Painel do mês'],['conv','Conversão e positivação'],['perdas','Motivos de perda'],['mes','Vendas mensais'],['rep','Por representada'],['vend','Por vendedor'],['abcc','Curva ABC de clientes'],['abcp','Curva ABC de produtos'],['prod','Produtos vendidos × clientes'],['queda','Clientes em queda'],['recompra','Recompra atrasada'],['cross','Oportunidades entre representadas'],['nunca','Quem não comprou um produto'],['quem','👥 Quem já comprou (por região)']];
 let PEDS=null, PEDS_EXPIRE=0; const CACHE_TTL=5*60*1000;
 /* relatórios: usa o que já foi baixado (período maior serve para um menor), guarda no aparelho e atualiza por trás */
 let PEDS_BG=null; const corta=(x,de)=>x.de===de?x.d:x.d.filter(p=>p.data>=de); const assin=d=>d.length+':'+Math.round(d.reduce((s,p)=>s+(+p.valor||0),0));
@@ -1165,7 +1166,7 @@ async function rel(){const m=$('#main'); const s=L('relS')||{r:'painel',anos:2,r
   m.innerHTML=`<div class="sec">Relatórios</div><div class="row" style="margin-bottom:8px">${RELS.map(([k,l])=>`<button class="chip${s.r===k?' on':''}" data-rl="${k}">${l}</button>`).join('')}</div>
    <div class="row"><select id="rrep"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===s.rep?' selected':''}>${r}</option>`).join('')}</select><select id="ranos">${[[1,'Últimos 12 meses'],[2,'Últimos 2 anos'],[3,'Últimos 3 anos'],[5,'Desde 2022']].map(([v,l])=>`<option value="${v}"${v==s.anos?' selected':''}>${l}</option>`).join('')}</select><button class="chip" id="rcsv">Exportar</button></div>
    <div id="rout" style="margin-top:12px"><p class="hint">Calculando…</p></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rl]'); if(b){s.r=b.dataset.rl; LS('relS',s); rel()}}; $('#rrep').onchange=e=>{s.rep=e.target.value; LS('relS',s); rel()}; $('#ranos').onchange=e=>{s.anos=+e.target.value; LS('relS',s); rel()}; if(s.r==='painel'){$('#rrep').parentNode.hidden=true; return painel($('#rout'))} if(s.r==='perdas') return relPerdas($('#rout'),s.anos,s.rep); if(s.r==='conv') return relConversao($('#rout'),s.rep);
+  m.onclick=e=>{const b=e.target.closest('[data-rl]'); if(b&&b.dataset.rl==='quem') return go('quem'); if(b){s.r=b.dataset.rl; LS('relS',s); rel()}}; $('#rrep').onchange=e=>{s.rep=e.target.value; LS('relS',s); rel()}; $('#ranos').onchange=e=>{s.anos=+e.target.value; LS('relS',s); rel()}; if(s.r==='painel'){$('#rrep').parentNode.hidden=true; return painel($('#rout'))} if(s.r==='perdas') return relPerdas($('#rout'),s.anos,s.rep); if(s.r==='conv') return relConversao($('#rout'),s.rep);
   const de=new Date(new Date().getFullYear()-(s.anos>=5?5:s.anos),0,1).toISOString().slice(0,10); const out=$('#rout'); let X=[];
   const bar=(v,mx)=>`<span style="display:inline-block;height:9px;border-radius:4px;background:var(--accent);width:${Math.max(2,Math.round(v/mx*140))}px;vertical-align:middle"></span>`;
   const tbl=(h,rows,fmt)=>{X=[h,...rows]; return `<div class="card" style="overflow-x:auto"><table class="t"><tr>${h.map((c,i)=>`<th${i&&fmt&&fmt[i]?' class="n"':''}>${esc(c)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${fmt&&fmt[i]?' class="n"':''}>${fmt&&fmt[i]==='brl'?brl(c):fmt&&fmt[i]==='pct'?pct(c):fmt&&fmt[i]==='raw'?c:esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>`};
@@ -2827,13 +2828,13 @@ async function fichaProd(rep,pid){const m=$('#main'); const C=CAT[rep]||await ca
   const val=([k,,ty])=>ty==='attr'||ty==='attrn'?(p.attrs||{})[k]??'':p[k]??'';
   m.innerHTML=`<div class="row" style="justify-content:space-between"><button class="chip" data-back>‹ ${ctx.volta?'Voltar à tabela':'Produtos'}</button><span class="hint">${repIcon(rep,20)} ${esc(repName(rep))}</span></div>
    <div class="sec" style="margin-top:10px">${pid?esc(p.cod):'Novo produto'}</div>
-   ${pid?`<a class="chip" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(repName(rep)+' '+(p.ref||p.cod)+' '+String(p.descricao||'').slice(0,40))}">🔎 Procurar foto na internet</a>`:''}${p.img?`<img src="${esc(p.img)}" data-zoom="${esc(p.img)}" alt="" onerror="this.remove()" style="max-width:160px;max-height:160px;background:#fff;border-radius:12px;cursor:zoom-in">`:''}
+   ${pid?`<button class="chip" data-quem>👥 Quem já comprou</button> `:''}${pid?`<a class="chip" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(repName(rep)+' '+(p.ref||p.cod)+' '+String(p.descricao||'').slice(0,40))}">🔎 Procurar foto na internet</a>`:''}${p.img?`<img src="${esc(p.img)}" data-zoom="${esc(p.img)}" alt="" onerror="this.remove()" style="max-width:160px;max-height:160px;background:#fff;border-radius:12px;cursor:zoom-in">`:''}
    <div class="card grid"><div class="r2">${PROD_F.map(d=>`<label class="f">${d[1]}<input data-pf="${d[0]}" data-ty="${d[2]}"${d[2]==='number'||d[2]==='attrn'?' type="number" step="0.01"':''} value="${esc(val(d))}"${ro}${d[0]==='cod'&&pid?' readonly':''}></label>`).join('')}</div>
     <label class="f">Informações para o vendedor (argumentos, aplicação, concorrentes…)<textarea data-pf="info" data-ty="attr" rows="3"${ro}>${esc((p.attrs||{}).info||'')}</textarea></label>
     <label class="row" style="gap:6px"><input type="checkbox" id="pat"${p.ativo!==false?' checked':''} style="width:auto"${ges?'':' disabled'}> Produto ativo</label></div><div id="ptec"></div>
    <div class="card grid" style="margin-top:12px"><b>Preços por tabela</b>${T.length?`<table class="t"><tr><th>Tabela</th><th class="n">Bruto</th><th class="n">Líquido (usado no orçamento)</th></tr>${T.map(t=>`<tr><td>${esc(t.nome)}</td><td class="n"><input data-pb="${t.id}" type="number" step="0.01" value="${PR[t.id]&&PR[t.id].base!=null?PR[t.id].base:''}" style="width:110px;padding:6px"${ro}></td><td class="n"><input data-pl="${t.id}" type="number" step="0.01" value="${PR[t.id]&&PR[t.id].liq!=null?PR[t.id].liq:''}" style="width:110px;padding:6px"${ro}></td></tr>`).join('')}</table>`:'<p class="hint">Nenhuma tabela cadastrada para esta representada.</p>'}</div>
    ${ges?'<button class="btn" id="psave" style="margin-top:12px">Salvar produto</button>':'<p class="hint">Somente gestores editam produtos.</p>'}`;
-  if(pid) tecFicha($('#ptec'),rep,p); const volta=ctx.volta; m.onclick=async e=>{if(e.target.closest('[data-back]')) return volta?go(...volta):go('prod'); if(e.target.id!=='psave') return;
+  if(pid) tecFicha($('#ptec'),rep,p); const volta=ctx.volta; m.onclick=async e=>{if(e.target.closest('[data-back]')) return volta?go(...volta):go('prod'); if(e.target.closest('[data-quem]')) return go('quem',{q:p.cod,rep}); if(e.target.id!=='psave') return;
     const body={rep,attrs:{...(p.attrs||{})},ativo:$('#pat').checked,atualizado_em:new Date().toISOString()}; m.querySelectorAll('[data-pf]').forEach(i=>{const k=i.dataset.pf, ty=i.dataset.ty; let v=i.value.trim(); if(ty==='number'||ty==='attrn') v=v===''?null:+v; else v=v||null; if(ty==='attr'||ty==='attrn') body.attrs[k]=v; else body[k]=v});
     if(!body.cod) return toast('Informe o código'); body.mult=Math.max(1,Math.round(body.mult||1));
     try{let id=pid; if(pid) await api(`produtos?id=eq.${pid}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)}); else{const r=await api('produtos?on_conflict=rep,cod&select=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify([body])}); id=r[0].id}
@@ -3533,12 +3534,90 @@ function cartContinuarHtml(JA,L2,est){const M=JA.meus; if(!M.length) return ''; 
     <details><summary class="hint" style="cursor:pointer">📜 Histórico das últimas batidas</summary><div class="hint" style="font-size:13px;line-height:1.7">${hist}</div></details></div>`}
 
 /* ================= Mais ================= */
-function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (reativação de clientes)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
+function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (reativação de clientes)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['quem','👥','Quem já comprou um produto (por região)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
   const adm=[['reps','🏭','Representadas'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos'],['limites','📊','Limites grátis (Supabase e GitHub)']]:[])];
   const grade=it=>`<div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div>
    <div class="sec" style="font-size:17px;margin-top:14px">Dia a dia</div>${grade(dia)}<div class="sec" style="font-size:17px;margin-top:22px">Cadastros e administração</div>${grade(adm)}`;
   m.onclick=e=>{if(e.target.closest('[data-navedit]')) return navEditar(); const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
+
+/* ================= Quem já comprou (pedido do Victor em 10/11/2026: "relatório para saber quem já comprou um modelo de produto e quando… ver quem tem na região")
+   Busca o produto (código ou nome do modelo, ex.: PVX) em todas as representadas: pedidos (Reprio, sistema antigo e Sistema) + orçamentos transmitidos que ainda não viraram pedido.
+   Mostra cada cliente com cidade/UF, distância em linha reta da cidade escolhida (lista de municípios do IBGE em /municipios.json), última compra, quantidade e telefone. */
+let MUNI=null;
+const muniK=s=>norm(s).replace(/[^A-Z0-9]+/g,' ').trim().split(' ').filter(w=>!['DA','DE','DO','DAS','DOS','D'].includes(w)).map(w=>({STA:'SANTA',STO:'SANTO',S:'SAO'}[w]||w)).join(' ');
+function municipios(){return MUNI||(MUNI=fetch('../municipios.json').then(r=>r.ok?r.json():{}).catch(()=>({}))) }
+/* coordenadas da cidade: com UF quando tiver; sem UF pega a de SP, depois MG, depois a primeira */
+function muniXY(M,cid,uf){const k=muniK(cid); if(!k) return null; if(uf&&M[String(uf).toUpperCase()+'|'+k]) return M[String(uf).toUpperCase()+'|'+k];
+  for(const u of ['SP','MG','GO','PR']) if(M[u+'|'+k]) return M[u+'|'+k]; const f=Object.keys(M).find(x=>x.endsWith('|'+k)); return f?M[f]:null}
+const kmEntre=(a,b)=>{if(!a||!b) return null; const r=Math.PI/180, dl=(b[0]-a[0])*r, dg=(b[1]-a[1])*r, h=Math.sin(dl/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dg/2)**2; return 12742*Math.asin(Math.sqrt(h))};
+const QC_ST='or=(status.is.null,status.eq.finalizado,status.like.APROVADO*)';
+const REP_DE_NOME=n=>Object.keys(HIST_REP).find(k=>HIST_REP[k]===n)||((REPS||[]).find(r=>r.nome===n)||{}).id||'';
+/* palavras da busca → filtro do banco (vogais viram "_" para achar com ou sem acento; o filtro exato é feito depois aqui) */
+const qcPal=q=>norm(q).replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(w=>w.length>=2).slice(0,6);
+const qcLike=(campo,P)=>P.map(w=>`${campo}.ilike.*${w.length>=4?w.replace(/[AEIOU]/g,'_'):w}*`).join(',');
+async function quemComprouDados(q,rep){const P=qcPal(q); if(!P.length) return null; const nomeRep=rep?(HIST_REP[rep]||repName(rep)):'';
+  const um=P.length===1?P[0]:''; const orTxt=campo=>`or=(${um?`cod.eq.${um},`:''}and(${qcLike(campo,P)}))`;
+  const cat=await api(`produtos?select=rep,cod,ref,descricao&${um?`or=(cod.eq.${um},ref.eq.${um},and(${qcLike('descricao',P)}))`:`and=(${qcLike('descricao',P)})`}${rep?`&rep=eq.${rep}`:''}&limit=400`).catch(()=>[]);
+  const tem=s=>{const t=norm(s); return P.every(w=>t.includes(w))};
+  const C=(cat||[]).filter(p=>tem(p.descricao)||(um&&(norm(p.cod)===um||norm(p.ref)===um)));
+  const codsRep={}; C.forEach(p=>{const n=HIST_REP[p.rep]||repName(p.rep); [p.cod,p.ref].filter(Boolean).forEach(c=>(codsRep[norm(c).trim()]=codsRep[norm(c).trim()]||new Set()).add(n))});
+  const emb=`pedidos!inner(id,num,origem,data,cnpj,cliente,cidade,representada,vendedor)&pedidos.${QC_ST}${nomeRep?`&pedidos.representada=eq.${encodeURIComponent(nomeRep)}`:''}`;
+  const sel=`pedido_itens?select=cod,descricao,qtd,preco,${emb}`; const cods=Object.keys(codsRep).slice(0,150);
+  const [I1,I2,O,S]=await Promise.all([api(`${sel}&${orTxt('descricao')}&limit=3000`).catch(()=>[]),
+    cods.length?api(`${sel}&cod=in.(${cods.map(c=>'"'+c.replace(/"/g,'')+'"').join(',')})&limit=3000`).catch(()=>[]):[],
+    api(`orcamentos?select=id,cnpj,app,cliente,criado_em,dados&status=eq.transmitido${rep?`&app=eq.${rep}`:''}&order=criado_em.desc&limit=400`).catch(()=>[]),
+    api(`pedidos?select=id&id=like.sis-*&limit=5000`).catch(()=>[])]);
+  const ok=(cod,desc,repN)=>{const c=norm(cod).trim(); return (codsRep[c]&&codsRep[c].has(repN))||tem(desc)||(um&&c===um)};
+  const ped={}, linhas=[]; [...(I1||[]),...(I2||[])].forEach(i=>{const p=i.pedidos; if(!p||!ok(i.cod,i.descricao,p.representada)) return; ped[p.id]=p; linhas.push({pid:p.id,cod:i.cod,desc:i.descricao,q:+i.qtd||0,pu:+i.preco||0})});
+  const vale=new Set(semDupLeg(Object.values(ped)).map(p=>p.id)); const visto=new Set(); const R=[];
+  linhas.forEach(l=>{if(!vale.has(l.pid)) return; const k=l.pid+'|'+l.cod+'|'+l.q+'|'+l.pu; if(visto.has(k)) return; visto.add(k); const p=ped[l.pid];
+    R.push({cnpj:p.cnpj,cli:p.cliente,cid:p.cidade,rep:p.representada,d:String(p.data||'').slice(0,10),num:p.num||'',vend:vAt(p.vendedor||''),cod:l.cod,desc:l.desc,q:l.q,pu:l.pu})});
+  const sis=new Set((S||[]).map(x=>String(x.id).slice(4)));
+  (O||[]).forEach(o=>{if(sis.has(o.id)) return; const d=o.dados||{}, cli=d.cli||{}, repN=HIST_REP[o.app]||repName(o.app); (d.linhas||[]).forEach(l=>{if(!ok(l.cod,l.desc||l.d||'',repN)) return;
+    R.push({cnpj:o.cnpj||cli.cnpj,cli:cli.razao||cli.nome||o.cliente||'',cid:cli.cidade||'',uf:cli.uf||'',rep:repN,d:String(d.transmitido_em||o.criado_em||'').slice(0,10),num:d.num||'',vend:vAt(d.vendedor||''),cod:l.cod,desc:l.desc||l.d||'',q:+l.qt||0,pu:+l.pu||0,sis:1})})});
+  const cn=[...new Set(R.map(r=>r.cnpj).filter(Boolean))]; const CL={};
+  for(let i=0;i<cn.length;i+=150){(await api(`clientes?select=cnpj,razao,fantasia,cidade,uf,telefone,vendedor&cnpj=in.(${cn.slice(i,i+150).join(',')})`).catch(()=>[])).forEach(c=>CL[c.cnpj]=c)}
+  return {R,CL,muitos:(I1||[]).length>=3000}}
+async function quemComprouView(){const m=$('#main'); const R0=(await reps()).filter(r=>r.ativa&&r.n);
+  const f=Object.assign({q:'',rep:'',perto:'Ribeirão Preto/SP',km:0,per:0},L('quemF')||{}); if(ctx.q!=null){f.q=ctx.q; if(ctx.rep!=null) f.rep=ctx.rep}
+  m.innerHTML=`<div class="sec">👥 Quem já comprou</div>
+   <div class="card grid"><label class="f">Produto: código ou nome do modelo<input id="qq" type="search" placeholder="Ex.: PVX, 14233, nitrílica azul, bota PVC" value="${esc(f.q)}"></label>
+    <div class="row"><select id="qrep" style="width:auto"><option value="">Todas as representadas</option>${R0.map(r=>`<option value="${r.id}"${r.id===f.rep?' selected':''}>${esc(r.nome)}</option>`).join('')}</select><button class="btn" id="qgo">Procurar</button></div>
+    <div class="row"><label class="f" style="flex:1;min-width:180px">Perto de (cidade/UF)<input id="qperto" placeholder="Ex.: Ribeirão Preto/SP" value="${esc(f.perto)}"></label>
+     <div class="row" style="align-self:flex-end">${[[0,'Qualquer distância'],[50,'Até 50 km'],[100,'Até 100 km'],[200,'Até 200 km']].map(([v,l])=>`<button class="chip${+f.km===v?' on':''}" data-qkm="${v}">${l}</button>`).join('')}</div></div>
+    <div class="row">${[[0,'Desde sempre'],[12,'Últimos 12 meses'],[24,'Últimos 2 anos']].map(([v,l])=>`<button class="chip${+f.per===v?' on':''}" data-qper="${v}">${l}</button>`).join('')}</div>
+    <p class="hint">Junta os pedidos do Reprio, do sistema antigo e do Sistema (aprovados e transmitidos). Orçamento em aberto não conta. Distância em linha reta entre as cidades.</p></div>
+   <div id="qres" style="margin-top:12px"></div>`;
+  let D=null, prodSel=new Set(), X=[];
+  const draw=async()=>{const r=$('#qres'); if(!D){r.innerHTML=''; return} const M=await municipios(); const pt=String(f.perto||'').split(/[\/\-–,]/); const base=muniXY(M,pt[0],(pt[1]||'').trim());
+    const lim=f.per?new Date(Date.now()-f.per*30.44*864e5).toISOString().slice(0,10):'';
+    const prods={}; D.R.forEach(x=>{if(lim&&x.d<lim) return; const k=x.rep+'|'+x.cod; const p=prods[k]=prods[k]||{k,rep:x.rep,cod:x.cod,desc:x.desc,n:new Set(),u:''}; p.n.add(x.cnpj||x.cli); if(x.d>p.u) p.u=x.d});
+    const PL=Object.values(prods).sort((a,b)=>b.n.size-a.n.size||a.cod.localeCompare(b.cod)); [...prodSel].forEach(k=>{if(!prods[k]) prodSel.delete(k)});
+    const G={}; D.R.forEach(x=>{if(lim&&x.d<lim) return; if(prodSel.size&&!prodSel.has(x.rep+'|'+x.cod)) return; const c=D.CL[x.cnpj]||{}; const k=x.cnpj||norm(x.cli);
+      const g=G[k]=G[k]||{cnpj:x.cnpj,nome:c.fantasia||c.razao||x.cli||x.cnpj,raz:c.razao||x.cli||'',cid:c.cidade||x.cid||'',uf:c.uf||x.uf||'',tel:c.telefone||'',vend:vAt(c.vendedor||'')||x.vend,L:[],q:0,u:''};
+      g.L.push(x); g.q+=x.q; if(x.d>g.u) g.u=x.d});
+    let CLs=Object.values(G); CLs.forEach(g=>{g.km=base?kmEntre(base,muniXY(M,g.cid,g.uf)):null; g.L.sort((a,b)=>b.d.localeCompare(a.d))});
+    if(f.km&&base) CLs=CLs.filter(g=>g.km!=null&&g.km<=f.km); CLs.sort((a,b)=>base?((a.km??1e9)-(b.km??1e9)||b.u.localeCompare(a.u)):b.u.localeCompare(a.u));
+    X=[['Cliente','CNPJ','Cidade','UF','Distância (km)','Telefone','Vendedor','Data','Representada','Código','Produto','Qtd.','Preço']]; CLs.forEach(g=>g.L.forEach(x=>X.push([g.raz||g.nome,g.cnpj||'',g.cid,g.uf,g.km!=null?Math.round(g.km):'',g.tel,g.vend,fmtDt(x.d),x.rep,x.cod,x.desc,x.q,x.pu])));
+    const ph=t=>String(t||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,''), un=x=>REP_DE_NOME(x.rep)==='marluvas'?'pares':'un.';
+    r.innerHTML=`${D.muitos?'<p class="warn">Muitos resultados: escreva o nome do modelo mais completo para não faltar ninguém.</p>':''}
+     ${PL.length?`<div class="card"><b>${PL.length} produto(s) encontrados</b> <span class="hint">· toque para ver só quem comprou aquele (ex.: só o cano longo G)</span><div class="tags" style="margin-top:8px;max-height:220px;overflow:auto">${PL.map(p=>`<button class="chip${prodSel.has(p.k)?' on':''}" data-qp="${esc(p.k)}" style="text-align:left;white-space:normal;max-width:100%">${repIcon(REP_DE_NOME(p.rep)||p.rep,14)} <b>${esc(p.cod)}</b> ${esc(String(p.desc||'').slice(0,70))} · ${p.n.size} cliente(s)</button>`).join('')}</div>${prodSel.size?'<button class="chip" data-qpx style="margin-top:6px">Ver todos os produtos</button>':''}</div>`:''}
+     <div class="row" style="justify-content:space-between;margin:12px 0 6px"><b>${CLs.length} cliente(s)${base?' · mais perto de '+esc(f.perto)+' primeiro':''}</b>${CLs.length?'<button class="chip" id="qcsv">Exportar</button>':''}</div>
+     ${!base&&f.perto?`<p class="hint">Não achei a cidade "${esc(f.perto)}". Escreva assim: Ribeirão Preto/SP.</p>`:''}
+     ${CLs.map(g=>{const u=g.L[0], p=ph(g.tel); return `<div class="card grid" style="gap:6px"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(g.nome)}</b>${g.raz&&g.raz!==g.nome?`<div class="hint">${esc(g.raz)}</div>`:''}<div class="hint">📍 ${esc(g.cid||'cidade não informada')}${g.uf?'/'+esc(g.uf):''}${g.km!=null?` · <b>${g.km<5?'mesma cidade':'~'+Math.round(g.km)+' km'}</b>`:''}${g.vend?' · '+esc(g.vend):''}</div></div><span class="tag" style="white-space:nowrap">Última: ${fmtDt(g.u)}</span></div>
+       <div style="font-size:14px">${repIcon(REP_DE_NOME(u.rep)||u.rep,14)} <b>${esc(u.cod)}</b> ${esc(u.desc)} · <b>${nBR(u.q)} ${un(u)}</b>${u.pu?' · '+brl(u.pu):''}${u.sis?' <span class="hint">(transmitido pelo Sistema)</span>':''}</div>
+       ${g.L.length>1?`<details><summary class="hint" style="cursor:pointer">Ver as ${g.L.length} compras (${nBR(g.q)} no total)</summary><table class="t" style="margin-top:6px">${g.L.map(x=>`<tr><td>${fmtDt(x.d)}</td><td>${esc(x.cod)} ${esc(String(x.desc||'').slice(0,60))}</td><td class="n">${nBR(x.q)}</td><td class="n">${x.pu?brl(x.pu):''}</td></tr>`).join('')}</table></details>`:''}
+       <div class="row">${p.length>=10?`<a class="chip" href="tel:+55${p}">📞 ${esc(g.tel)}</a><a class="chip" target="_blank" rel="noopener" href="https://wa.me/55${p}">💬 WhatsApp</a>`:'<span class="hint">sem telefone no cadastro</span>'}${g.cnpj?`<button class="chip" data-qcli="${esc(g.cnpj)}">Ficha do cliente</button>`:''}</div></div>`}).join('')||`<p class="hint">${D.R.length?'Ninguém nesse filtro. Tente aumentar a distância ou o período.':'Ninguém comprou esse produto ainda (ou o nome está diferente: tente o código ou só uma palavra, ex.: PVX).'}</p>`}`};
+  const run=async()=>{f.q=$('#qq').value.trim(); f.rep=$('#qrep').value; f.perto=$('#qperto').value.trim(); LS('quemF',f); prodSel.clear(); const r=$('#qres');
+    if(!qcPal(f.q).length){D=null; r.innerHTML='<p class="hint">Digite o código ou o nome do modelo (pelo menos 2 letras).</p>'; return}
+    r.innerHTML='<p class="hint">Procurando nos pedidos de todas as representadas…</p>'; try{D=await quemComprouDados(f.q,f.rep)}catch(e){r.innerHTML=`<p class="warn">Não consegui buscar: ${esc(e.message)}</p>`; return} if(r.isConnected) draw()};
+  $('#qgo').onclick=run; $('#qq').onkeydown=e=>{if(e.key==='Enter') run()}; $('#qperto').onchange=()=>{f.perto=$('#qperto').value.trim(); LS('quemF',f); draw()};
+  m.onclick=e=>{const t=e.target; const k=t.closest('[data-qkm]'); if(k){f.km=+k.dataset.qkm; LS('quemF',f); m.querySelectorAll('[data-qkm]').forEach(b=>b.classList.toggle('on',b===k)); return draw()}
+    const pe=t.closest('[data-qper]'); if(pe){f.per=+pe.dataset.qper; LS('quemF',f); m.querySelectorAll('[data-qper]').forEach(b=>b.classList.toggle('on',b===pe)); return draw()}
+    const qp=t.closest('[data-qp]'); if(qp){const kk=qp.dataset.qp; prodSel.has(kk)?prodSel.delete(kk):prodSel.add(kk); return draw()} if(t.closest('[data-qpx]')){prodSel.clear(); return draw()}
+    const c=t.closest('[data-qcli]'); if(c) return go('cli',{cnpj:c.dataset.qcli}); if(t.id==='qcsv') return csv('quem_comprou_'+norm(f.q).replace(/\W+/g,'_').toLowerCase(),X.map(r=>r.map(c=>typeof c==='number'?String(Math.round(c*100)/100).replace('.',','):String(c))))};
+  if(f.q&&(ctx.q!=null||ctx.auto)) run()}
 
 /* ================= botão Sincronizar Reprio ================= */
 async function sincronizarReprio(btn){if(!RK()){toast('Coloque a chave do Reprio em Mais › Ajustes'); return go('aj')} const lb=btn?btn.textContent:''; if(btn){btn.disabled=true; btn.textContent='Sincronizando…'}

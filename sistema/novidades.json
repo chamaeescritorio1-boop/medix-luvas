@@ -2,6 +2,22 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111011",
+   "data": "2026-11-10",
+   "tipo": "novo",
+   "titulo": "Marluvas: código raiz + numeração (700302-43)",
+   "texto": "Os pedidos da Marluvas vinham com um item por número (700302-43, 700302-44…). Agora o Sistema junta tudo no código raiz com a grade (43: 10 · 44: 5). Digitar 700302-43 na busca acha a botina e já abre a grade com o 43 marcado. Ao importar a O.C do cliente, cada linha 700302-43 vira o número certo na grade. O último preço pago e os itens que o cliente já comprou passam a aparecer na Marluvas.",
+   "onde": "Orçamento Marluvas (busca e 📄 Importar OC), Pedidos, ficha do cliente"
+  },
+  {
+   "id": "2026111010",
+   "data": "2026-11-10",
+   "tipo": "novo",
+   "titulo": "Marluvas: grade mínima em todos os números",
+   "texto": "Na grade de numeração cada número mostra a quantidade mínima (mín. 5, mín. 10…) e o botão ＋ Grade mínima preenche todos os números com o mínimo de uma vez. Depois é só ajustar.",
+   "onde": "Grade de numeração da Marluvas (catálogo e orçamento)"
+  },
+  {
    "id": "2026111005",
    "data": "2026-11-10",
    "tipo": "novo",

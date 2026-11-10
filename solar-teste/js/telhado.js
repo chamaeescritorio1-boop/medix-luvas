@@ -181,7 +181,7 @@
       if (A && A.tipo === 'vertice') { const b = bloco(A.id); b.pts[A.k] = encaixar(tela2m(...sp), sp, b.id, A.k); sujar(); }
       else if (A && A.tipo === 'bloco') { const b = bloco(A.id); b.pts = b.pts.map((p) => [p[0] + dm[0], p[1] + dm[1]]); sujar(); }
       else if (A && A.tipo === 'obst') { const o = obst(A.id); o.x += dm[0]; o.z += dm[1]; if (o.pts) o.pts = o.pts.map((p) => [p[0] + dm[0], p[1] + dm[1]]); sujar(); }
-      else if (A && A.tipo === 'drone') { proj.drone.cx += dm[0]; proj.drone.cz += dm[1]; sujar(true); }
+      else if (A && A.tipo === 'drone') { if (!A.guardou) { guardarFoto(); A.guardou = true; } const ant = fotoAntes(); proj.drone.cx += dm[0]; proj.drone.cz += dm[1]; acompanharFoto(ant); sujar(true); }
       else if (A && A.tipo === 'placa') { const mm = proj.layout.manuais.find((x) => x.id === A.id); if (mm) { mm.x += dm[0]; mm.z += dm[1]; st.vagas = U.vagas(proj); st.escolhidas = U.escolher(st.vagas, proj.layout.qtd, proj.layout); } }
       else { st.view.ox -= dm[0]; st.view.oz -= dm[1]; }
       desenhar();
@@ -411,7 +411,7 @@
     });
     const ehEscolha = (t) => t.type === 'checkbox' || t.type === 'radio' || t.type === 'file' || t.tagName === 'SELECT';
     ov.addEventListener('input', (e) => { if (!ehEscolha(e.target)) campo(e.target); });
-    ov.addEventListener('change', (e) => { const t = e.target; if (t.dataset.ficha) { lerFicha(t.dataset.ficha, t.files[0]); return; } if (t.id === 't3Arq') enviarFoto(t.files[0]); else if (ehEscolha(t) || t.dataset.mp) campo(t, true); });
+    ov.addEventListener('change', (e) => { const t = e.target; if (t.id === 't3Rot') { st.guardouRot = false; painel(); return; } if (t.id === 't3Juntos') { st.soFoto = !t.checked; msg(st.soFoto ? 'Agora <b>só a foto</b> se mexe: gire, mova ou encaixe até ela bater com os telhados desenhados. Depois ligue de novo o 🔗.' : '🔗 Os desenhos voltam a acompanhar a foto.', st.soFoto); return; } if (t.dataset.ficha) { lerFicha(t.dataset.ficha, t.files[0]); return; } if (t.id === 't3Arq') enviarFoto(t.files[0]); else if (ehEscolha(t) || t.dataset.mp) campo(t, true); });
     ov.addEventListener('keydown', (e) => {
       if (e.target.closest('input,select,textarea')) return;
       if (e.key === 'Escape' && (st.des.length || st.regua.length)) { st.des = []; st.regua = []; st.ponteiro = null; desenhar(); painel(); e.preventDefault(); }
@@ -454,7 +454,8 @@
             ${st.ferr === 'encaixar' ? `<p class="mini"><b>${['1º canto na FOTO DO DRONE', 'o mesmo 1º canto no SATÉLITE', '2º canto na FOTO DO DRONE (longe do 1º)', 'o mesmo 2º canto no SATÉLITE'][st.enc.length] || ''}</b>: toque num canto bem visível (quina da casa, do muro ou da piscina). A escala e o norte saem do satélite, sem trena.</p>` : ''}
             ${st.ferr === 'regua' ? `<div class="t3-linha"><span class="mini">${st.regua.length < 2 ? 'Toque nas 2 pontas de uma medida que você conhece (uma parede medida na trena, a piscina, a frente do lote).' : `Medida tocada: ${n(Math.hypot(st.regua[1][0] - st.regua[0][0], st.regua[1][1] - st.regua[0][1]), 2)} m na foto. Quanto mede de verdade?`}</span>${st.regua.length === 2 ? '<input type="text" inputmode="decimal" id="t3Real" placeholder="metros" style="width:90px" autocomplete="off"><button class="btn sol pequeno" data-acao="aplicarRegua">Aplicar</button>' : ''}</div>` : ''}
             <label class="campo"><span>Norte da foto: girar <b id="t3RotO">${n(d.rot || 0, 1)}°</b>${d.auto && d.auto.rot ? '<small>veio da bússola do drone</small>' : '<small>deixe a frente da casa como ela é na rua: norte para cima</small>'}</span><input type="range" id="t3Rot" min="-180" max="180" step="0.5" value="${d.rot || 0}"></label>
-            <div class="t3-linha"><button class="link" data-acao="rot-90">↺ 90°</button><button class="link" data-acao="rot90">↻ 90°</button><span class="mini">escala: ${n(d.escala * 100, 2)} cm por ponto · a foto cobre ${n(d.w * d.escala, 1)} × ${n(d.h * d.escala, 1)} m${d.escalaConferida ? ' · <b style="color:var(--verde,#3ddc97)">conferida na régua</b>' : d.auto && d.auto.escala ? ' · pela altura do voo' : ' · <b style="color:var(--laranja)">confira na régua</b>'}</span></div>
+            <label class="mini" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="t3Juntos" ${st.soFoto ? '' : 'checked'}> 🔗 telhados, obstáculos e placas acompanham a foto <small>(desligue só para realinhar a foto com um desenho que já está no lugar certo)</small></label>
+            <div class="t3-linha"><button class="link" data-acao="rot-90">↺ 90°</button><button class="link" data-acao="rot90">↻ 90°</button>${(st.desfFoto || []).length ? '<button class="link" data-acao="desfazerFoto">↶ desfazer o último ajuste da foto</button>' : ''}<span class="mini">escala: ${n(d.escala * 100, 2)} cm por ponto · a foto cobre ${n(d.w * d.escala, 1)} × ${n(d.h * d.escala, 1)} m${d.escalaConferida ? ' · <b style="color:var(--verde,#3ddc97)">conferida na régua</b>' : d.auto && d.auto.escala ? ' · pela altura do voo' : ' · <b style="color:var(--laranja)">confira na régua</b>'}</span></div>
             ${proj.fundo ? `<label class="campo"><span>Transparência para encaixar no satélite</span><input type="range" id="t3Alfa" min="0.2" max="1" step="0.05" value="${st.alfaDrone}"></label>` : ''}` : ''}
           <details class="t3-opc"${proj.fundo ? ' open' : ''}><summary class="mini">🛰️ Satélite para conferir (opcional)${proj.fundo ? ' · carregado' : ''}</summary>
             <p class="mini">Só mostra o satélite por baixo, para encaixar a foto e pegar a posição. Não monta telhado nenhum sozinho.</p>${end}
@@ -604,7 +605,7 @@
         if (k === 'mc') { L.modulo.c = v / 1000; L.modulo.estimada = false; } else if (k === 'ml') { L.modulo.l = v / 1000; L.modulo.estimada = false; } else L[k] = v;
         sujar(); return; // os ajustes à mão são guardados pela posição: continuam valendo
       }
-      if (t.id === 't3Rot' && proj.drone) { girarFoto(+t.value - (proj.drone.rot || 0)); const r = $('#t3RotO', ov); if (r) r.textContent = n(proj.drone.rot, 1) + '°'; return; }
+      if (t.id === 't3Rot' && proj.drone) { if (!st.guardouRot) { guardarFoto(); st.guardouRot = true; } girarFoto(+t.value - (proj.drone.rot || 0)); const r = $('#t3RotO', ov); if (r) r.textContent = n(proj.drone.rot, 1) + '°'; return; }
       if (t.dataset.cb) { const C2 = proj.cabos, k = t.dataset.cb, v = Math.max(0, Number(t.value) || 0); if (k === 'nStrings') C2.nStrings = Math.round(v); else if (C2[k]) C2[k].h = v; else C2[k] = null; const el = $('#t3Cabos', ov); if (el) el.innerHTML = relatorioCabos(); desenhar(); return; }
       if (t.id === 't3Alfa') { st.alfaDrone = +t.value; desenhar(); return; }
       if (t.id === 't3Hora') { st.hora = +t.value; $('#t3HoraO', ov).textContent = hhmm(st.hora); if (viewer) viewer.sol(st.di, st.hora); grafico(); return; }
@@ -617,6 +618,7 @@
     async function acao(a, el) {
       if (a === 'buscar') return buscar({ endereco: $('#t3End', ov).value });
       if (a === 'tirarDrone') { proj.drone = null; imgDrone = null; sujar(true); painel(); desenhar(); return; }
+      if (a === 'desfazerFoto') return desfazerFoto();
       if (a === 'tirarFundo') { proj.fundo = null; imgFundo = null; st.ferr = null; st.enc = []; sujar(true); painel(); desenhar(); return; }
       if (a === 'modo') return trocarModo(el.dataset.v);
       if (a === 'confirmarCasa') { if (!st.pendente) return; montarDoGoogle(st.pendente); st.pendente = null; painel(); desenhar(); if (proj.blocos.length) { irAba('telhados'); msg(`${msgGoogle()} Depois toque em <b>⚡ Montar sozinho</b> para pôr as placas e calcular a sombra.`); } return; }
@@ -625,13 +627,12 @@
       if (a === 'aplicarRegua') {
         const real = Number(String($('#t3Real', ov).value).replace(',', '.')), med = Math.hypot(st.regua[1][0] - st.regua[0][0], st.regua[1][1] - st.regua[0][1]);
         if (!(real > 0) || !med) return msg('Digite a medida real em metros (ex.: 4,20).', true);
-        const f = real / med, d = proj.drone, cx = d.cx || 0, cz = d.cz || 0; d.escala *= f; d.escalaConferida = true;
-        // sem satélite, o que foi desenhado em cima da foto cresce junto com ela; com satélite, a escala certa já é a do satélite
-        if (!proj.fundo) { const esc2 = (p) => [cx + (p[0] - cx) * f, cz + (p[1] - cz) * f]; proj.blocos.forEach((b) => { b.pts = b.pts.map(esc2); }); proj.obst.forEach((o) => { [o.x, o.z] = esc2([o.x, o.z]); }); }
+        const f = real / med, d = proj.drone; guardarFoto(); const ant = fotoAntes(); d.escala *= f; d.escalaConferida = true;
+        acompanharFoto(ant); // o que foi desenhado em cima da foto cresce junto com ela
         st.regua = []; st.ferr = null; sujar(true); centralizar(); painel();
         msg(`Escala ajustada: a foto cobre ${n(d.w * d.escala, 1)} × ${n(d.h * d.escala, 1)} m. ${d.rotConferida ? '' : 'Agora gire até o norte ficar para cima.'}`); return;
       }
-      if (a === 'rot90' || a === 'rot-90') { girarFoto(a === 'rot90' ? 90 : -90); painel(); return; }
+      if (a === 'rot90' || a === 'rot-90') { guardarFoto(); girarFoto(a === 'rot90' ? 90 : -90); painel(); return; }
       if (a === 'sel-b') { st.sel = { t: 'b', id: el.dataset.id }; st.ferr = 'ajustar'; painel(); desenhar(); return; }
       if (a === 'desfazerPonto') { st.des.pop(); desenhar(); painel(); return; }
       if (a === 'cancelarDes') { st.des = []; st.ponteiro = null; desenhar(); painel(); return; }
@@ -703,22 +704,43 @@
       const a1 = toPix(p1), a2 = toPix(p2), va = [a2[0] - a1[0], a2[1] - a1[1]], vb = [q2[0] - q1[0], q2[1] - q1[1]], la = Math.hypot(va[0], va[1]), lb = Math.hypot(vb[0], vb[1]);
       if (la < 30 || lb < 3) { msg('Os dois cantos ficaram perto demais: escolha cantos mais longe um do outro (de preferência em lados opostos da casa).', true); return; }
       const rot = (Math.atan2(vb[1], vb[0]) - Math.atan2(va[1], va[0])) * 180 / Math.PI, rr = rot * Math.PI / 180, c = Math.cos(rr), s2 = Math.sin(rr), esc2 = lb / la;
-      const ux = (a1[0] - d.w / 2) * esc2, uy = (a1[1] - d.h / 2) * esc2;
+      const ux = (a1[0] - d.w / 2) * esc2, uy = (a1[1] - d.h / 2) * esc2; guardarFoto(); const ant = fotoAntes();
       Object.assign(d, { escala: esc2, rot: Math.round(((((rot % 360) + 540) % 360) - 180) * 10) / 10, cx: q1[0] - (ux * c - uy * s2), cz: q1[1] - (ux * s2 + uy * c), escalaConferida: true, rotConferida: true, encaixada: true });
-      st.alfaDrone = 0.6; sujar(true); desenhar(); painel();
+      acompanharFoto(ant); st.alfaDrone = 0.6; sujar(true); desenhar(); painel();
       msg(`Foto encaixada no satélite: ${n(d.escala * 100, 2)} cm por ponto, norte corrigido (${n(d.rot, 1)}°). Com a transparência, confira se as bordas da casa batem; se não, refaça com cantos mais afastados.`);
     }
     /* girar a foto do drone (norte para cima). Sem satélite, o que já foi desenhado gira junto. */
     function girarFoto(delta) {
       const d = proj.drone; if (!d || !delta) return;
-      d.rot = ((((d.rot || 0) + delta) + 540) % 360) - 180; d.rotConferida = true;
-      if (!proj.fundo) {
-        const c = Math.cos(delta * Math.PI / 180), s = Math.sin(delta * Math.PI / 180), cx = d.cx || 0, cz = d.cz || 0;
-        const gira = (p) => [cx + (p[0] - cx) * c - (p[1] - cz) * s, cz + (p[0] - cx) * s + (p[1] - cz) * c];
-        proj.blocos.forEach((b) => { b.pts = b.pts.map(gira); b.az = Math.round((((b.az + delta) % 360) + 360) % 360); });
-        proj.obst.forEach((o) => { [o.x, o.z] = gira([o.x, o.z]); if (o.rot != null) o.rot = (o.rot || 0) + delta; });
-      }
-      desenhar(); sujar(true);
+      const a = fotoAntes(); d.rot = ((((d.rot || 0) + delta) + 540) % 360) - 180; d.rotConferida = true;
+      acompanharFoto(a); desenhar(); sujar(true);
+    }
+    /* o que foi desenhado em cima da foto do drone (telhados, obstáculos, placas à mão, inversor/quadro) acompanha a foto
+       quando ela gira, muda de escala, é encaixada ou movida. Desligando "acompanham a foto", só a foto se mexe
+       (serve para realinhar a foto com um desenho que ficou no lugar certo). */
+    function fotoAntes() { const d = proj.drone; return { rot: d.rot || 0, escala: d.escala, cx: d.cx || 0, cz: d.cz || 0 }; }
+    function guardarFoto() {
+      const d = proj.drone; if (!d) return;
+      st.desfFoto = (st.desfFoto || []).slice(-9);
+      st.desfFoto.push(JSON.stringify({ foto: fotoAntes(), extra: { escalaConferida: d.escalaConferida, rotConferida: d.rotConferida, encaixada: d.encaixada }, blocos: proj.blocos, obst: proj.obst, manuais: proj.layout.manuais, cabos: { inv: proj.cabos && proj.cabos.inv, quadro: proj.cabos && proj.cabos.quadro } }));
+    }
+    function desfazerFoto() {
+      const s = (st.desfFoto || []).pop(); if (!s || !proj.drone) return msg('Nada para desfazer.', true);
+      const o = JSON.parse(s); Object.assign(proj.drone, o.foto, o.extra);
+      proj.blocos = o.blocos; proj.obst = o.obst; proj.layout.manuais = o.manuais || [];
+      if (proj.cabos) { proj.cabos.inv = o.cabos.inv; proj.cabos.quadro = o.cabos.quadro; }
+      st.sel = null; st.vagas = []; st.escolhidas = []; sujar(true); painel(); desenhar(); msg('Último ajuste da foto desfeito.');
+    }
+    function acompanharFoto(a) {
+      const d = proj.drone; if (!d || st.soFoto) return;
+      const b = fotoAntes(), delta = b.rot - a.rot, r = delta * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), f = b.escala / a.escala;
+      if (!delta && f === 1 && a.cx === b.cx && a.cz === b.cz) return;
+      const m = (p) => { const dx = (p[0] - a.cx) * f, dz = (p[1] - a.cz) * f; return [b.cx + dx * c - dz * s, b.cz + dx * s + dz * c]; };
+      proj.blocos.forEach((x) => { x.pts = x.pts.map(m); if (delta) x.az = Math.round((((x.az + delta) % 360) + 360) % 360); });
+      proj.obst.forEach((o) => { [o.x, o.z] = m([o.x, o.z]); if (o.pts) o.pts = o.pts.map(m); if (o.rot != null && delta) o.rot = (o.rot || 0) + delta; if (f !== 1) { ['w', 'd', 'r'].forEach((k) => { if (o[k] != null) o[k] = Math.round(o[k] * f * 100) / 100; }); } });
+      (proj.layout.manuais || []).forEach((p) => { [p.x, p.z] = m([p.x, p.z]); });
+      if (proj.cabos) ['inv', 'quadro'].forEach((k) => { const P = proj.cabos[k]; if (P) [P.x, P.z] = m([P.x, P.z]); });
+      st.vagas = []; st.escolhidas = [];
     }
     let anim = null;
     function tocarDia() { st.play = true; if (st.hora >= 18.4) st.hora = 5.6; let ult = performance.now(); const passo = (t) => { if (!st.play) return; const dt = (t - ult) / 1000; ult = t; st.hora += dt * 1.6; if (st.hora > 18.5) st.hora = 5.6; const r = $('#t3Hora', ov); if (r) { r.value = st.hora; $('#t3HoraO', ov).textContent = hhmm(st.hora); } if (viewer) viewer.sol(st.di, st.hora); grafico(); anim = requestAnimationFrame(passo); }; anim = requestAnimationFrame(passo); }

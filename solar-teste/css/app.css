@@ -221,6 +221,17 @@ body.com-barra { padding-bottom: 150px; }
 .t3-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .t3-chip { font: 600 12px inherit; padding: 6px 10px; border-radius: 999px; border: 2px solid var(--linha-forte); background: transparent; color: var(--texto); cursor: pointer; }
 .t3-chip[aria-pressed="true"] { background: #ffffff1f; }
+/* passo 1: escolher como montar o 3D (foto do drone ou satélite) */
+.t3-modos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.t3-modos button { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--linha-forte); background: var(--vidro); color: var(--texto); cursor: pointer; font: inherit; }
+.t3-modos button:hover { border-color: var(--laranja); box-shadow: 0 0 18px -8px var(--laranja); }
+.t3-modos span { font-size: 28px; line-height: 1; }
+.t3-modos b { font-size: 15px; }
+.t3-modos small { opacity: .75; font-size: 12px; line-height: 1.35; }
+.t3-confirma { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid #ff3df0; background: #ff3df014; }
+.t3-opc { border-top: 1px solid var(--linha); padding-top: 8px; }
+.t3-opc summary { cursor: pointer; font-weight: 600; }
+.t3-opc[open] > * + * { margin-top: 8px; }
 .t3-form { gap: 8px 12px; }
 .t3-form .campo span small { display: block; font-weight: 400; opacity: .72; font-size: 11px; margin-top: 1px; }
 .t3-form input:disabled { opacity: .8; }

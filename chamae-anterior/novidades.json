@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111004",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Assinatura nova aparece na hora",
+   "texto": "Ao subir uma imagem nova da assinatura, o Sistema mostra e usa a nova na hora (antes podia continuar mostrando a antiga).",
+   "onde": "Mais › Ajustes › Assinatura do e-mail"
+  },
+  {
    "id": "2026111003",
    "data": "2026-11-10",
    "tipo": "correcao",

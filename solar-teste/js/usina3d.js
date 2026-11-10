@@ -410,14 +410,41 @@
   }
   const dot3 = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
 
+  /* paredes de cada água: só onde é parede de verdade. Num lado encostado em outro telhado, a parede começa no
+     telhado vizinho (ex.: o sobrado acima de um telhado mais baixo) e some se o vizinho for mais alto ou da mesma
+     altura (espigão, rufo, água ao lado). Antes cada água desenhada à parte levantava parede até o chão. */
+  function paredesDe(b, todas, topo) {
+    const P = b.pts, n = P.length, out = [];
+    let ar = 0; for (let i = 0; i < n; i++) { const a = P[i], c = P[(i + 1) % n]; ar += a[0] * c[1] - c[0] * a[1]; }
+    const sentido = ar >= 0 ? 1 : -1, outras = todas.filter((o) => o !== b && o.id !== b.id && o.pts && o.pts.length >= 3);
+    for (let i = 0; i < n; i++) {
+      if (b.paredes && b.paredes[i] === false) continue;
+      const p = P[i], q = P[(i + 1) % n], dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz) || 1;
+      const fora = [dz / L * sentido * 0.25, -dx / L * sentido * 0.25], ao = [dx / L * 0.1, dz / L * 0.1];
+      const hp = topo ?? alturaEm(b, p), hq = topo ?? alturaEm(b, q);
+      const pt = (base, t) => [base[0] + dx * t + fora[0], base[1] + dz * t + fora[1]];
+      const viz = outras.find((o) => dentro(pt(p, 0.5), o.pts) && (dentro(pt(p, 0.15), o.pts) || dentro(pt(p, 0.85), o.pts)));
+      let bp = 0, bq = 0;
+      if (viz) {
+        const alt = (o, x) => topoParede(o) ?? alturaEm(o, x);
+        const baseEm = (x) => { const cob = outras.filter((o) => dentro(x, o.pts)); return Math.max(0, ...(cob.length ? cob : [viz]).map((o) => alt(o, x))); };
+        bp = baseEm([p[0] + ao[0] + fora[0], p[1] + ao[1] + fora[1]]); bq = baseEm([q[0] - ao[0] + fora[0], q[1] - ao[1] + fora[1]]);
+      }
+      if (bp >= hp - 0.02 && bq >= hq - 0.02) continue; // vizinho mais alto ou igual: sem parede
+      out.push({ p, q, bp: Math.min(bp, hp), bq: Math.min(bq, hq), hp, hq });
+    }
+    return out;
+  }
+
   /* ---------- oclusores: triângulos (paredes, platibandas, telhados, obstáculos) ---------- */
   function oclusores(proj) {
     const objs = [];
     const add = (tris) => { if (!tris.length) return; const t = new Float32Array(tris), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9]; for (let i = 0; i < t.length; i += 3) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], t[i + k]); mx[k] = Math.max(mx[k], t[i + k]); } objs.push({ t, mn, mx }); };
     const quad = (T, a, b, c, d) => T.push(...a, ...b, ...c, ...a, ...c, ...d);
-    faces(proj).forEach((b) => {
-      const T = [], topo = topoParede(b), P = b.pts;
-      P.forEach((p, i) => { if (b.paredes && b.paredes[i] === false) return; const q = P[(i + 1) % P.length], hp = topo ?? alturaEm(b, p), hq = topo ?? alturaEm(b, q); quad(T, [p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], hq, q[1]], [p[0], hp, p[1]]); });
+    const FS = faces(proj);
+    FS.forEach((b) => {
+      const T = [], topo = topoParede(b);
+      paredesDe(b, FS, topo).forEach(({ p, q, bp, bq, hp, hq }) => quad(T, [p[0], bp, p[1]], [q[0], bq, q[1]], [q[0], hq, q[1]], [p[0], hp, p[1]]));
       const I = internoDe(b), tri = triangular(I); tri.forEach(([i, j, k]) => T.push(I[i][0], alturaEm(b, I[i]), I[i][1], I[j][0], alturaEm(b, I[j]), I[j][1], I[k][0], alturaEm(b, I[k]), I[k][1]));
       add(T);
     });
@@ -679,11 +706,12 @@
     function montar() {
       if (grupo) cena.remove(grupo); grupo = new T.Group(); cena.add(grupo); placasMesh = [];
       const texTelhado = imgDrone || imgFundo;
-      faces(proj).forEach((b) => {
+      const FS = faces(proj);
+      FS.forEach((b) => {
         if (b.pts.length < 3) return;
         const topo = topoParede(b), P = b.pts, I = internoDe(b);
-        // paredes de fora (no telhado pronto, só no contorno da casa)
-        const pw = []; P.forEach((p, i) => { if (b.paredes && b.paredes[i] === false) return; const q = P[(i + 1) % P.length], hp = topo ?? alturaEm(b, p), hq = topo ?? alturaEm(b, q); pw.push(p[0], 0, p[1], q[0], 0, q[1], q[0], hq, q[1], p[0], 0, p[1], q[0], hq, q[1], p[0], hp, p[1]); });
+        // paredes de fora: só no contorno da casa e, onde encosta num telhado mais baixo, a partir dele
+        const pw = []; paredesDe(b, FS, topo).forEach(({ p, q, bp, bq, hp, hq }) => { pw.push(p[0], bp, p[1], q[0], bq, q[1], q[0], hq, q[1], p[0], bp, p[1], q[0], hq, q[1], p[0], hp, p[1]); });
         const gp = new T.BufferGeometry(); gp.setAttribute('position', new T.Float32BufferAttribute(pw, 3)); gp.computeVertexNormals();
         const par = new T.Mesh(gp, M.parede); par.castShadow = par.receiveShadow = true; grupo.add(par);
         // platibanda: parede de dentro + rufo no topo
@@ -859,5 +887,5 @@
     };
   }
 
-  raiz.Usina3D = { marcados, faces, retanguloDe, pontoDe, pistasGoogle, carregarThree, fotoSatelite, reduzir, lerMetadados, colocarDrone, resolucao, paraMetros, paraLatLng, medidasModulo, centroide, dentro, areaPol, recuar, retangulo3, desce, alturaEm, topoTelhado, topoParede, normalPlano, novoId, blocosDoGoogle, migrar, OBST, baseObst, pegadaObst, vagas, DIAS, KD_PADRAO, H_PADRAO, posSol, amostras, oclusores, bate, pontosPlaca, analisar, escolher, gerar, placaManual, alinharManual, cruzam, faceEm, notaFaces, chaveFace, corTsrf, mapaSombra, criar };
+  raiz.Usina3D = { marcados, faces, paredesDe, retanguloDe, pontoDe, pistasGoogle, carregarThree, fotoSatelite, reduzir, lerMetadados, colocarDrone, resolucao, paraMetros, paraLatLng, medidasModulo, centroide, dentro, areaPol, recuar, retangulo3, desce, alturaEm, topoTelhado, topoParede, normalPlano, novoId, blocosDoGoogle, migrar, OBST, baseObst, pegadaObst, vagas, DIAS, KD_PADRAO, H_PADRAO, posSol, amostras, oclusores, bate, pontosPlaca, analisar, escolher, gerar, placaManual, alinharManual, cruzam, faceEm, notaFaces, chaveFace, corTsrf, mapaSombra, criar };
 })(window);

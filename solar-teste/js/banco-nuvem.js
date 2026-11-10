@@ -105,7 +105,7 @@
     });
     const cliente = { ...o, kitsFechados: kits, comissaoParceria: 0, descontoPct: 0, kitFaturadoDireto: false, distanciaKm: 0, trocaPadrao: false };
     ['custosExtras', 'custosAjustados', 'margemManual', 'precoModo', 'precoManual'].forEach((c) => delete cliente[c]); // o preço final já inclui tudo isso
-    ['whatsapp', 'email', 'documento', 'endereco', 'selKits', 'freteAuto', 'motivoPerda', 'origem', 'interacoes', 'aceite', 'contrato', 'indicadoPor', 'posVenda', 'presenteEntregue', 'mensagem', 'contaInformada'].forEach((c) => delete cliente[c]);
+    ['whatsapp', 'email', 'documento', 'endereco', 'selKits', 'freteAuto', 'motivoPerda', 'origem', 'interacoes', 'aceite', 'contrato', 'indicadoPor', 'posVenda', 'presenteEntregue', 'mensagem', 'contaInformada', 'projeto3dRascunho', 'chave3d'].forEach((c) => delete cliente[c]); // o rascunho do 3D nunca vai para o cliente
     if (cliente.projeto3d) { // o 3D vai; o endereço exato e os ids internos não
       const { endereco, lng, precisao, ...p3 } = cliente.projeto3d; void endereco; void lng; void precisao;
       const semId = (x) => (x ? (({ id, auto, ...r }) => { void id; void auto; return r; })(x) : x);
@@ -270,6 +270,19 @@
       const [cab, b64] = String(dataURL).split(','), tipo = (cab.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
       const r = await api('sol_anexos?select=id', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ orcamento: chave, nome, tipo, conteudo_b64: b64 }) });
       return r && r[0] ? r[0].id : null;
+    },
+    /* rascunho do projeto 3D (sem as imagens grandes): um por orçamento, o mais novo vale */
+    async guardar3d(chave, proj) {
+      const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(proj))));
+      const r = await api('sol_anexos?select=id', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ orcamento: chave, nome: 'projeto-3d.json', tipo: 'application/json', conteudo_b64: b64 }) });
+      const id = r && r[0] ? r[0].id : null;
+      if (id) api('sol_anexos?orcamento=eq.' + encodeURIComponent(chave) + '&nome=eq.projeto-3d.json&id=neq.' + id, { method: 'DELETE' }).catch(() => { /* fica o antigo também */ });
+      return id;
+    },
+    async ler3d(chave) {
+      const r = await api('sol_anexos?select=id,em,conteudo_b64&orcamento=eq.' + encodeURIComponent(chave) + '&nome=eq.projeto-3d.json&order=em.desc&limit=1');
+      if (!r || !r[0]) return null;
+      return { em: r[0].em, proj: JSON.parse(decodeURIComponent(escape(atob(r[0].conteudo_b64)))) };
     },
     async lerImagem(id) { const a = await this.anexo(id); return a ? `data:${a.tipo};base64,${a.conteudo_b64}` : null; },
     async treinoGravar(r) { await api('sol_robo_treino', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(r) }); },

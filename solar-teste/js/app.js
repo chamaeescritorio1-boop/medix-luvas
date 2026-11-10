@@ -756,7 +756,7 @@
     const p = P(), kits = (orc.kitsFechados || []).filter(Boolean), k = (orc.kitsFechados || [])[PRINCIPAL] || kits[0];
     let modulo = k && k.modulo ? k.modulo : null, qtd = modulo ? modulo.qtd : 0;
     if (!modulo) { const ops = C.opcoes(orc, p), op = ops[orc.opcaoEscolhida ?? 0] || ops[0]; if (op) { modulo = { nome: op.modulo.nome, potenciaW: op.modulo.potenciaW }; qtd = op.dim.placas; } }
-    Telhado.abrir({ orc, modulo, qtd, aba, kits, auto: !!auto, tipoTelhado: orc.telhado, aoSalvar: (proj) => { orc.projeto3d = proj; salvarR(); novo(); toast(auto ? '⚡ 3D montado e salvo sozinho: confira na proposta' : 'Projeto 3D salvo no orçamento'); } });
+    Telhado.abrir({ orc, modulo, qtd, aba, kits, auto: !!auto, tipoTelhado: orc.telhado, aoRascunho: (proj) => { orc.projeto3dRascunho = proj; salvarR(); }, aoSalvar: (proj) => { orc.projeto3d = proj; delete orc.projeto3dRascunho; salvarR(); novo(); toast(auto ? '⚡ 3D montado e salvo sozinho: confira na proposta' : 'Projeto 3D salvo no orçamento'); } });
   }
   function cartao3d(p3) {
     const r = p3.resultado, M = (p3.layout && p3.layout.modulo) || {};
@@ -778,6 +778,7 @@
     const p3 = resumo3d(), antigo = orc.projeto3d && !p3, perda3 = orc.projeto3d && Number.isFinite(orc.projeto3d.perda) ? orc.projeto3d.perda : null; // a mesma que entra na geração (conversao.js)
     el.innerHTML = `<div class="painel" style="margin-bottom:14px">
         <div class="entre"><span class="rotulo">Telhado e projeto 3D</span></div>
+        ${orc.projeto3dRascunho ? `<p class="mini" style="margin:6px 0">💾 Rascunho do 3D salvo em ${new Date(orc.projeto3dRascunho.salvoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}, <b>ainda fora da proposta</b>. <button class="link" data-abrir3d>continuar o rascunho</button></p>` : ''}
         ${p3 ? cartao3d(p3)
         : `<p class="sutil" style="margin:6px 0 10px">${antigo ? '<b>Este 3D foi feito na versão anterior:</b> abra e salve de novo para medir com a placa real, as alturas e as platibandas. ' : ''}Pelo endereço, o Google traz a foto de satélite; com a foto do drone fica no detalhe. Você desenha cada parte do telhado com a altura e a platibanda, marca caixa d'água e árvores, e a sombra medida entra na geração. <b>Melhor fazer depois do kit (passo 4)</b>, com a placa e a quantidade certas.</p>
           <div class="acoes-r" style="justify-content:flex-start"><button class="btn sol" data-auto3d title="Busca o telhado pelo endereço, põe as placas e calcula a sombra sozinho">⚡ 3D automático</button><button class="btn vidro" data-abrir3d>🛰️ ${antigo ? 'Refazer' : 'Montar'} o telhado em 3D</button>${antigo ? '<button class="link" data-tirar3d>tirar o 3D antigo</button>' : ''}</div>`}

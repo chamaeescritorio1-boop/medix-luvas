@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
 
 const RAIZ = path.resolve(__dirname, '..'), PORTA = 8765;
 const TIPOS = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
-const TELAS = ['home', 'cli', 'tar', 'orc', 'ped', 'prod', 'rel', 'mais', 'busca', 'trans', 'metas', 'fin', 'tec', 'estr', 'ajuda', 'aj', 'equipe', 'reps', 'admin', 'limites'];
+const TELAS = ['home', 'cli', 'tar', 'orc', 'ped', 'prod', 'rel', 'mais', 'busca', 'trans', 'metas', 'fin', 'tec', 'estr', 'ajuda', 'aj', 'equipe', 'reps', 'admin', 'limites', 'quem'];
 const PASTAS = (process.argv[2] || 'chamae,sistema').split(',');
 
 const servidor = http.createServer((req, res) => {

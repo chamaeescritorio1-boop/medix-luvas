@@ -3010,23 +3010,31 @@ async function itensQueCompra(rep,cli,o){
     ov.onclick=async e=>{if(e.target.closest('[data-x]')||e.target===ov) return ov.remove(); const b=e.target.closest('[data-cli]'); if(!b) return; const c=(await clientes()).find(x=>x.cnpj===b.dataset.cli); ov.remove(); if(c) itensQueCompra(rep,c,o)};
     cliBusca(sh.querySelector('#iqcq'),sh.querySelector('#iqcr'),rep); return sh.querySelector('#iqcq').focus()}
   const [peds,C]=await Promise.all([api(`pedidos?select=id,data,prazo,tabela,pedido_itens(cod,descricao,qtd,preco)&cnpj=eq.${cli.cnpj}&representada=eq.${encodeURIComponent(HIST_REP[rep]||rep)}&or=(status.is.null,status.eq.finalizado,status.like.APROVADO*)&order=data.desc&limit=300`).catch(()=>[]),catalog(rep).catch(()=>[])]); pedsGrade(peds,rep);
-  const ix={}; C.forEach(p=>{if(p.ref) ix[norm(p.ref).trim()]=p; ix[norm(p.cod).trim()]=p});
-  const ag={}; peds.forEach(p=>(p.pedido_itens||[]).forEach(i=>{const k=norm(i.cod).trim(); if(!k) return; const a=ag[k]=ag[k]||{cod:i.cod,desc:i.descricao,n:0,q:0,ult:p.data,pu:+i.preco||0,p:ix[k]||null,ps:{}}; if(!a.ps[p.id]){a.ps[p.id]=1; a.n++} a.q+=+i.qtd||0}));
+  /* 11/11: pedidos antigos (Reprio/planilhas) gravaram o código sem o zero na frente (613010009 x 0613010009 da Sigma) e o item aparecia
+     "fora do catálogo atual" sem foto. Agora tenta o código exato e, se não achar, o código sem zeros à esquerda. */
+  const z0=s=>norm(s).trim().replace(/^0+(?=.)/,''), ix={}, iz={}; C.forEach(p=>{if(p.ref){ix[norm(p.ref).trim()]=p; iz[z0(p.ref)]=iz[z0(p.ref)]||p} ix[norm(p.cod).trim()]=p; iz[z0(p.cod)]=iz[z0(p.cod)]||p});
+  const ag={}; peds.forEach(p=>(p.pedido_itens||[]).forEach(i=>{const k0=norm(i.cod).trim(); if(!k0) return; const pp=ix[k0]||iz[z0(k0)]||null, k=pp?'#'+pp.id:k0; const a=ag[k]=ag[k]||{cod:pp&&rep!=='marluvas'?pp.cod:i.cod,desc:i.descricao,n:0,q:0,ult:p.data,pu:+i.preco||0,p:pp,ps:{}}; if(!a.ps[p.id]){a.ps[p.id]=1; a.n++} a.q+=+i.qtd||0}));
   const A=Object.values(ag); A.forEach(a=>{a.qm=(a.p&&a.p.mult)||1; a.img=(a.p&&a.p.img)||fotoDe(rep,a.cod)}); /* entra com a qtd mínima: o vendedor ajusta no orçamento */
   const ext=!!EXTERNAL[rep]&&!CONV_PASTA, sel={}; let ord='n', q='';
   const noOrc=a=>!ext&&o&&a.p&&o.itens.some(x=>x.pid===a.p.id);
+  /* 11/11: estoque de cada item pelo nosso robô: Sigma ao vivo (função sigma-estoque) e Medix (estoque.json do robô diário) */
+  const sgCod=a=>a.p?String(a.p.cod).trim():'', ESTM=rep==='medix'?await estoqueMedix().catch(()=>({})):null;
+  const iqcEst=a=>{if(!a.p) return ''; if(rep==='sigma') return `<div data-stkbox="${esc(sgCod(a))}" data-qt="0">${stkHtml(sgCod(a),0)}</div>`;
+    if(ESTM){const e=ESTM[a.p.cod]; return e?`<div class="hint">📦 ${e[0]==='S'?'<b class="ok">Em estoque na Medix</b>':`<b class="bad">Sem estoque na Medix</b>${e[1]?' · previsão '+esc(e[1]):''}`} <span style="opacity:.7">(robô diário)</span></div>`:''} return ''};
   const desenha=()=>{const w=norm(q); const L2=A.filter(a=>!w||norm(a.cod+' '+a.desc+' '+(a.p&&a.p.descricao||'')).includes(w)).sort(ord==='n'?(a,b)=>b.n-a.n||b.q-a.q:(a,b)=>String(b.ult).localeCompare(String(a.ult))||b.n-a.n);
     sh.querySelector('#iqcl').innerHTML=L2.map(a=>{const k=A.indexOf(a), s=sel[k], fora=!ext&&!a.p; return `<div class="pc" style="grid-template-columns:64px 1fr;border-bottom:1px solid var(--line);padding:8px 0"><img src="${esc(a.img||'')}" alt="Ampliar foto" data-zoom="${esc(a.img||'')}" data-cap="${esc(a.cod)}" loading="lazy" style="width:64px;height:64px;object-fit:contain;background:#fff;border-radius:8px;cursor:zoom-in" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:4px;min-width:0">
       <div><b>${esc(a.p&&a.p.ref&&rep==='marluvas'?a.p.ref:a.cod)}</b> <span class="d">${esc((a.p&&a.p.descricao)||descCurta(a))}</span></div>
       <div class="hint">${a.n} pedido(s) · ${a.q} un no total · última ${dbr(a.ult)} (há ${dias(a.ult)}d) · pagou ${brl(a.pu)}</div>
-      <div class="row" style="justify-content:space-between">${noOrc(a)?'<span class="tag" style="background:#4fd18b22;color:#2fb46e">✓ No orçamento</span>':fora?'<span class="tag">fora do catálogo atual</span>':`<span></span><button class="btn sm${s?' ghost':''}" data-iqs="${k}">${s?'✓ Selecionado':'＋ Incluir'}</button>`}</div></div></div>`}).join('')||`<p class="hint">${A.length?'Nada com essa busca.':'Nenhuma compra de '+esc(repName(rep))+' registrada para este cliente.'}</p>`;
+      <div class="row" style="justify-content:space-between;align-items:center">${noOrc(a)?iqcEst(a)+'<span class="tag" style="background:#4fd18b22;color:#2fb46e">✓ No orçamento</span>':fora?'<span class="tag" title="Este código não foi achado no catálogo de hoje da representada (saiu de linha ou mudou de código). Não dá para incluir.">fora do catálogo atual</span>':`${iqcEst(a)||'<span></span>'}<button class="btn sm${s?' ghost':''}" data-iqs="${k}">${s?'✓ Selecionado':'＋ Incluir'}</button>`}</div></div></div>`}).join('')||`<p class="hint">${A.length?'Nada com essa busca.':'Nenhuma compra de '+esc(repName(rep))+' registrada para este cliente.'}</p>`;
     const n=Object.keys(sel).length; sh.querySelector('#iqcok').innerHTML=n?`<button class="btn" data-iqok>${ext?`Abrir orçamento ${esc(repName(rep))} com ${n} item(ns) ›`:`Incluir ${n} item(ns) no orçamento`}</button>`:''};
   sh.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><b style="font-size:17px">🛒 Itens que já comprou · ${esc(repName(rep))}</b><div class="hint">${esc(cli.fa||cli.n)} · ${A.length} produto(s) em ${peds.length} pedido(s)${ext?'':' · entra com o preço atual da tabela; a quantidade você ajusta no orçamento'}</div></div><button class="chip" data-x>✕</button></div>
    <div class="row" style="margin:8px 0"><button class="chip on" data-iqo="n">Mais comprados</button><button class="chip" data-iqo="u">Mais recentes</button><input id="iqcb" type="search" placeholder="Filtrar" style="flex:1;min-width:120px"></div>
    <div id="iqcl"></div><div id="iqcok" style="position:sticky;bottom:-16px;background:var(--surface);padding:10px 0 4px"></div>`;
   desenha();
+  if(rep==='sigma'){const cs=A.map(sgCod).filter(Boolean); if(cs.length){sigmaStkMany(cs).then(()=>stkPinta(sh)).catch(()=>{}); stkPinta(sh)}}
   sh.querySelector('#iqcb').oninput=e=>{q=e.target.value; desenha()};
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')||t===ov) return ov.remove();
+    const sk=t.closest('[data-stk]'); if(sk){const pr=sigmaStk(sk.dataset.stk,true); stkPinta(sh); await pr; return stkPinta(sh)}
     const b=t.closest('[data-iqo]'); if(b){ord=b.dataset.iqo; sh.querySelectorAll('[data-iqo]').forEach(x=>x.classList.toggle('on',x===b)); return desenha()}
     const s=t.closest('[data-iqs]'); if(s){const k=s.dataset.iqs; if(sel[k]) delete sel[k]; else sel[k]={qt:A[k].qm}; return desenha()}
     if(t.closest('[data-iqok]')){const ks=Object.keys(sel); t.disabled=true;

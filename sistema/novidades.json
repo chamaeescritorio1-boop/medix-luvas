@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111111",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Itens que já comprou com foto e estoque",
+   "texto": "Na janela 🛒 Itens que já comprou, a Sigma mostra o estoque disponível de cada item na hora e a Medix mostra o estoque do robô diário. Itens antigos da Sigma que apareciam como \"fora do catálogo atual\" (código sem o zero na frente) agora são reconhecidos, com foto e botão Incluir."
+  },
+  {
    "id": "2026111104",
    "data": "2026-11-11",
    "tipo": "correcao",

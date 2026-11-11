@@ -270,3 +270,13 @@ details.item .explica { padding: 0 16px 16px 70px; color: var(--tinta-2); font-s
 .ad-r { position: absolute; top: 10px; padding: 4px 10px; border-radius: 999px; background: #000a; color: #fff; font: 700 .8rem var(--f-texto, system-ui); pointer-events: none; }
 .ad-a { left: 10px; } .ad-d { right: 10px; }
 .ad input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+
+.sub-pag { font-size: 1rem; margin: 22px 0 4px; color: var(--tinta); }
+.pd-grande { margin-top: 6px; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 2px; }
+.pd-grande b { font-size: 2.5rem; }
+#precoCartao .pd-12 { border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+#precoCartao .pd-12 span, .pd-grande span { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+#precoCartao small, .pd-grande small { font-size: .8rem; color: var(--tinta-2); }
+.pd-outras { margin-top: 18px; border-top: 1px dashed var(--borda); padding-top: 12px; display: grid; gap: 10px; }
+.pd-outras > div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: .9rem; }
+.pd-outras button { margin-left: auto; border: 1px solid var(--borda); background: var(--cartao); border-radius: 999px; padding: 6px 12px; font: inherit; font-weight: 700; color: var(--acao-texto); cursor: pointer; }

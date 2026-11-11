@@ -135,3 +135,8 @@ input[data-opu]{background:#fff6dc!important;border:2px solid var(--brand)!impor
  #opane .row>input{flex:1 1 140px}
  .pl>.card.pc>img,.pl>.pc>img{height:150px}
 }
+
+/* 📍 Endereço e mapa (ficha do cliente): sem o triângulo padrão do <details> */
+.mapsb>summary::-webkit-details-marker{display:none}
+.mapsb>summary::marker{content:""}
+.mapsb[open]>summary{background:var(--line,#e5e7eb)}

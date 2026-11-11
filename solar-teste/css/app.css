@@ -263,10 +263,10 @@ body.com-barra { padding-bottom: 150px; }
 .t3-rank-l > i { width: 12px; height: 12px; border-radius: 50%; flex: none; }
 .t3-rank-n { flex: 1; min-width: 160px; font-size: 13px; font-weight: 600; }
 .t3-rank-n small { display: block; font-weight: 400; opacity: .75; }
-.t3-flut { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; padding: 5px; border-radius: 999px; background: #0d1424e6; border: 1px solid #ffffff2a; z-index: 3; flex-wrap: nowrap; justify-content: center; max-width: calc(100% - 64px); overflow-x: auto; }
+.t3-flut { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; padding: 5px; border-radius: 18px; background: #0d1424e6; border: 1px solid #ffffff2a; z-index: 3; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 64px); overflow-x: auto; }
 .t3-flut button { border: 0; background: transparent; color: #fff; font: 600 12px system-ui; padding: 6px 9px; white-space: nowrap; border-radius: 999px; cursor: pointer; }
 .t3-flut button[aria-pressed="true"] { background: var(--sol, #ff8a3d); color: #1a1205; }
-.t3-flut span { color: #fffc; font: 600 12px system-ui; padding: 0 6px; }
+.t3-flut span { color: #fffc; font: 600 12px system-ui; padding: 0 6px; white-space: nowrap; }
 .t3-mppt { margin: 10px 0; padding: 10px; border-radius: 12px; border: 1px solid #ffffff22; background: #ffffff08; }
 .t3-bola { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
 /* serviços e manutenção */

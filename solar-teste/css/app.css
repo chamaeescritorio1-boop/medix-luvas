@@ -379,3 +379,18 @@ body.com-barra .jarvis-bt { bottom: 96px; }
 .gr-val span { display: block; font-size: 11px; color: var(--texto-2); }
 .gr-val b { display: block; font-size: 16px; margin-top: 2px; }
 @media (max-width: 560px) { .gr-val { grid-template-columns: 1fr 1fr; } }
+
+/* Meu dia novo: uma lista só, linhas compactas */
+.dia2 { padding: 6px 14px 12px; }
+.dia2 > .entre { padding: 8px 0 4px; }
+.dia2-l { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--linha); }
+.dia2-l.quente { background: linear-gradient(90deg, #ff6a1a1a, transparent); border-radius: 10px; padding-left: 6px; margin-left: -6px; }
+.dia2-ic { font-size: 18px; text-align: center; }
+.dia2-tx { display: grid; min-width: 0; }
+.dia2-tx a { color: inherit; }
+.dia2-tx b, .dia2-tx .mini { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dia2-ac { display: flex; gap: 6px; align-items: center; }
+.dia2-feitos { margin-top: 10px; opacity: .8; }
+.dia2-feitos summary { cursor: pointer; }
+.dia2-rodape { margin-top: 14px; text-align: center; opacity: .85; }
+@media (max-width: 600px) { .dia2-l { grid-template-columns: 22px minmax(0, 1fr); } .dia2-ac { grid-column: 2; } .dia2 > .entre .mini { display: none; } }

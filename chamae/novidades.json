@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111101",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Marcon: vendedor escolhe o desconto",
+   "texto": "Nos módulos da Marcon o desconto de pagamento agora é escolhido pelo vendedor, de 0 até 10%. Nas tabelas Geral (SP e MG) cada item ganhou um campo de desconto negociado de 0 até 5%.",
+   "onde": "Orçamento Marcon"
+  },
+  {
    "id": "2026111009",
    "data": "2026-11-10",
    "tipo": "novo",

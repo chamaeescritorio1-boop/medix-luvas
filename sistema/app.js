@@ -366,10 +366,22 @@ function juntaGrade(its,rep){if(!ehMlv(rep)||!Array.isArray(its)||!its.some(i=>c
 const pedsGrade=(peds,rep)=>{(peds||[]).forEach(p=>{if(p&&p.pedido_itens) p.pedido_itens=juntaGrade(p.pedido_itens,rep||p.representada)}); return peds};
 /* busca inteligente de produtos: qualquer parte de código, descrição, grupo, CA, EAN; sem acento; plural/singular; ordena por relevância */
 const raiz=w=>w.length>4?w.replace(/(OES|AES|ES|S)$/,''):w;
-function buscaProd(C,q,rep){const W=norm(q).replace(/[^A-Z0-9.\-\/ ]/g,' ').split(/\s+/).filter(Boolean).map(w=>{const c=codNum(w,rep); return c&&!C.some(p=>norm(p.cod)===w)?c.raiz:w}).map(raiz); if(!W.length) return C;
-  const out=[]; for(const p of C){const cod=norm(p.cod+' '+(p.ref||'')); const txt=norm(p.cod+' '+(p.ref||'')+' '+(p.descricao||'')+' '+(rep?grupoOf(rep,p):'')+' '+(p.ca?'CA'+p.ca+' '+p.ca:'')+' '+((p.attrs||{}).ean||'')+' '+((p.attrs||{}).obs||'')).replace(/[^A-Z0-9.\-\/ ]/g,' ');
-    if(!W.every(w=>txt.includes(w))) continue; let sc=0; W.forEach(w=>{if(norm(p.cod)===w) sc+=100; else if(cod.includes(w)) sc+=30; if(norm(p.descricao||'').startsWith(w)) sc+=10; if(new RegExp('(^|\\s)'+w.replace(/[.\-\/]/g,'\\$&')).test(txt)) sc+=5}); out.push([sc,p])}
-  return out.sort((a,b)=>b[0]-a[0]).map(x=>x[1])}
+/* BUSCA2: código exato vem primeiro ("7" acha o código 7), prefixo de código ("N-" lista N-350, N-550…), ignora traço/ponto/espaço no código ("N350" = "N-350"); termos de 1–2 caracteres só valem como início de código ou palavra inteira (não casam com pedaço de EAN/número) */
+const cpt=s=>norm(s).replace(/[^A-Z0-9]/g,'');
+function buscaProd(C,q,rep){const mx=false; const W=norm(q).replace(/[^A-Z0-9.\-\/ ]/g,' ').split(/\s+/).filter(Boolean).map(w=>{const c=codNum(w,rep); return c&&!C.some(p=>norm(p.cod)===w)?c.raiz:w}).map(raiz); if(!W.length) return C;
+  const WC=W.map(w=>[w,cpt(w),w.replace(/[.\-\/]+$/,'').length<=2,new RegExp('(^|\\s)'+w.replace(/[.\-\/]/g,'\\$&')+(/[.\-\/]$/.test(w)?'':/[0-9]$/.test(w)?'(?![0-9])':'(?![A-Z])'))]);
+  const out=[]; for(const p of C){const cods=[p.cod,p.ref].filter(Boolean).map(c=>norm(c).trim()), cc=cods.map(cpt), cod=cods.join(' ');
+    const sem0=norm((p.descricao||'')+' '+(rep?grupoOf(rep,p):'')+' '+(p.ca?'CA'+p.ca+' '+p.ca:'')+' '+((p.attrs||{}).obs||'')), ean=norm((p.attrs||{}).ean||'');
+    const fx=t=>t.replace(/[^A-Z0-9.\-\/ ]/g,' '); const sem=fx(sem0), txt=fx(cod+' '+sem0+' '+ean);
+    let sc=0, ok=true; for(const [w,wc,curto,rw] of WC){let s=0;
+      if(cods.includes(w)||(wc&&cc.includes(wc))) s=1000;
+      else if(cods.some(c=>c.startsWith(w))||(wc&&wc===w&&cc.some(c=>c.startsWith(wc)))) s=300;
+      else if(curto){if(rw.test(sem)) s=20; else if(/[.\-\/]/.test(w)&&cods.some(c=>rw.test(c))) s=40}
+      else if(cods.some(c=>c.includes(w))||(wc.length>=3&&cc.some(c=>c.includes(wc)))) s=60;
+      else if(txt.includes(w)) s=5+(rw.test(txt)?5:0)+(norm(p.descricao||'').startsWith(w)?10:0);
+      if(!s){ok=false; break} sc+=s}
+    if(ok) out.push([sc,p])}
+  return out.sort((a,b)=>b[0]-a[0]||(a[0]>=300?String(a[1].cod).localeCompare(String(b[1].cod),'pt',{numeric:true}):0)).map(x=>x[1])}
 /* ---------- paginação (50 por página) ---------- */
 const POR_PAG=50;
 const pager=(n,pg)=>{const np=Math.ceil(n/POR_PAG); if(np<=1) return ''; return `<div class="row pager" style="justify-content:center;align-items:center;margin:12px 0"><button class="chip" data-pg="${pg-1}"${pg?'':' disabled'}>‹ Anterior</button><span class="hint">Página ${pg+1} de ${np}</span><button class="chip" data-pg="${pg+1}"${pg<np-1?'':' disabled'}>Próxima ›</button></div>`};
@@ -759,7 +771,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
   if(!o.cli){const cb=p.querySelector('#cpick'); if(cb) cliPicker(cb,rep)}
   if(o.cli&&o.cli.cnpj){p.querySelectorAll('[data-hist]').forEach(el=>{el.innerHTML='<span class="hint">Buscando os últimos pedidos…</span>'; histPedidos(rep,o.cli.cnpj).then(H=>{if(el.isConnected) el.innerHTML=histHtml(rep,o,H)})}); p.querySelectorAll('details.ohist-d').forEach(d=>d.ontoggle=()=>LS('ohistA',d.open))}
   {const mo=p.querySelector('details.mopc'); if(mo) mo.ontoggle=()=>LS('orcMais',mo.open)}
-  if(PS===3){const qi=p.querySelector('#opq'), box=p.querySelector('#opres'); const draw=()=>{const w=norm(qi.value).trim(); ctx.opq=qi.value; if(w.length<2){box.innerHTML=''; return} const ws=w.split(/\s+/).map(k=>{const cn=codNum(k,rep); return cn&&!C.some(x=>norm(x.cod)===k)?cn.raiz:k}); const R_=C.filter(x=>{const h=norm([x.cod,x.ref,x.descricao,x.ca].filter(Boolean).join(' ')); return ws.every(k=>h.includes(k))}).slice(0,12);
+  if(PS===3){const qi=p.querySelector('#opq'), box=p.querySelector('#opres'); const draw=()=>{const w=norm(qi.value).trim(); ctx.opq=qi.value; if(!w){box.innerHTML=''; return} const R_=buscaProd(C,qi.value,rep).slice(0,12);
       box.innerHTML=R_.map(x=>{const pr0=(PP[x.id]||{}).liq, pr=pr0?rHU(pr0*fPz(rep,o.prazo)):pr0, ja=o.itens.find(i=>i.pid===x.id); return `<div class="opas-p${ja?' in':''}"><img src="${esc(x.img||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="opas-pn">${esc(x.descricao||x.cod)}</div><div class="hint">Cód. ${esc(x.cod)}${x.ca?' · CA '+esc(x.ca):''}${x.emb?' · '+esc(x.emb):''}</div>${rep==='medix'&&EQ[x.cod]?`<small>${estTxt(rep,x.cod,EQ)}</small>`:''}${UPs(x)}<div class="row" style="justify-content:space-between;margin-top:auto"><b class="opas-pr">${pr?brl(pr):'<span class="hint">sem preço</span>'}</b><span class="row" style="gap:4px;flex-wrap:nowrap">${fichaBtn(x)}${ja?'':`<button class="btn sm" data-opadd="${x.id}">＋ Adicionar</button>`}</span></div>${ja?`<div class="opas-ja"><span class="ok" style="font-weight:700">✓ No orçamento</span><div class="qty"><button data-opm="${x.id}" aria-label="Menos">−</button><input data-opqt="${x.id}" type="number" inputmode="numeric" value="${ja.qt}" aria-label="Quantidade"><button data-opadd="${x.id}" aria-label="Mais">+</button></div><button class="chip" data-del="${x.id}">🗑 Tirar</button></div>`:''}</div>`}).join('')||'<p class="hint">Nada encontrado. Tente outra palavra, o código ou o CA.</p>'};
     qi.oninput=draw; draw(); if(ctx.opq&&matchMedia('(hover: hover)').matches) {qi.focus({preventScroll:true}); qi.setSelectionRange(qi.value.length,qi.value.length)}}
   p.onclick=async e=>{const t=e.target; const sk=t.closest('[data-stk]');

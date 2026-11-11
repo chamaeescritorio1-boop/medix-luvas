@@ -371,7 +371,7 @@ const pedsGrade=(peds,rep)=>{(peds||[]).forEach(p=>{if(p&&p.pedido_itens) p.pedi
 /* busca inteligente de produtos: qualquer parte de código, descrição, grupo, CA, EAN; sem acento; plural/singular; ordena por relevância */
 const raiz=w=>w.length>4?w.replace(/(OES|AES|ES|S)$/,''):w;
 /* Medix: palavras do cliente × palavras da planilha (nitrílica = nitrilo, s/pó = sem pó, cirúrgica = cir…) */
-const MX_SIN=[[/\bS\/\s*PO\b/g,'SEM PO'],[/\bC\/\s*PO\b/g,'COM PO'],[/\bNITRIL\w*|\bNITRICA\w*/g,'NITRIL'],[/\bPROCEDIM\w*/g,'PROCEDIM'],[/\bCIRURGIC\w*|\bCIR\b/g,'CIRURG'],[/\bESTERIL\w*|\bESTEREL\w*/g,'ESTERIL'],[/\bDESCARTAV\w*|\bDESC\b/g,'DESCARTAV'],[/\bPRET[OA]S?\b/g,'PRET'],[/\bBRANC[OA]S?\b/g,'BRANC'],[/\bAMAREL[OA]S?\b/g,'AMAREL'],[/\bVERMELH[OA]S?\b/g,'VERMELH'],[/\bMASCARAS?\b/g,'MASCARA'],[/\bLUVAS\b/g,'LUVA'],[/\bTHERMOPLAST\b/g,'TPE THERMOPLAST'],[/\bPOLIPROPILENO|PROPROPILENO\b/g,'POLIPROPILENO']];
+const MX_SIN=[[/\bS\/\s*PO\b/g,'SEM PO'],[/\bC\/\s*PO\b/g,'COM PO'],[/\bC\/\s*/g,'COM '],[/\bS\/\s*/g,'SEM '],[/\bNITRIL\w*|\bNITRICA\w*/g,'NITRIL'],[/\bPROCEDIM\w*/g,'PROCEDIM'],[/\bCIRURGIC\w*|\bCIR\b/g,'CIRURG'],[/\bESTERIL\w*|\bESTEREL\w*/g,'ESTERIL'],[/\bDESCARTAV\w*|\bDESC\b/g,'DESCARTAV'],[/\bPRET[OA]S?\b/g,'PRET'],[/\bBRANC[OA]S?\b/g,'BRANC'],[/\bAMAREL[OA]S?\b/g,'AMAREL'],[/\bVERMELH[OA]S?\b/g,'VERMELH'],[/\bMASCARAS?\b/g,'MASCARA'],[/\bLUVAS\b/g,'LUVA'],[/\bTHERMOPLAST\b/g,'TPE THERMOPLAST'],[/\bPOLIPROPILENO|PROPROPILENO\b/g,'POLIPROPILENO']];
 const mxSin=t=>MX_SIN.reduce((a,[r,v])=>a.replace(r,v),t);
 /* BUSCA2: código exato vem primeiro ("7" acha o código 7), prefixo de código ("N-" lista N-350, N-550…), ignora traço/ponto/espaço no código ("N350" = "N-350"); termos de 1–2 caracteres só valem como início de código ou palavra inteira (não casam com pedaço de EAN/número) */
 const cpt=s=>norm(s).replace(/[^A-Z0-9]/g,'');
@@ -387,8 +387,11 @@ function buscaProd(C,q,rep){const mx=rep==='medix'&&MX_FILTROS; const W=(mx?mxSi
       else if(cods.some(c=>c.includes(w))||(wc.length>=3&&cc.some(c=>c.includes(wc)))) s=60;
       else if(txt.includes(w)) s=5+(rw.test(txt)?5:0)+(norm(p.descricao||'').startsWith(w)?10:0);
       if(!s){ok=false; break} sc+=s}
-    if(ok) out.push([sc,p])}
-  return out.sort((a,b)=>b[0]-a[0]||(a[0]>=300?String(a[1].cod).localeCompare(String(b[1].cod),'pt',{numeric:true}):0)).map(x=>x[1])}
+    if(ok) out.push([sc,p,sem])}
+  /* número + palavra na busca ("1 bolso", "4 bolsos", "7 gavetas"): se algum produto tem isso escrito, mostra só esses (o "1" não puxa todo código que começa com 1) */
+  const QF=(mx?mxSin(norm(q)):norm(q)).replace(/[^A-Z0-9 ]/g,' '); let m2; const FR=[], reF=/(?:^|\s)(\d+)\s+([A-Z]{3,})/g; while((m2=reF.exec(QF))) FR.push(new RegExp('(^|\\s)'+m2[1]+'\\s+'+raiz(m2[2])));
+  const out2=FR.length?out.filter(x=>FR.every(r=>r.test(x[2]))):out; const O=out2.length?out2:out;
+  return O.sort((a,b)=>b[0]-a[0]||(a[0]>=300?String(a[1].cod).localeCompare(String(b[1].cod),'pt',{numeric:true}):0)).map(x=>x[1])}
 /* ---------- paginação (50 por página) ---------- */
 const POR_PAG=50;
 const pager=(n,pg)=>{const np=Math.ceil(n/POR_PAG); if(np<=1) return ''; return `<div class="row pager" style="justify-content:center;align-items:center;margin:12px 0"><button class="chip" data-pg="${pg-1}"${pg?'':' disabled'}>‹ Anterior</button><span class="hint">Página ${pg+1} de ${np}</span><button class="chip" data-pg="${pg+1}"${pg<np-1?'':' disabled'}>Próxima ›</button></div>`};

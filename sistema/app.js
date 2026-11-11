@@ -3551,16 +3551,24 @@ function blocosOC(linhas){const B=[]; let cur=null; const ini=/^\s*(\d{1,3}\s+)?
   for(const l0 of linhas){const l=String(l0); if(!l.trim()) continue; const tk=l.trim().split(/\s+/); const temNum=/\d/.test(tk[0]);
     if(temNum&&ini.test(l)&&!/^\d+([.,]\d+)?$/.test(tk[1]||'')){cur={ls:[l]}; B.push(cur)} else if(cur) cur.ls.push(l); else B.push({ls:[l],solto:1})}
   return B}
-function qtdTripla(toks){const N=toks.map((t,i)=>({i,n:lerNumBR(t)})).filter(o=>o.n!=null&&o.n>0);
-  for(let a=0;a<N.length;a++) for(let b=a+1;b<N.length;b++) for(let c=b+1;c<N.length;c++){const q=N[a].n,pu=N[b].n,tot=N[c].n; if(q>=1&&q<100000&&Math.abs(q*pu-tot)<=Math.max(0.05,tot*0.003)) return {qt:q,pu,tot,idx:[N[a].i,N[b].i,N[c].i]}}
+/* acha Qtd × Preço unit. = Total na linha. OCs como a da Copercana trazem o total já com IPI/frete (Total = Qtd×Preço + IPI + Frete):
+   aceita também o total somando até 3 valores que aparecem entre o preço e o total. Qtd seguida de unidade (UN, PC, CX…) tem preferência. */
+const OC_UN=/^(UN|UND|UNID|PC|PCS|PÇ|PÇS|PR|PAR|PARES|CX|KG|M|MT|MTS|JG|KIT|CJ|RL|FD|LT|GL|SC|DZ|BD|TB|PT|EMB)\.?$/i;
+function qtdTripla(toks){const N=toks.map((t,i)=>({i,n:lerNumBR(t)})).filter(o=>o.n!=null&&o.n>0); const ok=(a,b)=>Math.abs(a-b)<=Math.max(0.05,b*0.003);
+  const comUn=o=>OC_UN.test(String(toks[o.i+1]||'')); const Q=[...N.filter(comUn),...N.filter(o=>!comUn(o))];
+  for(const qa of Q) for(let b=0;b<N.length;b++) for(let c=b+1;c<N.length;c++){if(N[b].i<=qa.i) continue; const q=qa.n,pu=N[b].n,tot=N[c].n; if(q>=1&&q<100000&&ok(q*pu,tot)) return {qt:q,pu,tot,idx:[qa.i,N[b].i,N[c].i]}}
+  for(const qa of Q) for(let b=0;b<N.length;b++) for(let c=N.length-1;c>b+1;c--){if(N[b].i<=qa.i) continue; const q=qa.n,pu=N[b].n,tot=N[c].n; if(!(q>=1&&q<100000)) continue; const resto=tot-q*pu; if(resto<=0||resto>tot*0.6) continue;
+    const ex=N.slice(b+1,c).map(o=>o.n); const L=ex.length; for(let m=1;m<(1<<L);m++){let k=0,sm=0; for(let j=0;j<L;j++) if(m>>j&1){k++; sm+=ex[j]} if(k<=3&&Math.abs(sm-resto)<=Math.max(0.05,tot*0.002)) return {qt:q,pu,tot,idx:[qa.i,N[b].i,N[c].i],extra:1}}}
   return null}
 function idxCatalogo(C){const idx={}; C.forEach(p=>{[p.cod,p.ref,(p.attrs||{}).ean,(p.attrs||{}).cod_fab].filter(Boolean).forEach(k=>{const n=norm(k).replace(/\s+/g,''); if(n.length>=2&&!idx[n]) idx[n]=p})}); return idx}
 const PAL=s=>norm(s).replace(/[^A-Z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>=3&&!/^\d+$/.test(w));
 function porDescricao(txt,C){const W=new Set(PAL(txt)); if(W.size<2) return null; let best=null,bs=0; for(const p of C){const pw=PAL(p.descricao||''); if(!pw.length) continue; const hit=pw.filter(w=>W.has(w)).length; const sc=hit/Math.max(pw.length,3); if(hit>=2&&sc>bs){bs=sc;best=p}} return bs>=0.6?{p:best,sc:bs}:null}
 function casarItens(linhas,C,rep){const idx=idxCatalogo(C); const B=blocosOC(linhas); const temTripla=B.some(b=>qtdTripla(b.ls.join(' ').split(/\s+/)));
-  const blocos=temTripla?B:linhas.map(l=>({ls:[l]})); const achou=[], faltou=[];
+  /* OC com um item por linha (Qtd, preço e total na mesma linha): cada linha vira um item — juntar linhas em blocos misturava itens */
+  const LT=linhas.filter(l=>qtdTripla(String(l).trim().split(/[\s;|\t]+/))); const porLinha=LT.length>=2&&LT.length>B.filter(b=>qtdTripla(b.ls.join(' ').split(/\s+/))).length;
+  const blocos=porLinha?LT.map(l=>({ls:[l]})):temTripla?B:linhas.map(l=>({ls:[l]})); const achou=[], faltou=[];
   for(const b of blocos){const txt=b.ls.join(' '); const toks=txt.split(/[\s;|\t]+/).map(x=>x.trim()).filter(Boolean); const tr=qtdTripla(toks); if(temTripla&&!tr) continue;
-    const usados=new Set(tr?tr.idx:[]); const cands=[]; toks.forEach((t,i)=>{if(usados.has(i)) return; const n=norm(t).replace(/[^A-Z0-9.\-\/]/g,''); const cn=!idx[n]&&codNum(n,rep), p=idx[n]||(cn&&idx[cn.raiz]); if(p) cands.push({p,i,alfa:/[A-Z]/.test(n)&&/\d/.test(n),len:n.length,num:cn&&idx[cn.raiz]?cn.num:undefined})});
+    const usados=new Set(tr?tr.idx:[]); const cands=[]; toks.forEach((t,i)=>{if(usados.has(i)||/^\d[\d.]*,\d+%?$|^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(t)) return; const n=norm(t).replace(/[^A-Z0-9.\-\/]/g,''); const cn=!idx[n]&&codNum(n,rep), p=idx[n]||(cn&&idx[cn.raiz]); if(p) cands.push({p,i,alfa:/[A-Z]/.test(n)&&/\d/.test(n),len:n.length,num:cn&&idx[cn.raiz]?cn.num:undefined}); /* código em duas partes na OC: "340 VD" = 340 VD verde */ const t2=toks[i+1]; if(t2&&!usados.has(i+1)&&/^[A-Z0-9]{1,4}$/i.test(t2)){const j=n+norm(t2); if(idx[j]&&idx[j]!==p) cands.push({p:idx[j],i,alfa:/[A-Z]/.test(j)&&/\d/.test(j),len:j.length+1})}});
     cands.sort((x,y)=>(y.alfa-x.alfa)||((x.i===0)-(y.i===0))||(y.len-x.len)); let p=cands[0]&&cands[0].p, como='código';
     if(!p){const d=porDescricao(txt.replace(/\d+([.,]\d+)+/g,' '),C); if(d){p=d.p; como='descrição'}}
     let qt=tr?tr.qt:null; if(qt==null){const ti=cands[0]?cands[0].i:-1; const nums=toks.map((x,i)=>({i,n:lerNumBR(x)})).filter(o=>o.i!==ti&&o.n!=null&&o.n>0&&o.n<100000); const dep=nums.filter(o=>o.i>ti); qt=(dep.find(o=>Number.isInteger(o.n))||dep[0]||nums[0]||{n:1}).n}

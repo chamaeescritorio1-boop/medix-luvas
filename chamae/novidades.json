@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111105",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "📈 Sell-out da Palácio dentro do Sistema",
+   "texto": "O painel de sell-out que era uma planilha com macro agora está no Sistema. O relatório que a Palácio manda todo dia por e-mail entra sozinho e mostra risco de ruptura, itens parados, curva ABC, cobertura do estoque por filial, carteira pendente na fábrica e a sugestão de compra. No Pré-pedido você ajusta as quantidades e cria o orçamento da fábrica com um botão.",
+   "onde": "Mais › 📈 Sell-out da Palácio (ou o botão 📈 Sell-out na ficha da Palácio)"
+  },
+  {
    "id": "2026111104",
    "data": "2026-11-11",
    "tipo": "novo",

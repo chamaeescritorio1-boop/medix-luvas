@@ -2,6 +2,21 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111108",
+   "data": "2026-11-11",
+   "tipo": "correcao",
+   "titulo": "Importar O.C em PDF lê todos os itens",
+   "texto": "O.Cs como a da Copercana, em que o total de cada item já vem com IPI e frete, agora são lidas linha a linha: todos os itens entram com a quantidade e o preço certos. Códigos em duas partes, como 340 VD, também são reconhecidos."
+  },
+  {
+   "id": "2026111107",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Sell-out: fotos e pré-pedido com a tabela da Palácio",
+   "texto": "O Sell-out agora mostra a foto de cada produto e os itens em cartões. Cada cartão diz em uma frase quanto tempo o estoque dura e quanto tempo a fábrica leva para entregar. O pré-pedido já mostra o preço da tabela da Palácio no prazo que ela costuma comprar, e o orçamento abre com essa tabela e esse prazo. A lista em tabela continua no botão ☰ Tabela.",
+   "onde": "Mais › 📈 Sell-out da Palácio"
+  },
+  {
    "id": "2026111106",
    "data": "2026-11-11",
    "tipo": "novo",

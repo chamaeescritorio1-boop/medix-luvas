@@ -32,3 +32,11 @@ Se os custos e margens não vierem do banco, a central não abre (mensagem na te
   Desfazer: `drop function public.sol_chave_app(); delete from vault.secrets where name = 'sol_cred_app';`
 - `sol_parametros` id 20: recebeu `engenharia`, `fretePadrao`, `margemAvulso`, `manutencaoPorPlaca` e `groner`, que antes ficavam no código.
   Desfazer: `update sol_parametros set vigente = (id = 19) where id in (19, 20);`
+
+## O que mais vai dentro das fontes (desde 10/11/2026 à noite)
+- `robo/`: robô de cotação Belenergy que roda no PC do escritório (antes em `VitimGm/chamasolar-sistema`, pasta `fontes/solar-belenergy`).
+- `servidor/`: funções do servidor (Edge Functions `sol-*`). `sql/`: comandos do banco, cada um com o seu DESFAZER.
+- `testes/`: `preco.js` (7 casos fixos de preço), `central.js` e `publica.js` (navegador automático). Rodar os três antes de publicar.
+
+**Este é o único lugar de trabalho do solar.** O repositório `VitimGm/chamasolar-sistema` ficou para trás: não publicar a partir dele
+(o `publicar-chamae.py` de lá apaga o código protegido e as melhorias feitas aqui).

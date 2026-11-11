@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111104",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Itens que já comprou: botão “Incluir tudo”",
+   "texto": "Na janela 🛒 Itens que já comprou do orçamento agora tem o botão “＋ Incluir tudo”: coloca de uma vez todos os itens da lista. Se você filtrar (ex.: “caixa”), inclui só os que aparecem no filtro. Itens que já estão no orçamento ou fora do catálogo ficam de fora.",
+   "onde": "Orçamento › Produtos › 🛒 Itens que já comprou"
+  },
+  {
    "id": "2026111103",
    "data": "2026-11-11",
    "tipo": "correcao",
@@ -37,8 +45,8 @@
    "id": "2026111008",
    "data": "2026-11-10",
    "tipo": "correcao",
-   "titulo": "Card \u201cPedido transmitido\u201d igual ao Painel do mês",
-   "texto": "Os cards de situação em Pedidos e o quadro agora somam sem IPI, como o Painel do mês. Orçamentos que o robô ligou a outro pedido saem do card \u201cPedido transmitido\u201d e vão para um card próprio, que não soma. O robô \u201cFechar o ciclo\u201d não marca mais sozinho: ele mostra no detalhe \u201cParece que virou o pedido X\u201d com os botões “É este pedido” e “Não foi”."
+   "titulo": "Card “Pedido transmitido” igual ao Painel do mês",
+   "texto": "Os cards de situação em Pedidos e o quadro agora somam sem IPI, como o Painel do mês. Orçamentos que o robô ligou a outro pedido saem do card “Pedido transmitido” e vão para um card próprio, que não soma. O robô “Fechar o ciclo” não marca mais sozinho: ele mostra no detalhe “Parece que virou o pedido X” com os botões “É este pedido” e “Não foi”."
   },
   {
    "id": "2026111007",

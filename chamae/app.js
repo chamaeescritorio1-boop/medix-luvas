@@ -3082,21 +3082,25 @@ async function itensQueCompra(rep,cli,o){
   const A=Object.values(ag); A.forEach(a=>{a.qm=(a.p&&a.p.mult)||1; a.img=(a.p&&a.p.img)||fotoDe(rep,a.cod)}); /* entra com a qtd mínima: o vendedor ajusta no orçamento */
   const ext=!!EXTERNAL[rep]&&!CONV_PASTA, sel={}; let ord='n', q='';
   const noOrc=a=>!ext&&o&&a.p&&o.itens.some(x=>x.pid===a.p.id);
+  const visiveis=()=>{const w=norm(q); return A.filter(a=>!w||norm(a.cod+' '+a.desc+' '+(a.p&&a.p.descricao||'')).includes(w))};
+  const podeIncl=a=>!noOrc(a)&&(ext||!!a.p); /* "Incluir tudo" (11/11): pega o que está na lista (respeita o filtro), pula o que já está no orçamento ou fora do catálogo */
   const desenha=()=>{const w=norm(q); const L2=A.filter(a=>!w||norm(a.cod+' '+a.desc+' '+(a.p&&a.p.descricao||'')).includes(w)).sort(ord==='n'?(a,b)=>b.n-a.n||b.q-a.q:(a,b)=>String(b.ult).localeCompare(String(a.ult))||b.n-a.n);
     sh.querySelector('#iqcl').innerHTML=L2.map(a=>{const k=A.indexOf(a), s=sel[k], fora=!ext&&!a.p; return `<div class="pc" style="grid-template-columns:64px 1fr;border-bottom:1px solid var(--line);padding:8px 0"><img src="${esc(a.img||'')}" alt="Ampliar foto" data-zoom="${esc(a.img||'')}" data-cap="${esc(a.cod)}" loading="lazy" style="width:64px;height:64px;object-fit:contain;background:#fff;border-radius:8px;cursor:zoom-in" onerror="this.style.visibility='hidden'"><div style="display:grid;gap:4px;min-width:0">
       <div><b>${esc(a.p&&a.p.ref&&rep==='marluvas'?a.p.ref:a.cod)}</b> <span class="d">${esc((a.p&&a.p.descricao)||descCurta(a))}</span></div>
       <div class="hint">${a.n} pedido(s) · ${a.q} un no total · última ${dbr(a.ult)} (há ${dias(a.ult)}d) · pagou ${brl(a.pu)}</div>
       <div class="row" style="justify-content:space-between">${noOrc(a)?'<span class="tag" style="background:#4fd18b22;color:#2fb46e">✓ No orçamento</span>':fora?'<span class="tag">fora do catálogo atual</span>':`<span></span><button class="btn sm${s?' ghost':''}" data-iqs="${k}">${s?'✓ Selecionado':'＋ Incluir'}</button>`}</div></div></div>`}).join('')||`<p class="hint">${A.length?'Nada com essa busca.':'Nenhuma compra de '+esc(repName(rep))+' registrada para este cliente.'}</p>`;
+    const nt=L2.filter(podeIncl).length, bt=sh.querySelector('#iqct'); bt.hidden=!nt; bt.textContent=`＋ Incluir tudo (${nt})`; bt.title=q?'Inclui todos os itens que aparecem com este filtro':'Inclui todos os itens da lista';
     const n=Object.keys(sel).length; sh.querySelector('#iqcok').innerHTML=n?`<button class="btn" data-iqok>${ext?`Abrir orçamento ${esc(repName(rep))} com ${n} item(ns) ›`:`Incluir ${n} item(ns) no orçamento`}</button>`:''};
   sh.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><b style="font-size:17px">🛒 Itens que já comprou · ${esc(repName(rep))}</b><div class="hint">${esc(cli.fa||cli.n)} · ${A.length} produto(s) em ${peds.length} pedido(s)${ext?'':' · entra com o preço atual da tabela; a quantidade você ajusta no orçamento'}</div></div><button class="chip" data-x>✕</button></div>
-   <div class="row" style="margin:8px 0"><button class="chip on" data-iqo="n">Mais comprados</button><button class="chip" data-iqo="u">Mais recentes</button><input id="iqcb" type="search" placeholder="Filtrar" style="flex:1;min-width:120px"></div>
+   <div class="row" style="margin:8px 0"><button class="chip on" data-iqo="n">Mais comprados</button><button class="chip" data-iqo="u">Mais recentes</button><input id="iqcb" type="search" placeholder="Filtrar" style="flex:1;min-width:120px"><button class="btn" id="iqct" data-iqtudo hidden>＋ Incluir tudo</button></div>
    <div id="iqcl"></div><div id="iqcok" style="position:sticky;bottom:-16px;background:var(--surface);padding:10px 0 4px"></div>`;
   desenha();
   sh.querySelector('#iqcb').oninput=e=>{q=e.target.value; desenha()};
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')||t===ov) return ov.remove();
     const b=t.closest('[data-iqo]'); if(b){ord=b.dataset.iqo; sh.querySelectorAll('[data-iqo]').forEach(x=>x.classList.toggle('on',x===b)); return desenha()}
     const s=t.closest('[data-iqs]'); if(s){const k=s.dataset.iqs; if(sel[k]) delete sel[k]; else sel[k]={qt:A[k].qm}; return desenha()}
-    if(t.closest('[data-iqok]')){const ks=Object.keys(sel); t.disabled=true;
+    const tudo=t.closest('[data-iqtudo]'); if(tudo){const L3=visiveis().filter(podeIncl); if(!L3.length) return; L3.forEach(a=>{const k=A.indexOf(a); if(!sel[k]) sel[k]={qt:a.qm}})}
+    if(tudo||t.closest('[data-iqok]')){const ks=Object.keys(sel); t.disabled=true;
       if(ext){const u=peds[0]||{}; const lin=ks.map(k=>({cod:A[k].cod,desc:rep==='marluvas'&&A[k].p&&A[k].p.ref&&!String(A[k].desc||'').includes(' | ')?A[k].p.ref+' | '+(A[k].p.descricao||A[k].desc||'').replace(A[k].p.ref+' — ',''):A[k].desc,qt:sel[k].qt,pu:A[k].pu})); if(SUJO[rep]&&!confirm(`O orçamento aberto no app ${repName(rep)} tem alterações não salvas. Abrir um orçamento novo com estes itens mesmo assim?`)){t.disabled=false; return} if(await convRascunho(rep,cli,lin,{prazo:u.prazo,tabela:u.tabela})) ov.remove(); else t.disabled=false; return}
       ks.forEach(k=>{const p=A[k].p; const e_=o.itens.find(x=>x.pid===p.id); if(e_) e_.qt+=sel[k].qt; else o.itens.push(itemNovo(o,p.id,sel[k].qt))}); saveQ(o); ov.remove(); toast(`${ks.length} item(ns) incluído(s) · ajuste as quantidades no orçamento`); return orc()}}}
 /*LIGIA-INICIO*/

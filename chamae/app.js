@@ -4342,7 +4342,7 @@ async function finLista(box){const tp=FST.ab, h=hoje(); const [de,ate]=finPeriod
   /* comissão: depois do vencimento do título o cliente provavelmente pagou, a menos que a fábrica tenha mandado aviso de boleto em aberto daquela NF */
   const AV={}; if(tp==='R') (await api(`fin_avisos?select=nfs,assunto,recebido_em&recebido_em=gte.${maisDias(-200)}&order=recebido_em`).catch(()=>[])).forEach(a=>(a.nfs||[]).forEach(n=>AV[n]=a));
   const nfDe=l=>((l.descricao||'').match(/NF (\d+)/)||[])[1], avDe=l=>{const a=AV[String(nfDe(l)||'').replace(/^0+/,'')]; return a&&String(a.recebido_em).slice(0,10)>=l.vencimento?a:null};
-  const finStatus=l=>{const s0=l.status==='aberto'&&l.vencimento<h?'atrasado':l.status; if(l.categoria!=='comissao'||l.status!=='aberto') return s0; if(avDe(l)) return 'inadimplente'; return l.vencimento<h?'previsto':'aberto'};
+  const finStatus=l=>{const s0=l.status==='aberto'&&l.vencimento<h?'atrasado':l.status; if(l.categoria!=='comissao'||l.status!=='aberto'||!l.nfe_id) return s0; /* 'previsto' só para parcela vinda de NF-e de venda; nota de serviço/lançamento da fábrica vencido = atrasado */ if(avDe(l)) return 'inadimplente'; return l.vencimento<h?'previsto':'aberto'};
   const cats=FIN.cats.filter(c=>c.tipo===tp&&(c.ativa||L1.some(l=>l.categoria===c.id))), contas=FIN.contas.filter(c=>c.ativa||L1.some(l=>l.conta_id===c.id)), repsL=(REPS||[]).filter(r=>r.ativa||L1.some(l=>l.rep===r.id));
   const sel=(k,lbl,todos,ops)=>`<label class="f">${lbl}<select data-ff="${k}"><option value="">${todos}</option>${ops.map(([v,n])=>`<option value="${esc(v)}"${String(FFIL[k])===String(v)?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`;
     box.innerHTML=`<div class="ffil card">
@@ -4382,8 +4382,30 @@ async function finLista(box){const tp=FST.ab, h=hoje(); const [de,ate]=finPeriod
     const b=t.closest('[data-fbx]'); if(b){const l=L1.find(x=>x.id==b.dataset.fbx); return finBaixa(l)}
     const r=t.closest('[data-fl]'); if(r) return finForm(L1.find(x=>x.id==r.dataset.fl))}}
 /* importar XML/NF-e direto do A receber (pedido do Victor 12/11/2026): mesma leitura de Comissões/NF-e; depois mostra o mês da 1ª parcela lançada */
+/* NFS-e (nota de serviço que a Chamaê emite para a fábrica cobrando a comissão do mês, padrão nacional) — pedido do Victor 12/11/2026 */
+function lerNFSe(txt){const x=new DOMParser().parseFromString(txt,'text/xml'); if(x.getElementsByTagName('parsererror').length) throw new Error('XML inválido');
+  const tg=(el,n)=>el&&el.getElementsByTagName(n)[0], tx=(el,n)=>{const e=tg(el,n); return e?e.textContent.trim():''}; const inf=tg(x,'infNFSe'); if(!inf) throw new Error('não é NFS-e');
+  const dps=tg(inf,'infDPS'), toma=tg(dps,'toma'), em=tg(inf,'emit'), vs=tg(dps,'vServPrest');
+  return {chave:(inf.getAttribute('Id')||'').replace(/^NFS/,''),numero:tx(inf,'nNFSe'),emissao:(tx(dps,'dhEmi')||tx(inf,'dhProc')).slice(0,10),compet:tx(dps,'dCompet'),
+    emit_cnpj:tx(em,'CNPJ'),toma_cnpj:tx(toma,'CNPJ')||tx(toma,'CPF'),toma_nome:tx(toma,'xNome'),desc:tx(dps,'xDescServ'),valor:+tx(vs,'vServ')||+tx(tg(inf,'valores'),'vLiq')||0,v_liq:+tx(tg(inf,'valores'),'vLiq')||0,cStat:tx(inf,'cStat')}}
+async function finImportarNFSe(f){const txt=await f.text(); const n=lerNFSe(txt); if(!n.chave||!n.valor) throw new Error('nota sem chave ou sem valor');
+  const ja=await api(`fin_lancamentos?select=id,vencimento&tipo=eq.R&obs=ilike.*${n.chave}*`); if(ja.length) return {dup:1};
+  let rep=finRepDaNF({emit_cnpj:n.toma_cnpj,emit_nome:n.toma_nome}); if(rep==='_ignorar') rep=null;
+  if(!rep){rep=await finEscolherRep({n:{numero:'de serviço '+n.numero,emit_nome:n.toma_nome,emit_cnpj:n.toma_cnpj,dest_nome:'a Chamaê'}}); if(!rep||rep==='_ignorar') return {pulada:1}; const g=finRegra(rep); await api('fin_regras?on_conflict=rep',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({rep,cnpjs:[...new Set([...(g.cnpjs||[]),n.toma_cnpj])]})}); await finDados(true)}
+  const rn=repName(rep), venc0=n.emissao||hoje();
+  const fv=await formulario(`Nota de serviço nº ${n.numero} para ${rn} (${n.toma_nome}) — ${brl(n.valor)}`,[{k:'d',l:'Descrição',val:`${rn.toUpperCase()} · NFS-e ${n.numero}${n.desc?' · '+n.desc.toLowerCase():''}`,req:true},{k:'v',l:'Valor a receber (R$)',val:String(n.valor).replace('.',','),mode:'decimal',req:true},{k:'venc',l:'Vencimento (quando a fábrica deve pagar)',type:'date',val:venc0,req:true}],'Lançar no A receber'); if(!fv) return {pulada:1};
+  const valor=lerNumBR(fv.v); if(!(valor>0)) throw new Error('valor inválido'); const comp=fv.venc.slice(0,8)+'01', obs=`NFS-e nº ${n.numero} emitida em ${dbr(n.emissao)} · chave ${n.chave}`;
+  /* se já tem a comissão do mês desta fábrica lançada à mão (ex.: "MARCON" em aberto), atualiza ela em vez de duplicar */
+  const ab=await api(`fin_lancamentos?select=id,descricao,valor,vencimento&tipo=eq.R&categoria=eq.comissao&rep=eq.${rep}&status=eq.aberto&nfe_id=is.null&competencia=eq.${comp}`).catch(()=>[]);
+  const alvo=ab.find(l=>!/NFS-e/.test(l.descricao||''));
+  if(alvo&&confirm(`Já existe "${alvo.descricao}" de ${brl(alvo.valor)} em aberto (${dbr(alvo.vencimento)}) para ${rn} neste mês.\n\nOK = atualizar esse lançamento com a nota (${brl(valor)}).\nCancelar = criar outro lançamento.`)){
+    await api(`fin_lancamentos?id=eq.${alvo.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({descricao:fv.d,valor,vencimento:fv.venc,obs,cnpj:n.toma_cnpj,cliente:n.toma_nome})}); return {ok:1,venc:fv.venc,valor,atualizou:1}}
+  await api('fin_lancamentos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify([{tipo:'R',categoria:'comissao',rep,status:'aberto',descricao:fv.d,valor,vencimento:fv.venc,competencia:comp,cnpj:n.toma_cnpj,cliente:n.toma_nome,obs}])}); return {ok:1,venc:fv.venc,valor}}
 async function finXMLnoReceber(files,auto){files=[...files].filter(f=>/xml$/i.test(f.name)||(f.type||'').includes('xml')); if(!files.length) return toast('Escolha arquivos .xml das NF-e');
-  toast(`Lendo ${files.length} arquivo(s)…`); const r=await finRodaXML(files,auto); const P=(r.parc||[]).map(l=>l.vencimento).filter(Boolean).sort();
+  toast(`Lendo ${files.length} arquivo(s)…`); const ehS=[], nfe=[]; for(const f of files){const t=f.fila?'':await f.text().catch(()=>''); (/<infNFSe[\s>]/.test(t)?ehS:nfe).push(f)}
+  const VS=[]; if(ehS.length){await finDados(); const rs={ok:0,dup:0,pul:0,at:0,err:[],tot:0}; for(const f of ehS){try{const x=await finImportarNFSe(f); if(x.dup) rs.dup++; else if(x.pulada) rs.pul++; else {rs.ok++; rs.tot+=x.valor; if(x.atualizou) rs.at++; VS.push(x.venc)}}catch(err){rs.err.push(f.name+': '+err.message)}}
+    alert(`Notas de serviço (NFS-e): ${rs.ok} lançada(s) no A receber${rs.ok?`, total ${brl(rs.tot)}`:''}${rs.at?` (${rs.at} atualizou lançamento que já existia)`:''}${rs.dup?`, ${rs.dup} já estava(m) no Sistema`:''}${rs.pul?`, ${rs.pul} pulada(s)`:''}.${rs.err.length?'\n\nNão importadas:\n'+rs.err.join('\n'):''}`)}
+  const r=nfe.length?await finRodaXML(nfe,auto):{}; const P=[...(r.parc||[]).map(l=>l.vencimento),...VS].filter(Boolean).sort();
   if(P.length&&FFIL.per==='mes'){const [y,mo]=P[0].split('-'); FST.y=+y; FST.mo=+mo-1} FST.ab='R'; finView()}
 async function finBaixa(l){const fv=await formulario('Registrar baixa',[{k:'v',l:`Valor ${l.tipo==='R'?'recebido':'pago'} (R$)`,val:String(l.valor).replace('.',','),mode:'decimal',req:true},{k:'d',l:'Data',type:'date',val:hoje(),req:true}],'Registrar'); if(!fv) return; const vp=lerNumBR(fv.v); if(!(vp>=0)) return toast('Valor inválido'); const pe=fv.d||hoje();
   const conta=FIN.contas.filter(c=>c.ativa); let cid=l.conta_id||null; if(!cid&&conta.length===1) cid=conta[0].id;
@@ -4539,7 +4561,7 @@ async function recPdf(r,cfg,vias,previa){await loadJsPDF(); const {jsPDF}=window
 function lerNFe(txt){const x=new DOMParser().parseFromString(txt,'text/xml'); if(x.getElementsByTagName('parsererror').length) throw new Error('XML inválido');
   const tg=(el,n)=>el&&el.getElementsByTagName(n)[0], tx=(el,n)=>{const e=tg(el,n); return e?e.textContent.trim():''}, nm=v=>+v||0;
   const ev=tg(x,'infEvento'); if(ev&&!tg(x,'infNFe')){return {evento:true,chave:tx(ev,'chNFe'),tipo:tx(ev,'tpEvento'),desc:tx(ev,'xEvento')||tx(ev,'descEvento')}}
-  const inf=tg(x,'infNFe'); if(!inf) throw new Error('não é NF-e'); const ide=tg(inf,'ide'), em=tg(inf,'emit'), de=tg(inf,'dest'), tot=tg(inf,'ICMSTot');
+  const inf=tg(x,'infNFe'); if(!inf) throw new Error(tg(x,'infNFSe')?'é nota de serviço (NFS-e): importe pelo botão do A receber':'não é NF-e'); const ide=tg(inf,'ide'), em=tg(inf,'emit'), de=tg(inf,'dest'), tot=tg(inf,'ICMSTot');
   const ch=(inf.getAttribute('Id')||'').replace(/^NFe/,'')||tx(x,'chNFe'); const peds=new Set(); [...inf.getElementsByTagName('xPed')].forEach(e=>e.textContent.trim()&&peds.add(e.textContent.trim()));
   const ip=[...inf.getElementsByTagName('infProt')][0]||tg(x,'infProt'); const cStat=ip?tx(ip,'cStat'):'';
   return {chave:ch,numero:tx(ide,'nNF'),serie:tx(ide,'serie'),emissao:(tx(ide,'dhEmi')||tx(ide,'dEmi')).slice(0,10),tpNF:tx(ide,'tpNF'),natOp:tx(ide,'natOp'),

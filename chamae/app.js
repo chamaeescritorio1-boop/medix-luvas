@@ -1729,8 +1729,8 @@ async function minhaSemana(box,priv){if(!box) return; const so=L('soMeus')===tru
    Os números saem das regras (grátis). A IA grátis (função agentes-ia, Groq) só escreve porquê / o que falar / WhatsApp, 1 vez por dia.
    Feito / Amanhã / Não faz sentido ficam na tabela `oportunidades` (se ela não existir, ficam só neste aparelho). */
 const AG_MAX=10, AG_ORC_DIAS=2, AG_ON=true; /* cadência de cobrança: 2º, 5º e 10º dia útil */
-const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?',sumiu:'Item que sumiu',epoca:'Comprou nesta época',cruz:'Venda cruzada',ticket:'Ticket caindo',estoque:'Voltou ao estoque',portal:'Entrou no portal',fat:'Pedido faturado',novo:'Cliente novo',fria:'Sem comprar',ret:'Retorno marcado'},
-  AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8',sumiu:'#ff7a70',epoca:'#4fd18b',cruz:'#5aa9ff',ticket:'#e07bd8',estoque:'#2fd3c6',portal:'#ff5a36',fat:'#b37bff',novo:'#8bd14f',fria:'#6f86c9',ret:'#294680'}, AG_CICLO_MAX=3;
+const AG_NOME={parada:'Carteira parada',orc:'Orçamento sem retorno',ciclo:'Ganhou ou perdeu?',sumiu:'Item que sumiu',epoca:'Comprou nesta época',cruz:'Venda cruzada',ticket:'Ticket caindo',estoque:'Voltou ao estoque',portal:'Entrou no portal',fat:'Pedido faturado',novo:'Cliente novo',fria:'Sem comprar',manter:'Vai sair da base ativa',ret:'Retorno marcado'},
+  AG_COR={parada:'#f08a24',orc:'#f2b632',ciclo:'#9aa1b8',sumiu:'#ff7a70',epoca:'#4fd18b',cruz:'#5aa9ff',ticket:'#e07bd8',estoque:'#2fd3c6',portal:'#ff5a36',fat:'#b37bff',novo:'#8bd14f',fria:'#6f86c9',manter:'#e5484d',ret:'#294680'}, AG_CICLO_MAX=3;
 const agMais=n=>{const d=new Date(); d.setDate(d.getDate()+n); return ymdL(d)};
 const agUteis=(a,b)=>{let n=0; const d=new Date(a+'T12:00:00'), e=new Date(b+'T12:00:00'); while(d<e){d.setDate(d.getDate()+1); if(diaUtil(d)) n++} return n};
 let AGP=null, AGTAB=null;
@@ -1837,6 +1837,7 @@ function agPadrao(x){const T={
   portal:{p:1,q:'Entrou no portal B2B agora.',f:'Ligue e pergunte se está procurando algum item.',w:'Olá! Tudo bem? Vi que você acessou nosso portal. Está procurando algum item? Posso te ajudar com a cotação.'},
   fat:{p:2,q:`Pedido ${x.rep} faturado (${brl(x.v)}).`,f:'Avise que o pedido saiu e pergunte se falta algo para repor.',w:`Olá! Tudo bem? Seu pedido ${x.rep} foi faturado e já está a caminho. Precisa de mais algum item para aproveitar o próximo envio?`},
   fria:{p:2,q:`Comprava ${x.rep} e está há ${x.d} dias sem comprar.`,f:'Pergunte se ainda usa os produtos e com quem está comprando hoje; ofereça uma cotação com base no último pedido.',w:`Olá! Tudo bem? Faz um tempo que não falamos sobre os produtos ${x.rep}. Ainda usa? Posso te mandar uma cotação atualizada do último pedido.`},
+  manter:{p:1,q:`Comprou ${x.rep} há ${x.d} dias e sai da base ativa da fábrica ${x.falta>0?`em ${x.falta} dia${x.falta===1?'':'s'}`:'hoje'} se não recomprar.`,f:'Ofereça repetir o último pedido agora; um pedido qualquer segura o cliente na base ativa da fábrica.',w:`Olá! Tudo bem? Já está na hora de repor os produtos ${x.rep}? Posso te mandar o último pedido atualizado para você só confirmar.`},
   novo:{p:1,q:`Cliente novo: fez a 1ª compra e ainda não fez a 2ª.`,f:'Pergunte como foi a experiência com o primeiro pedido e ofereça a reposição.',w:`Olá! Tudo bem? Como foi com o primeiro pedido ${x.rep}? Se precisar repor ou de outros itens, estou à disposição.`}}[x.ag];
   if(T) return {prioridade:T.p,porque:T.q,falar:T.f,whatsapp:T.w};
   if(x.ag==='ciclo') return {prioridade:3,porque:`Orçamento de ${brl(x.v)} aberto há ${x.d} dias sem desfecho.`,falar:'Pergunte se ainda está em negociação. Se fechou com outro, registre o motivo em ✖ Perdemos.',whatsapp:`Olá! Tudo bem? Sobre o orçamento ${x.rep} que enviei há algum tempo: ainda está em avaliação ou posso ajudar com alguma alteração?`};
@@ -2637,7 +2638,7 @@ async function clientesView(){const m=$('#main'); if(ctx.cnpj) return fichaClien
   $('#cimp').onclick=()=>importarClientes(); $('#cnovo').onclick=()=>fichaCliente('',true); if(ehGestor()){$('#cexcl').onclick=()=>cexcPainel(); cexcLista(true).then(()=>{const n=cexcPend().length, b=$('#cexcn'); if(b){b.textContent=n; b.hidden=!n}})} $('#csync').onclick=e=>sincronizarReprio(e.target).then(()=>clientesView());
   /* Clientes abre sempre na lista e filtros; Bater carteira é a 2ª opção (ou vem do Início com cm:'cart') */
   const modo=ctx.cm==='cart'?'cart':'lista'; m.querySelector('.card.grid').insertAdjacentHTML('beforebegin',`<div class="row" style="margin-top:10px"><button class="chip${modo==='lista'?' on':''}" data-cm="lista">📋 Lista e filtros</button><button class="chip${modo==='cart'?' on':''}" data-cm="cart">📞 Bater carteira</button></div>`); m.querySelector('[data-cm]').parentNode.onclick=e=>{const b=e.target.closest('[data-cm]'); if(b) go('cli',{cm:b.dataset.cm})};
-  if(modo==='cart'){m.querySelector('#clq').closest('.card').hidden=true; const pb=document.createElement('div'); pb.id='plDia'; pb.style.marginTop='10px'; $('#clres').before(pb); await clientes(); if(!m.isConnected) return; planoDia(pb); return carteira($('#clres'))}
+  if(modo==='cart'){m.querySelector('#clq').closest('.card').hidden=true; const pb=document.createElement('div'); pb.id='plDia'; pb.style.marginTop='10px'; $('#clres').before(pb); const ba=document.createElement('div'); ba.id='baPl'; ba.style.marginTop='10px'; pb.before(ba); await clientes(); if(!m.isConnected) return; baPlacar(ba); planoDia(pb); return carteira($('#clres'))}
   const C=await clientes(); if(!m.isConnected) return; const Vs=[...TIME]; $('#clv').innerHTML='<option value="">Todos os vendedores</option>'+Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('');
   const ult=c=>{const d=Object.values(c.reps).map(x=>x.ultimo).filter(Boolean).sort().pop(); return d||null};
   let pgc=0; const draw=()=>{const w=norm(f.q).trim(), dg=w.replace(/\D/g,''); const L2=cliAcha(C,f.q,c=>(c.cid||'')+' '+(c.em||'')).filter(c=>(!f.vend||norm(c.v||'')===f.vend)&&(()=>{const u=ult(c); if(f.ina==='n') return !u; if(!f.ina) return true; return u&&dias(u)>=+f.ina})());
@@ -2726,7 +2727,7 @@ async function limparCarrinho(rep,silent){const qq=Q(); const o=qq[rep]; if(!o) 
 const REP_F=[['cnpj','CNPJ'],['razao','Razão social'],['fantasia','Nome fantasia'],['ie','Inscrição estadual'],['cep','CEP'],['endereco','Endereço (rua, número, complemento)'],['bairro','Bairro'],['cidade','Cidade'],['uf','UF'],['telefone','Telefone'],['email','E-mail geral'],['site','Site'],['portal','Portal / sistema da fábrica (link)']];
 /* cidade antiga gravada como "Cidade/UF" num campo só: separa para os campos novos */
 const repCidUf=g=>{let c=g.cidade||'', u=g.uf||''; const m=/^(.*?)\s*\/\s*([A-Za-z]{2})$/.exec(c); if(m&&!u){c=m[1]; u=m[2].toUpperCase()} return {cidade:c,uf:u}};
-const REP_C=[['pedido_min','Pedido mínimo (R$)','number'],['frete','Política de frete (aparece no orçamento)'],['comissao','Comissão (%)','number'],['ipi_info','IPI / impostos (observação)'],['prazo_entrega','Prazo de entrega padrão'],['inativa_dias','Cliente inativa após (dias sem comprar)','number'],['descontos','Descontos / campanhas vigentes']];
+const REP_C=[['pedido_min','Pedido mínimo (R$)','number'],['frete','Política de frete (aparece no orçamento)'],['comissao','Comissão (%)','number'],['ipi_info','IPI / impostos (observação)'],['prazo_entrega','Prazo de entrega padrão'],['inativa_dias','Cliente inativa após (dias sem comprar)','number'],['base_meta','Meta de base ativa (nº de clientes que a fábrica pede)','number'],['descontos','Descontos / campanhas vigentes']];
 async function admReps(fresh){const m=$('#main'); if(ctx.rid!==undefined) return fichaRep(ctx.rid); const R=fresh||await reps(); if(!m.isConnected||route!=='reps'||ctx.rid!==undefined) return; if(!fresh) reps(true).then(R2=>{if(route==='reps'&&ctx.rid===undefined&&JSON.stringify(R2)!==JSON.stringify(R)) admReps(R2)}).catch(()=>{});
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Representadas</div>${ehGestor()?'<button class="btn sm" id="rnova">+ Nova representada</button>':''}</div><p class="hint">Dados, políticas, prazos de pagamento, contatos internos e arquivos de cada fábrica.</p>
    <div class="reps">${R.map(r=>`<button class="rep${r.ativa?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rid="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.ativa?'':'inativa · '}${r.n||0} produtos · ${((r.regras||{}).contatos||[]).length} contatos</small></button>`).join('')}</div>`;
@@ -3451,6 +3452,10 @@ async function plCandidatos(vend){const hj=new Date(), hoje=ymdL(hj), mine=v=>!v
   /* "sem comprar": parou de comprar na pasta (60 dias a 18 meses), para completar quando os agentes acham pouco */
   const tk={}; P.forEach(x=>{const k=String(x.cnpj||'').replace(/\D/g,'')+'|'+x.representada; tk[k]=tk[k]||{s:0,n:0}; tk[k].s+=+x.valor||0; tk[k].n++});
   const ja=new Set(todos.map(x=>x.cnpj+'|'+x.rep));
+  /* "vai sair da base ativa": comprou dentro do prazo da fábrica (regras.inativa_dias) e vence em até 30 dias; vem com peso alto para entrar no plano */
+  {const PZ={}; (R0||[]).forEach(r=>PZ[HIST_REP[r.id]||r.nome]=baPrazo(r)); C.forEach(c=>{if(!meu(c.cnpj)||agFalou(ult,c.cnpj,7)) return; Object.entries(c.reps||{}).forEach(([r,x])=>{if(!x||!x.ultimo||!PZ[r]||ja.has(c.cnpj+'|'+r)) return; const d=dias(String(x.ultimo).slice(0,10)), fl=PZ[r]-d; if(fl<0||fl>30) return;
+    const t=tk[c.cnpj+'|'+r], tm=t&&t.n?t.s/t.n:0; ja.add(c.cnpj+'|'+r); todos.push({k:`manter|${c.cnpj}|${r}`,ag:'manter',cnpj:c.cnpj,n:c.fa||c.n,razao:c.n||'',tel:c.tel||'',rep:r,v:tm,d,falta:fl,ultimo:x.ultimo,
+      sc:Math.max(tm,1500)*(1.6-fl/60),fatos:`Comprou ${r} em ${dbr(x.ultimo)} (há ${d} dias); a fábrica tira da base ativa em ${PZ[r]} dias sem comprar, então sai em ${fl} dias. Ticket médio ${brl(tm)}.`})})})}
   C.forEach(c=>{if(!meu(c.cnpj)||agFalou(ult,c.cnpj,10)) return; Object.entries(c.reps||{}).forEach(([r,x])=>{if(!x||!x.ultimo||ja.has(c.cnpj+'|'+r)) return; const d=dias(x.ultimo); if(d<60||d>540) return;
     const t=tk[c.cnpj+'|'+r], tm=t&&t.n?t.s/t.n:0; todos.push({k:`fria|${c.cnpj}|${r}`,ag:'fria',cnpj:c.cnpj,n:c.fa||c.n,razao:c.n||'',tel:c.tel||'',rep:r,v:tm,d,ultimo:x.ultimo,
       sc:tm*(d<=120?.6:d<=240?.45:.3),fatos:`Comprava ${r} (ticket médio ${brl(tm)}); último pedido em ${dbr(x.ultimo)}, há ${d} dias, e não comprou mais.`})})});
@@ -3484,7 +3489,7 @@ async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCa
   const N=Math.max(0,PL_N-(manter||[]).length), q=plCotas(G2,MT,N), itens=[...(manter||[])];
   Object.keys(q).forEach(r=>itens.push(...G2[r].slice(0,q[r])));
   const reserva={}; Object.keys(G2).forEach(r=>reserva[r]=G2[r].slice(q[r]||0,(q[r]||0)+15));
-  const lim=x=>({k:x.k,ag:x.ag,cnpj:x.cnpj,n:x.n,razao:x.razao,tel:x.tel,rep:x.rep,v:Math.round(x.v||0),d:x.d,u:x.u,ciclo:x.ciclo,etapa:x.etapa,oid:x.oid,its:x.its,de:x.de,fatos:x.fatos,tema:x.tema,tid:x.tid,titulo:x.titulo,vence:x.vence,hora:x.hora});
+  const lim=x=>({k:x.k,ag:x.ag,cnpj:x.cnpj,n:x.n,razao:x.razao,tel:x.tel,rep:x.rep,v:Math.round(x.v||0),d:x.d,falta:x.falta,u:x.u,ciclo:x.ciclo,etapa:x.etapa,oid:x.oid,its:x.its,de:x.de,fatos:x.fatos,tema:x.tema,tid:x.tid,titulo:x.titulo,vence:x.vence,hora:x.hora});
   const pl={d:ymdL(new Date()),vend,tema:tm.t,ret:RT.map(lim),itens:itens.map(lim),reserva:Object.fromEntries(Object.entries(reserva).map(([r,l])=>[r,l.map(lim)])),
     meta:(MT.L||[]).filter(x=>!REPLIST.includes(x.rep)||vcartReps(vend).includes(x.rep)).map(x=>({rep:x.rep,falta:x.falta,dia:x.dia,atr:x.atr})),metaEq:!!MT.eq,vc:JSON.stringify(vcartDe(vend)||null)};
   LS(plKey(vend),pl); return pl}
@@ -3539,7 +3544,7 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
   const obs=new MutationObserver(()=>{if(!box.isConnected){obs.disconnect(); return} if(!document.querySelector('.ov')&&box.dataset.plov==='1'){box.dataset.plov=''; setTimeout(atualiza,600)}}); obs.observe(document.body,{childList:true});
   const vis=()=>{if(!box.isConnected) return document.removeEventListener('visibilitychange',vis); if(document.visibilityState==='visible') atualiza()}; document.addEventListener('visibilitychange',vis);
   const iv=setInterval(()=>{if(!box.isConnected) return clearInterval(iv); atualiza()},12e4);
-  box.onchange=e=>{const v=e.target.closest('[data-plv]'); if(v){LS('plV',v.value); obs.disconnect(); clearInterval(iv); planoDia(box)}};
+  box.onchange=e=>{const v=e.target.closest('[data-plv]'); if(v){LS('plV',v.value); obs.disconnect(); clearInterval(iv); planoDia(box); baPlacar(document.querySelector('#baPl'))}};
   box.onclick=async e=>{const g=s=>e.target.closest(s);
     if(g('[data-pldica]')){dicaAb=!dicaAb; return draw()}
     const ab=g('[data-plaba]'); if(ab){aba=ab.dataset.plaba; mais=false; return draw()}
@@ -3552,6 +3557,130 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
 let PL_DICA={};
 function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector('#plDia')) return ''; return `<div class="pcb" style="border-left:4px solid var(--brand)"><div class="row" style="justify-content:space-between;gap:6px"><b>🗓️ Plano do dia${d.rep?' · '+esc(d.rep):''}</b>${d.troca?'<button class="chip" data-pltroca>⇄ Trocar este cliente</button>':''}</div><div style="font-size:14px">${esc(d.porque||d.ag)}</div>${d.falar?`<div class="hint" style="font-size:13px">💡 ${esc(d.falar)}</div>`:''}</div>`}
 /*PLANO-DIA-FIM*/
+/*BASE-ATIVA-INICIO*/
+/* Base ativa por fábrica (12/11, pedido do Victor a partir do Xadrez da Camper e do relatório de prêmio da Marluvas):
+   - Meta de base ativa por representada (regras.base_meta) e prazo de inativação (regras.inativa_dias, padrão 90 dias).
+   - Placar no topo do Bater carteira: ativos/meta por fábrica e quantos vencem nos próximos 30 dias.
+   - Três listas por fábrica: Manter (vence em até 30 dias), Recuperar (parou há até 24 meses), Conquistar (compra outra fábrica conosco e nunca esta).
+   - Marluvas: painel do prêmio lido do relatório diário que chega por e-mail (tabela fab_rel, robô no chamae-sistema).
+   O placar conta a empresa toda (é o que a fábrica mede); as listas do vendedor mostram só a carteira dele. */
+const BA_REC=730, BA_CONQ=180;
+const baPrazo=r=>+((r&&r.regras)||{}).inativa_dias||90, baMeta=r=>+((r&&r.regras)||{}).base_meta||0;
+let BA_CT=null;
+async function baContatos(){if(BA_CT&&Date.now()-BA_CT.t<3e5) return BA_CT.m; const m={}; try{(await apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-30)}`)).forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!m[k]||c.criado_em>m[k])) m[k]=c.criado_em})}catch(e){} BA_CT={t:Date.now(),m}; return m}
+/* calcula, para cada representada, os ativos e as três listas; vend = só a carteira desse vendedor nas listas */
+async function baCalc(vend){const [C,R]=await Promise.all([clientes(),reps().catch(()=>[])]); await vcartLista();
+  const bl=vend?vcartBloq(vend):()=>false, RV=vend?vcartReps(vend):REPLIST, meu=c=>!vend||norm(c.v||'').startsWith(vend);
+  const out=[];
+  (R||[]).filter(r=>r.ativa!==false).forEach(r=>{const nome=HIST_REP[r.id]||r.nome, D=baPrazo(r), meta=baMeta(r);
+    const o={id:r.id,rep:nome,prazo:D,meta,ativos:0,vencem:0,manter:[],recuperar:[],conquistar:[],atende:RV.includes(nome)};
+    C.forEach(c=>{const x=c.reps&&c.reps[nome]; if(!x||!x.ultimo) return; const d=dias(String(x.ultimo).slice(0,10));
+      if(d<=D){o.ativos++; if(d>D-30){o.vencem++; if(meu(c)&&!bl(c.cnpj)) o.manter.push({c,d,falta:D-d,ultimo:x.ultimo})}}
+      else if(d<=BA_REC&&meu(c)&&!bl(c.cnpj)) o.recuperar.push({c,d,ultimo:x.ultimo})});
+    C.forEach(c=>{if(c.reps&&c.reps[nome]&&c.reps[nome].ultimo) return; if(!meu(c)||bl(c.cnpj)) return;
+      const at=Object.entries(c.reps||{}).filter(([k,x])=>k!==nome&&x&&x.ultimo&&dias(String(x.ultimo).slice(0,10))<=BA_CONQ).map(([k])=>k); if(at.length) o.conquistar.push({c,de:at,d:0})});
+    o.manter.sort((a,b)=>a.falta-b.falta); o.recuperar.sort((a,b)=>a.d-b.d); o.conquistar.sort((a,b)=>b.de.length-a.de.length||String(a.c.n).localeCompare(String(b.c.n)));
+    if(o.ativos||o.meta||o.recuperar.length) out.push(o)});
+  return out.sort((a,b)=>(b.meta?1:0)-(a.meta?1:0)||b.ativos-a.ativos)}
+/* último relatório da fábrica (fab_rel) */
+async function fabRel(fab,tipo){try{const r=await api(`fab_rel?select=data,ref,recebido_em,dados&fab=eq.${fab}&tipo=eq.${tipo}&order=data.desc&limit=1`); return r[0]||null}catch(e){return null}}
+const baCurto=r=>RCURTO[r]||r;
+/* placar no topo do Bater carteira */
+async function baPlacar(box){if(!box) return; const ges=ehGestor(); let vend=meuVend(); if(!TIME.includes(vend)) vend=ges?'':vend; if(ges&&L('plV')&&TIME.includes(L('plV'))) vend=L('plV');
+  let aberto=L('baAb')===true, B=null, MLV=null;
+  const draw=()=>{if(!box.isConnected||!B) return; const mlvBase=MLV&&((MLV.dados||{}).indicadores||[]).find(x=>/BASE/i.test(x.nome)), com=B.filter(o=>o.atende||ges), metas=com.filter(o=>o.meta), bat=metas.filter(o=>o.ativos>=o.meta).length;
+    const lin=o=>{const p=o.meta?Math.min(100,o.ativos/o.meta*100):0, ok=o.meta&&o.ativos>=o.meta, risco=o.meta&&o.ativos-o.vencem<o.meta;
+      return `<div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><button class="chip" data-bal="${esc(o.rep)}" style="flex:1 1 auto;min-width:0;text-align:left;display:block;white-space:normal">
+        <div class="row" style="justify-content:space-between;gap:6px;flex-wrap:nowrap"><b>${esc(baCurto(o.rep))}</b><span style="white-space:nowrap"><b>${o.ativos}</b>${o.meta?`<span class="hint">/${o.meta}</span> ${ok?'<span class="ok">✓</span>':''}`:' <span class="hint">ativos</span>'}</span></div>
+        ${o.meta?`<div class="mbar" style="height:5px;margin:4px 0"><i style="width:${p}%${ok?'':';background:var(--warn,#f2b632)'}"></i></div>`:''}
+        ${o.id==='marluvas'&&mlvBase?`<div class="hint" style="font-size:12px">Pela Marluvas (por loja/filial): <b>${mlvBase.real}/${mlvBase.meta}</b>${mlvBase.real<mlvBase.meta?` · faltam ${mlvBase.meta-mlvBase.real}`:' ✓'}</div>`:''}<div class="hint" style="font-size:12px">${o.vencem?`<span class="${risco?'warn':''}">${o.vencem} vence${o.vencem>1?'m':''} em 30 dias</span> · `:''}${o.recuperar.length} para recuperar · ${o.conquistar.length} para conquistar</div></button>
+        ${o.id==='marluvas'&&MLV?`<button class="chip" data-mlvp title="Prêmio Marluvas" style="white-space:nowrap">🏆 Prêmio</button>`:''}</div>`};
+    const top=metas.length?metas:com.slice(0,3);
+    box.innerHTML=`<div class="card grid" style="gap:8px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><button class="chip" data-baab style="border:0;background:none;padding:0;text-align:left"><b>🎯 Base ativa</b> <span class="hint">${metas.length?`${bat}/${metas.length} fábricas na meta`:'clientes que compraram dentro do prazo'} ${aberto?'▴':'▾'}</span></button>${MLV?'<button class="chip" data-mlvp style="white-space:nowrap">🏆 Prêmio Marluvas</button>':''}</div>
+      ${(aberto?com:top).map(lin).join('')}
+      ${!aberto&&com.length>top.length?`<button class="chip" data-baab>Ver todas as ${com.length} fábricas ▾</button>`:''}
+      ${aberto&&ges?'<p class="hint" style="margin:0;font-size:12px">Meta e prazo de cada fábrica: Representadas › Políticas comerciais (“Meta de base ativa” e “Cliente inativa após”).</p>':''}</div>`};
+  box.innerHTML='';
+  try{[B,MLV]=await Promise.all([baCalc(vend),fabRel('marluvas','premio')])}catch(e){return}
+  draw();
+  box.onclick=e=>{const g=s=>e.target.closest(s);
+    if(g('[data-baab]')){aberto=!aberto; LS('baAb',aberto); return draw()}
+    if(g('[data-mlvp]')) return mlvPremio(vend);
+    const l=g('[data-bal]'); if(l){const o=B.find(x=>x.rep===l.dataset.bal); if(o) baLista(o,vend)}}}
+/* janela com as três listas de uma fábrica */
+async function baLista(o,vend,abaIni){const ct=await baContatos(); let aba=abaIni||(o.manter.length?'manter':o.recuperar.length?'recuperar':'conquistar'), mais=false;
+  document.querySelectorAll('.ov[data-ba]').forEach(x=>x.remove()); const ov=document.createElement('div'); ov.className='ov'; ov.dataset.ba=1; document.body.appendChild(ov);
+  const ABAS=[['manter','🛡️ Manter','Compraram dentro do prazo, mas vencem nos próximos 30 dias. Se não recomprarem, saem da base ativa.'],
+    ['recuperar','↩️ Recuperar',`Já compraram ${o.rep} e pararam (até 24 meses). Os que pararam há menos tempo vêm primeiro.`],
+    ['conquistar','🌱 Conquistar',`Compram outra fábrica conosco nos últimos 6 meses e nunca compraram ${o.rep}.`]];
+  const falou=cn=>{const u=ct[cn]; return u?dias(u.slice(0,10)):null};
+  const linha=x=>{const c=x.c, f=falou(c.cnpj); const info=aba==='manter'?`último pedido ${dbr(x.ultimo)} · <b class="warn">${x.falta>0?`sai em ${x.falta} dia${x.falta===1?'':'s'}`:'sai hoje'}</b>`:aba==='recuperar'?`último pedido ${dbr(x.ultimo)} · há ${x.d} dias`:`compra ${esc(x.de.map(baCurto).join(', '))}`;
+    return `<button class="chip" data-bac="${esc(c.cnpj)}" style="text-align:left;display:flex;justify-content:space-between;gap:8px;width:100%;white-space:normal${f!=null&&f<7?';opacity:.6':''}"><span style="min-width:0"><b>${esc(c.fa||c.n)}</b> <span class="hint" style="font-size:12px">${esc(c.cid||'')}${!vend&&c.v?' · '+esc(c.v):''}</span><div class="hint" style="font-size:12px">${info}</div></span><span class="hint" style="font-size:12px;white-space:nowrap">${f==null?'':f===0?'✓ falou hoje':f<7?`✓ falou há ${f} d`:`falou há ${f} d`}</span></button>`};
+  const draw=()=>{const ab=ABAS.find(a=>a[0]===aba), L2=o[aba], lim=mais?L2.length:40;
+    ov.innerHTML=`<div class="sh grid" style="gap:10px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><b style="font-size:18px">🎯 ${esc(o.rep)} · base ativa</b><button class="chip" data-x>✕</button></div>
+      <div class="hint" style="font-size:13px"><b>${o.ativos}</b> clientes ativos${o.meta?` de <b>${o.meta}</b> da meta`:''} (compraram nos últimos ${o.prazo} dias)${vend?' · listas da carteira de '+esc(vend):''}</div>
+      <div class="row" style="gap:6px;flex-wrap:nowrap;overflow-x:auto">${ABAS.map(([k,l])=>`<button class="chip${aba===k?' on':''}" data-baa="${k}" style="white-space:nowrap">${l} <span class="hint">${o[k].length}</span></button>`).join('')}</div>
+      <p class="hint" style="margin:0;font-size:12px">${esc(ab[2])}</p>
+      <div class="grid" style="gap:6px;grid-template-columns:minmax(0,1fr)">${L2.length?L2.slice(0,lim).map(linha).join(''):'<p class="hint">Ninguém nesta lista 👏</p>'}</div>
+      ${L2.length>40&&!mais?`<button class="chip" data-bam>Ver mais ${L2.length-40} ▾</button>`:''}</div>`};
+  draw();
+  ov.onclick=e=>{const g=s=>e.target.closest(s); if(e.target===ov||g('[data-x]')) return ov.remove();
+    const a=g('[data-baa]'); if(a){aba=a.dataset.baa; mais=false; return draw()}
+    if(g('[data-bam]')){mais=true; return draw()}
+    const c=g('[data-bac]'); if(c){const lista=o[aba].map(x=>x.c.cnpj); ov.remove(); painelCliente(c.dataset.bac,lista)}}}
+/* ---------- Marluvas: painel do prêmio (relatório diário "Relatório de Vendas e Premiação") ---------- */
+const MLV_IND=[{k:'VENDA',l:'Venda valor',q:'manter',dica:'Todo pedido Marluvas conta. Comece por quem vence na base e por orçamentos abertos.'},
+  {k:'LINHA 70',l:'Linha 70 + 95 (M Micro, Vertentes+)',q:'l7095',dica:'Clientes que já compraram modelos 70… ou 95… e ainda não compraram neste mês.'},
+  {k:'LINHA 75',l:'Linha 75 (Premier)',q:'l75',dica:'Quem já comprou Premier (75…), e quem compra linha 50/70 pode subir para a 75.'},
+  {k:'IMPERM',l:'Impermeáveis (PVC, EVA)',q:'imp',dica:'Botas de PVC/EVA: quem já comprou e não comprou neste mês.'},
+  {k:'CRESCIMENTO',l:'Crescimento da base ativa',q:'recuperar',dica:'A Marluvas conta cada código de cliente (cada loja/filial). Ativar filial de quem já compra ajuda.'},
+  {k:'REGULARIDADE',l:'Regularidade (70% até o dia 10)',q:'manter',dica:'Pedidos que entram até o dia 10 contam aqui. Nos primeiros dias do mês, priorize fechar os orçamentos abertos.'}];
+const mlvLinha=(desc,cod)=>{const m=String(desc||'').split(' |')[0].match(/^(\d+)/); const p=m?m[1]:''; if(p==='70'||p==='95') return 'l7095'; if(p==='75') return 'l75';
+  if(/\b(PVC|EVA)\b/i.test(desc||'')||['100','110','12','24'].includes(p)) return 'imp'; return ''};
+let MLV_IT=null;
+async function mlvItens(){if(MLV_IT&&Date.now()-MLV_IT.t<6e5) return MLV_IT.m; const a=new Date(); a.setMonth(a.getMonth()-24); const m={l7095:{},l75:{},imp:{}};
+  try{(await apiAll(`pedido_itens?select=descricao,total,pedidos!inner(cnpj,data,representada,status)&pedidos.representada=eq.Marluvas&pedidos.data=gte.${ymdL(a)}`)).forEach(i=>{const p=i.pedidos||{}, st=String(p.status||'');
+    if(st&&st!=='finalizado'&&!/^APROVADO/i.test(st)) return; const g=mlvLinha(i.descricao); if(!g) return; const cn=String(p.cnpj||'').replace(/\D/g,''); const x=m[g][cn]=m[g][cn]||{v:0,u:''}; x.v+=+i.total||0; if(String(p.data)>x.u) x.u=String(p.data).slice(0,10)})}catch(e){}
+  MLV_IT={t:Date.now(),m}; return m}
+async function mlvPremio(vend){const [P,V,K,B]=await Promise.all([fabRel('marluvas','premio'),fabRel('marluvas','vendas'),fabRel('marluvas','cancelados'),baCalc(vend)]);
+  if(!P) return toast('Ainda não chegou o relatório da Marluvas');
+  const d=P.dados||{}, o=B.find(x=>x.id==='marluvas')||{manter:[],recuperar:[],conquistar:[],ativos:0}, C=await clientes(), byC={}; C.forEach(c=>byC[c.cnpj]=c);
+  const mes=String(d.ref||P.ref||'').slice(0,7), ini=mes+'-01';
+  document.querySelectorAll('.ov[data-mlv]').forEach(x=>x.remove()); const ov=document.createElement('div'); ov.className='ov'; ov.dataset.mlv=1; document.body.appendChild(ov);
+  let lista=null, IT=null;
+  const n0=v=>(+v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
+  const ind=(d.indicadores||[]).map((x,i)=>{const meta=MLV_IND.find(m=>String(x.nome).toUpperCase().startsWith(m.k))||{}; const pos=(d.possivel||[])[i]||{}; return Object.assign({},x,{l:meta.l||x.nome,q:meta.q,dica:meta.dica,pode:pos.valor||0,base:/BASE/i.test(x.nome)})});
+  const fmt=x=>x.base?n0(x.real)+' de '+n0(x.meta)+' clientes':brl(x.real)+' de '+brl(x.meta);
+  const fal=x=>x.base?`faltam ${n0(-x.saldo)} clientes`:`faltam ${brl(-x.saldo)}`;
+  const canc={}; ((K&&K.dados.itens)||[]).forEach(i=>{const k=i.cliente; canc[k]=canc[k]||{v:0,p:0,d:i.data_canc,o:i.ordem}; canc[k].v+=+i.valor||0; canc[k].p+=+i.pares||0});
+  const vend2={}; ((V&&V.dados.itens)||[]).forEach(i=>{const k=i.cliente; vend2[k]=vend2[k]||{v:0,p:0,l:new Set()}; vend2[k].v+=+i.valor||0; vend2[k].p+=+i.pares||0; vend2[k].l.add(i.linha)});
+  const listaDe=async q=>{if(q==='manter'||q==='recuperar') return o[q].map(x=>({c:x.c,info:q==='manter'?(x.falta>0?`sai da base em ${x.falta} dia${x.falta===1?'':'s'}`:'sai da base hoje'):`parou há ${x.d} dias`}));
+    IT=IT||await mlvItens(); const mx=IT[q]||{}; const jaMes=new Set(C.filter(c=>c.reps&&c.reps.Marluvas&&String(c.reps.Marluvas.ultimo||'')>=ini).map(c=>c.cnpj));
+    const meu=c=>!vend||norm(c.v||'').startsWith(vend);
+    return Object.entries(mx).filter(([cn])=>byC[cn]&&meu(byC[cn])&&!jaMes.has(cn)).sort((a,b)=>b[1].v-a[1].v).map(([cn,x])=>({c:byC[cn],info:`comprou ${brl(x.v)} desta linha em 24 meses · último ${dbr(x.u)}`}))};
+  const draw=()=>{const tot=d.premio_total||ind.reduce((s,x)=>s+x.pode,0);
+    ov.innerHTML=`<div class="sh grid" style="gap:12px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><b style="font-size:18px">🏆 Prêmio Marluvas · ${esc(mes.split('-').reverse().join('/'))}</b><button class="chip" data-x>✕</button></div>
+      <div class="hint" style="font-size:12px;margin-top:-6px">Relatório da Marluvas de ${dbr(P.data)}${P.recebido_em?' (chegou '+new Date(P.recebido_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')':''} · atualiza sozinho quando chega o e-mail</div>
+      <div class="row" style="gap:10px;flex-wrap:wrap"><div class="card" style="flex:1 1 160px;padding:10px"><div class="hint" style="font-size:12px">A receber hoje</div><b style="font-size:22px">${brl(d.premio_receber)}</b></div>
+        <div class="card" style="flex:1 1 160px;padding:10px"><div class="hint" style="font-size:12px">Possível no mês (100% em tudo)</div><b style="font-size:22px">${brl(tot)}</b></div>
+        <div class="card" style="flex:1 1 160px;padding:10px"><div class="hint" style="font-size:12px">Vendido no mês (conta p/ prêmio)</div><b style="font-size:22px">${brl(d.valor_premio)}</b>${d.canc_abater?`<div class="hint warn" style="font-size:12px">cancelamentos abatem ${brl(d.canc_abater)}</div>`:''}</div></div>
+      ${lista?`<div class="grid" style="gap:8px"><div class="row" style="justify-content:space-between;gap:8px"><b>👥 ${esc(lista.t)}</b><button class="chip" data-mlvv>‹ Voltar</button></div><p class="hint" style="margin:0;font-size:12px">${esc(lista.dica||'')}</p>
+        <div class="grid" style="gap:6px;grid-template-columns:minmax(0,1fr)">${lista.L.length?lista.L.slice(0,60).map(x=>`<button class="chip" data-mlvc="${esc(x.c.cnpj)}" style="text-align:left;width:100%;white-space:normal"><b>${esc(x.c.fa||x.c.n)}</b> <span class="hint" style="font-size:12px">${esc(x.c.cid||'')}${!vend&&x.c.v?' · '+esc(x.c.v):''}</span><div class="hint" style="font-size:12px">${esc(x.info)}</div></button>`).join(''):'<p class="hint">Ninguém nesta lista.</p>'}</div></div>`:
+      `<div class="grid" style="gap:8px">${ind.map((x,i)=>{const p=Math.max(0,Math.min(100,x.pct)), ok=x.pct>=100;
+        return `<div class="card" style="padding:10px;display:grid;gap:4px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><b style="font-size:14px">${esc(x.l)} <span class="hint" style="font-weight:400">${n0(x.peso)}%</span></b><span style="white-space:nowrap">${ok?'<span class="ok">✓ batido</span>':`<b>${brl(x.pode)}</b>`}</span></div>
+          <div class="mbar" style="height:6px"><i style="width:${p}%${ok?'':';background:var(--warn,#f2b632)'}"></i></div>
+          <div class="row" style="justify-content:space-between;gap:8px"><span class="hint" style="font-size:12px">${fmt(x)} (${n0(x.pct)}%)${ok?'':' · '+fal(x)}</span>${!ok&&x.q?`<button class="chip" data-mlvq="${i}" style="font-size:12px">👥 Quem chamar</button>`:''}</div></div>`}).join('')}</div>
+      ${(d.inativando||[]).length?`<div class="card" style="padding:10px"><b>⏳ Inativam neste mês (pela Marluvas)</b>${d.inativando.map(x=>`<div style="font-size:13px">${esc(x.nome)} <span class="hint">cód. ${esc(x.cod)}</span></div>`).join('')}<div class="hint" style="font-size:12px">Cada código é uma loja/filial. Um pedido de cada uma segura a base ativa.</div></div>`:''}
+      ${Object.keys(vend2).length?`<details class="card" style="padding:10px"><summary><b>🧾 Vendas do mês na Marluvas</b> <span class="hint">${Object.keys(vend2).length} clientes</span></summary>${Object.entries(vend2).sort((a,b)=>b[1].v-a[1].v).map(([k,x])=>`<div class="row" style="justify-content:space-between;font-size:13px"><span>${esc(k)} <span class="hint">linha ${esc([...x.l].join(', '))}</span></span><b>${brl(x.v)} · ${n0(x.p)} pares</b></div>`).join('')}</details>`:''}
+      ${Object.keys(canc).length?`<details class="card" style="padding:10px"><summary><b class="warn">✖ Cancelados que abatem o prêmio</b></summary>${Object.entries(canc).map(([k,x])=>`<div class="row" style="justify-content:space-between;font-size:13px"><span>${esc(k)} <span class="hint">ordem ${esc(x.o)} · cancelado ${esc(x.d)}</span></span><b>${brl(x.v)} · ${n0(x.p)} pares</b></div>`).join('')}</details>`:''}
+      ${(d.linhas||[]).length?`<details class="card" style="padding:10px"><summary><b>📊 Meta por linha</b></summary>${d.linhas.filter(x=>x.meta||x.real).map(x=>`<div class="row" style="justify-content:space-between;font-size:13px;gap:8px"><span>${esc(x.cod)} ${esc(x.nome)}</span><span class="hint">${brl(x.valor)} de ${brl(x.meta)} · <b>${n0(x.pct)}%</b></span></div>`).join('')}</details>`:''}`}
+      </div>`};
+  draw();
+  ov.onclick=async e=>{const g=s=>e.target.closest(s); if(e.target===ov||g('[data-x]')) return ov.remove();
+    if(g('[data-mlvv]')){lista=null; return draw()}
+    const q=g('[data-mlvq]'); if(q){const x=ind[+q.dataset.mlvq]; q.textContent='Buscando…'; lista={t:x.l,dica:x.dica,L:await listaDe(x.q)}; return draw()}
+    const c=g('[data-mlvc]'); if(c){const l=lista.L.map(x=>x.c.cnpj); ov.remove(); painelCliente(c.dataset.mlvc,l)}}}
+/*BASE-ATIVA-FIM*/
 /* lista para bater carteira (dentro de Clientes) */
 /*VCART-INICIO*/
 /* Carteira de cada vendedor (04/11, pedido do Clayton via Victor): o gestor marca quais representadas cada vendedor atende e

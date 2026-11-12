@@ -280,3 +280,16 @@ details.item .explica { padding: 0 16px 16px 70px; color: var(--tinta-2); font-s
 .pd-outras { margin-top: 18px; border-top: 1px dashed var(--borda); padding-top: 12px; display: grid; gap: 10px; }
 .pd-outras > div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: .9rem; }
 .pd-outras button { margin-left: auto; border: 1px solid var(--borda); background: var(--cartao); border-radius: 999px; padding: 6px 12px; font: inherit; font-weight: 700; color: var(--acao-texto); cursor: pointer; }
+
+.prova-num { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 14px 0 6px; }
+.prova-num > div { background: var(--bom-fundo); border-radius: 14px; padding: 12px; text-align: center; }
+.prova-num b { display: block; font: 800 1.6rem/1.1 var(--f-num); color: var(--tinta); }
+.prova-num span { font-size: .82rem; color: var(--tinta-2); }
+.motivos { display: grid; gap: 10px; margin-top: 12px; }
+@media (min-width: 640px) { .motivos { grid-template-columns: 1fr 1fr; } }
+.motivos > div { display: flex; gap: 12px; align-items: flex-start; background: var(--fundo-2, #f4f5f8); border-radius: 14px; padding: 12px 14px; }
+.motivos > div > svg, .motivos > div > i { flex: 0 0 auto; width: 24px; height: 24px; color: var(--acao-texto); margin-top: 2px; }
+.motivos b { display: block; font-size: .98rem; color: var(--tinta); }
+.motivos span { display: block; font-size: .86rem; color: var(--tinta-2); line-height: 1.4; margin-top: 2px; }
+.consultor-fim { margin-top: 18px; }
+.consultor-fim .tel a { color: inherit; font-weight: 700; }

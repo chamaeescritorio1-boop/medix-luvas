@@ -3618,7 +3618,7 @@ async function baPlacar(box){if(!box) return; const ges=ehGestor(); let vend=meu
       ${!aberto&&com.length>top.length?`<button class="chip" data-baab>Ver todas as ${com.length} fábricas ▾</button>`:''}
       ${aberto&&ges?'<p class="hint" style="margin:0;font-size:12px">Meta e prazo de cada fábrica: Representadas › Políticas comerciais (“Meta de base ativa” e “Cliente inativa após”).</p>':''}</div>`};
   box.innerHTML='';
-  try{[B,MLV]=await Promise.all([baCalc(vend),fabRel('marluvas','premio')])}catch(e){return}
+  try{[B,MLV]=await Promise.all([baCalc(vend),ges?fabRel('marluvas','premio'):null])}catch(e){return} /* Prêmio Marluvas: só gestor */
   draw();
   box.onclick=e=>{const g=s=>e.target.closest(s);
     if(g('[data-baab]')){aberto=!aberto; LS('baAb',aberto); return draw()}
@@ -3659,7 +3659,7 @@ async function mlvItens(){if(MLV_IT&&Date.now()-MLV_IT.t<6e5) return MLV_IT.m; c
   try{(await apiAll(`pedido_itens?select=descricao,total,pedidos!inner(cnpj,data,representada,status)&pedidos.representada=eq.Marluvas&pedidos.data=gte.${ymdL(a)}`)).forEach(i=>{const p=i.pedidos||{}, st=String(p.status||'');
     if(st&&st!=='finalizado'&&!/^APROVADO/i.test(st)) return; const g=mlvLinha(i.descricao); if(!g) return; const cn=String(p.cnpj||'').replace(/\D/g,''); const x=m[g][cn]=m[g][cn]||{v:0,u:''}; x.v+=+i.total||0; if(String(p.data)>x.u) x.u=String(p.data).slice(0,10)})}catch(e){}
   MLV_IT={t:Date.now(),m}; return m}
-async function mlvPremio(vend){const [P,V,K,B]=await Promise.all([fabRel('marluvas','premio'),fabRel('marluvas','vendas'),fabRel('marluvas','cancelados'),baCalc(vend)]);
+async function mlvPremio(vend){if(!ehGestor()) return; const [P,V,K,B]=await Promise.all([fabRel('marluvas','premio'),fabRel('marluvas','vendas'),fabRel('marluvas','cancelados'),baCalc(vend)]);
   if(!P) return toast('Ainda não chegou o relatório da Marluvas');
   const d=P.dados||{}, o=B.find(x=>x.id==='marluvas')||{manter:[],recuperar:[],conquistar:[],ativos:0}, C=await clientes(), byC={}; C.forEach(c=>byC[c.cnpj]=c);
   const mes=String(d.ref||P.ref||'').slice(0,7), ini=mes+'-01';

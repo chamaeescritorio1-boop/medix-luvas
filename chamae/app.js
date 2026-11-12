@@ -62,7 +62,21 @@ async function afterLogin(){try{let p; try{p=await api('perfis?select=*&id=eq.'+
   try{const sg=await api('segredos?select=valor&chave=eq.senha_equipe'); if(sg[0]) localStorage.setItem('chamae_tp',sg[0].valor)}catch(e){}
   $('#lock').hidden=true; $('#nav').hidden=false; montaNav(); $('#navAdm').hidden=!ehGestor(); const w=$('#who'); w.hidden=false; w.textContent='👤 '+(meuNome()||sess.email);
   w.onclick=menuUsuario; if(!window._bootCedo) go(rotaIni()); window._bootCedo=false; contaTarefas(); iniciarLembretes();
-  if(!L('tourVisto')){LS('tourVisto',1); setTimeout(()=>tutorial('inicio'),1200)} novIniciar()}
+  if(!L('tourVisto')){LS('tourVisto',1); setTimeout(()=>tutorial('inicio'),1200)} novIniciar(); trAvisoIniciar()}
+/* 🚚 Aviso de pedidos "Aprovado para transmissão" para quem transmite (pedido do Victor 12/11: login do Igor).
+   Faixa no topo de todas as telas + número no atalho Transmitir + (n) no título da aba. Confere a cada 1 min e quando o app volta à tela. */
+const TR_AVISO=['igor.crepaldi@chamae.com.br'];
+const trAvisoMeu=()=>!!sess&&TR_AVISO.includes(String((perfil&&perfil.email)||sess.email||'').toLowerCase());
+var TR_N=-1, TR_TMR=0, TR_TIT='';
+function trAvisoIniciar(){if(!trAvisoMeu()) return; trChecar(); if(!TR_TMR){TR_TMR=setInterval(trChecar,60000); document.addEventListener('visibilitychange',()=>{if(!document.hidden) trChecar()})}}
+async function trChecar(){if(!trAvisoMeu()) return; let O; try{O=await api('orcamentos?select=id,cliente,app,dados&status=eq.aprovado_transmissao&order=atualizado_em')}catch(e){return}
+  const n=O.length, ant=TR_N; TR_N=n; if(!TR_TIT) TR_TIT=document.title.replace(/^\(\d+\)\s*/,''); document.title=(n?`(${n}) `:'')+TR_TIT;
+  const b=$('#trn'); if(b){b.hidden=!n; b.textContent=n>9?'9+':n}
+  let bar=$('#trBar'); if(!n){if(bar) bar.remove(); return}
+  if(!bar){bar=document.createElement('div'); bar.id='trBar'; bar.className='novbar trbar'; bar.onclick=e=>{if(e.target.closest('button')) go('trans')}; const nb=$('#novBar'); (nb||document.querySelector('header')).after(bar)}
+  const nomes=[...new Set(O.map(o=>o.cliente||'').filter(Boolean))].slice(0,2).map(esc).join(', ')+(O.length>2?'…':'');
+  bar.innerHTML=`<span>🚚 ${n===1?'1 pedido aprovado para transmitir':n+' pedidos aprovados para transmitir'}${nomes?` <small style="font-weight:600;opacity:.85">(${nomes})</small>`:''}</span><button class="btn sm" type="button">Ver e transmitir ›</button>`;
+  if(ant>=0&&n>ant){toast(n-ant===1?'🚚 Chegou 1 pedido novo para transmitir':`🚚 Chegaram ${n-ant} pedidos novos para transmitir`); try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}}
 /* 🔔 Novidades: lista em novidades.json (mais nova primeiro). "Lida" = id até o último que a pessoa viu (perfis.nov_vista, com cópia no aparelho).
    Versão nova = o index publicado chama outro app.js?v= do que está aberto agora: aparece a faixa e o botão Atualizar para a nova versão. */
 const NOV_VER=((document.querySelector('script[src*="app.js?v="]')||{}).src||'').split('app.js?v=')[1]||''; let NOV=[], NOV_NOVA='', NOV_T=0;
@@ -262,7 +276,7 @@ const NAVOPC=[['estr','E-mails','<rect x="3" y="5" width="18" height="14" rx="2"
   ['ped','Pedidos','<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'],
   ['prod','Produtos','<path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/>'],
   ['fin','Financeiro','<rect x="2.5" y="6" width="19" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.8"/><path d="M6 9.5v.01M18 15.5v.01"/>'],
-  ['trans','Transmitir','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'],
+  ['trans','Transmitir','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>','trn'],
   ['rel','Relatórios','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
   ['metas','Metas','<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'],
   ['reps','Representadas','<path d="M3 21V10l6 3V8l6 3V4h6v17z"/>'],
@@ -274,7 +288,7 @@ const navOk=k=>NAVOPC.some(o=>o[0]===k)&&(k!=='fin'||FIN_ON());
 function navSel(){const s=(perfil&&perfil.nav)||L('nav_'+(sess&&sess.uid)); return (Array.isArray(s)&&s.length?s:NAVPAD).filter(navOk).slice(0,NAVMAX)}
 function montaNav(){const n=$('#nav'); if(!n) return; const b=(k,l,d,bd)=>`<button data-go="${k}">${NAVSVG(d)}${bd?`<span>${l} <span class="badge" id="${bd}" hidden>0</span></span>`:l}</button>`;
   n.innerHTML=b('home','Início','<path d="M3 11l9-7 9 7v9H5v-9"/>')+navSel().map(k=>{const o=NAVOPC.find(x=>x[0]===k); return b(...o)}).join('')+b('mais','Mais','<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>')+`<span id="navAdm" hidden></span>`;
-  navMarca(); badge(); if(sess) contaTarefas()}
+  navMarca(); badge(); if(sess){contaTarefas(); if(TR_N>0){const b=$('#trn'); if(b){b.hidden=false; b.textContent=TR_N>9?'9+':TR_N}}}}
 function navMarca(){const tem=[...document.querySelectorAll('nav button')].some(b=>b.dataset.go===route); const nr=tem?route:route==='rep'?'home':'mais'; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===nr))}
 function navEditar(){let sel=navSel(); const ov=document.createElement('div'); ov.className='ov';
   const draw=()=>{const ord=[...sel,...NAVOPC.map(o=>o[0]).filter(k=>navOk(k)&&!sel.includes(k))];
@@ -3911,7 +3925,7 @@ async function transmitir(o){const L2=await linhasOrc(o); fixTotOrc(o); const d=
         if(lv&&ehGestor()){const pid='sis-'+o.id; try{await api('pedidos?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify([{id:pid,origem:'sistema',num:n||null,representada:HIST_REP[rep]||repName(rep),cnpj:o.cnpj||c.cnpj||null,cliente:o.cliente||c.n||null,cidade:c.cid||null,data:hoje(),data_fat:dp,valor:Math.round((sub+(ajPz(rep,d.prazo,sub,0).aj||0))*100)/100,valor_imp:o.total||null,prazo:d.prazo||null,vendedor:String(d.vend||meuNome()).split(' ')[0].toUpperCase(),status:'finalizado',tabela:T?T.nome:null,itens:L2.length,qtd:L2.reduce((s,l)=>s+(+l.qt||0),0),oc:d.oc||null,num_fabrica:n||null,obs:avTxt||null}])});
           await api('pedido_itens?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(L2.map((l,k)=>({id:pid+'-'+k,pedido_id:pid,cod:l.cod,descricao:l.desc||null,qtd:+l.qt||0,preco:+l.pu||0,total:(+l.pu||0)*(+l.qt||0)})))})}catch(err){toast('Transmitido, mas não lancei nas vendas: '+err.message.slice(0,80))}}
         fecharFollowUps(o.id,'Transmitido'+(n?' nº '+n:'')); ov.remove(); toast('Pedido marcado como transmitido'); if(route==='trans') paraTransmitir(); else if(route==='ped') ped()}catch(err){toast('Erro: '+err.message); t.disabled=false}}}}
-async function paraTransmitir(){const m=$('#main'); let O=[]; try{O=await api('orcamentos?select=*&status=eq.aprovado_transmissao&order=atualizado_em'); O.forEach(fixTotOrc)}catch(e){}
+async function paraTransmitir(){const m=$('#main'); let O=[]; try{O=await api('orcamentos?select=*&status=eq.aprovado_transmissao&order=atualizado_em'); O.forEach(fixTotOrc)}catch(e){} trChecar();
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Para transmitir</div><button class="chip" data-gm2="ped">Todos os pedidos ›</button></div><p class="hint">Orçamentos aprovados aguardando lançamento no portal da fábrica.</p>
    ${O.map(o=>`<button class="card" data-tr="${esc(o.id)}" style="display:block;width:100%;text-align:left;margin-bottom:8px;color:inherit;font:inherit;cursor:pointer"><div class="row" style="justify-content:space-between"><b>${repIcon(o.app,20)} ${esc(o.cliente||'')}</b><b>${brl(o.total)}</b></div><div class="hint">${esc(repName(o.app))} · ${o.itens} itens · aprovado ${new Date(o.atualizado_em).toLocaleDateString('pt-BR')}${o.dados&&o.dados.oc?' · OC '+esc(o.dados.oc):''}${o.dados&&o.dados.origem==='b2b'?' · Portal B2B':''}</div></button>`).join('')||'<p class="hint">Nada para transmitir agora. 👍</p>'}`;
   m.onclick=e=>{if(e.target.closest('[data-gm2]')) return go('ped'); const b=e.target.closest('[data-tr]'); if(b) transmitir(O.find(x=>x.id===b.dataset.tr))}}
@@ -3946,7 +3960,7 @@ async function setStatus(id,st){const body={status:st,atualizado_em:new Date().t
   if(st==='cancelado'){const mv=await perguntaMotivo(); if(!mv) throw new Error('Cancelamento desistido (sem motivo)'); const [row]=await api(`orcamentos?select=dados&id=eq.${encodeURIComponent(id)}`); body.dados={...((row&&row.dados)||{}),motivo_perda:mv.m,motivo_obs:mv.o||null,perdido_em:new Date().toISOString(),perdido_por:meuNome()}}
   await api(`orcamentos?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});
   /* pedido fechado (aprovado p/ transmissão, aguardando ATG ou transmitido) ou cancelado: conclui os retornos abertos do orçamento — pedido do Victor 10/11 */
-  if(st==='cancelado'||ehPed(st)) fecharFollowUps(id,(ehPed(st)?'Fechou pedido · ':'')+stLbl(st))}
+  if(st==='cancelado'||ehPed(st)) fecharFollowUps(id,(ehPed(st)?'Fechou pedido · ':'')+stLbl(st)); trChecar()}
 
 /* ================= fotos dos itens nas listas ================= */
 const IMGC={}; async function mapaFotos(reps_){await Promise.all([...new Set(reps_)].filter(r=>r&&!IMGC[r]).map(async r=>{try{const C=await catalog(r); const m={}; C.forEach(p=>{if(p.img){m[norm(p.cod).trim()]=p.img; if(p.ref) m[norm(p.ref).trim()]=p.img}}); IMGC[r]=m}catch(e){IMGC[r]={}}}))}

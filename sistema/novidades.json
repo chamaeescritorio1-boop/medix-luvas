@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111202",
+   "data": "2026-11-12",
+   "tipo": "correcao",
+   "titulo": "Busca de clientes mais esperta",
+   "texto": "Agora dá para achar o cliente digitando só o começo ou as iniciais, com ou sem espaço e ponto: R X M, RXM ou R.X.M acham a R X M COMERCIO; IGT acha Irmãos Gonçalves Teixeira. Procura no nome e na fantasia ao mesmo tempo e mostra primeiro o que mais parece. Vale no orçamento, na lista de Clientes, no Bater carteira, no Buscar e na Agenda."
+  },
+  {
    "id": "2026111111",
    "data": "2026-11-11",
    "tipo": "novo",

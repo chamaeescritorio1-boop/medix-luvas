@@ -9,3 +9,4 @@
 .rec-top{grid-template-columns:1fr auto}
 .rec-tipo .chip{flex:1;justify-content:center;text-align:center;padding:10px}
 @media(max-width:760px){.ffil-top{grid-template-columns:1fr 1fr}.ffil-q{grid-column:1/-1}.ffil-mais>.ffil-top{grid-template-columns:1fr}.rec-top{grid-template-columns:1fr}.rec-top .row{justify-content:flex-end}}
+.fdrag{outline:2px dashed var(--accent);outline-offset:4px;border-radius:12px}

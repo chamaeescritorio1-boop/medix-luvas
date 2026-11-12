@@ -310,15 +310,32 @@ const INI_AB0={fab:true,hoje:true,sem:false,eq:false};
 const ibAb=k=>{const v=(L('iniBl')||{})[k]; return v==null?INI_AB0[k]:!!v};
 const ibBloco=(k,tit,sub,corpo,extra='')=>`<details class="iblk" data-ib="${k}"${ibAb(k)?' open':''}><summary><b>${tit}</b><span class="hint">${sub}</span>${extra}</summary><div class="iblk-c">${corpo}</div></details>`;
 async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregando…</p>'; let R; try{R=await reps()}catch(e){m.innerHTML=`<p class="bad">Não consegui carregar: ${esc(e.message)}</p><p class="hint">Rodou o arquivo 2_produtos_tabelas.sql no Supabase?</p>`;return}
-  const q=Q(); m.innerHTML=`<div class="faz" id="faz"><button class="faz-b" data-go2="orc" data-orcnovo><span class="faz-i">＋</span><span><b>Novo orçamento</b><small>Escolha a fábrica e monte</small></span></button><button class="faz-b" data-go2="cli" data-cm="cart"><span class="faz-i">📞</span><span><b>Bater carteira</b><small>Quem ligar hoje</small></span></button><button class="faz-b" data-go2="tar"><span class="faz-i">✔️</span><span><b>Tarefas<span class="faz-x"> para hoje</span> <span class="badge" id="tnHome" hidden>0</span></b><small>Retornos, visitas e ligações</small></span></button></div>
-   <div class="iblks">${ibBloco('fab','Fábricas','catálogo de cada representada',`<div class="reps reps-c">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const on=true; const qn=(q[r.id]||{itens:[]}).itens.length;
-     return `<button class="rep${on?'':' off'}" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}<span id="solarSlot" style="display:contents"></span></div>`,'<button class="chip ib-x" data-go2="reps">Gerenciar ›</button>')}
-   ${ibBloco('hoje','Hoje','quem merece atenção hoje',`<button class="card" data-go2="estr" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid #ffd166">📧 <b>E-mails do dia</b> <span class="hint">· quem abordar hoje, com e-mail e arte prontos para você aprovar ›</span></button><div id="cexcHome"></div><div id="limHome"></div><div class="card grid" id="soSg" hidden style="border-left:5px solid #16a34a"></div><div id="dupHome"></div><div id="agHoje" style="margin-top:12px"></div>`)}
-   ${ibBloco('sem','Minha semana','meta e quem está na hora de comprar','<div id="semana"></div>')}
-   ${ehGestor()&&AG_ON?ibBloco('eq','Equipe','resumo da semana do time','<div id="agRes"></div>'):''}</div>
-   <div class="sec" style="margin-top:24px;font-size:17px">Outros atalhos</div><div class="row"><button class="btn ghost" data-go2="trans">🚚 Para transmitir</button><button class="btn ghost" data-go2="prod">Produtos</button><button class="btn ghost" data-go2="tec">🔎 Busca técnica</button><button class="btn ghost" data-go2="rel">Painel do mês</button></div>`;
-  m.querySelectorAll('[data-ib]').forEach(d=>d.addEventListener('toggle',()=>{const o=L('iniBl')||{}; o[d.dataset.ib]=d.open; LS('iniBl',o)}));
-  m.onclick=e=>{if(e.target.closest('[data-solar]')){location.href=SOLAR_URL; return} const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep, r=R.find(x=>x.id===id); if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return} const a=e.target.closest('[data-go2]'); if(a) go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:a.dataset.cm?{cm:a.dataset.cm}:undefined)}; contaTarefas(); preencherSolar(); soAvisoSigma($('#soSg')); if(ehGestor()) limAviso(); if(ehGestor()) dupAviso(); if(ehGestor()) cexcLista(true).then(()=>{const n=cexcPend().length, el=$('#cexcHome'); if(n&&el&&el.isConnected){el.innerHTML=`<button class="card" id="cexcGo" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;margin-top:10px;border-left:5px solid var(--bad)">🗑 <b>${n} pedido${n>1?'s':''} de exclusão de cliente</b> <span class="hint">· veja o motivo e decida se exclui ›</span></button>`; $('#cexcGo').onclick=e=>{e.stopPropagation(); cexcPainel()}}}); agHoje($('#agHoje')); agResumo($('#agRes')); minhaSemana($('#semana'),true)}
+  /* Início enxuto (12/11): saudação + 3 números do dia + ações + avisos + Hoje para você + fábricas compactas. Minha semana e Equipe foram para Relatórios. */
+  const q=Q(), hj=new Date(), h=hj.getHours(), nome=(meuNome()||'').split(/\s+/)[0]; const Nm=nome?nome.charAt(0)+nome.slice(1).toLowerCase():'';
+  const dia=hj.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  m.innerHTML=`<div class="ini-top"><h1 class="ini-ola">${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}${Nm?', '+esc(Nm):''}</h1><span class="hint">${esc(dia)}</span></div>
+   <div class="ini-sec ini-sec-top"><b>Fábricas</b><button class="chip" data-go2="reps">Gerenciar ›</button></div>
+   <div class="reps reps-c">${R.filter(r=>r.ativa).map(r=>{const ext=EXTERNAL[r.id]; const qn=(q[r.id]||{itens:[]}).itens.length;
+     return `<button class="rep" style="--c:${esc(r.cor||'#2a3157')}" data-rep="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${r.n?r.n+' produtos'+(ext&&CONV_PASTA?' · ⇄ Converter CA':''):ext?'Conversor de CA + orçamento':'Catálogo a cadastrar'}${qn?` · <span class="badge">${qn}</span> no orçamento`:''}</small></button>`}).join('')}<span id="solarSlot" style="display:contents"></span></div>
+   <div class="ini-kpi">
+    <button class="kpi" data-go2="rel" data-relr="painel"><small>🎯 Meta do mês</small><b id="kMeta">…</b><div class="mbar"><i id="kMetaB" style="width:0"></i></div><span class="hint" id="kMetaT">&nbsp;</span></button>
+    <button class="kpi" data-go2="tar"><small>✔️ Tarefas para hoje</small><b id="kTar">…</b><span class="hint">retornos, visitas e ligações</span></button>
+    <button class="kpi" data-kop><small>🤖 Oportunidades hoje</small><b id="kOp">…</b><span class="hint" id="kOpT">&nbsp;</span></button></div>
+   <div class="faz ini-faz" id="faz"><button class="faz-b" data-go2="orc" data-orcnovo><span class="faz-i">＋</span><span><b>Novo orçamento</b></span></button><button class="faz-b" data-go2="cli" data-cm="cart"><span class="faz-i">📞</span><span><b>Bater carteira</b></span></button><button class="faz-b" data-go2="tar"><span class="faz-i">✔️</span><span><b>Tarefas <span class="badge" id="tnHome" hidden>0</span></b></span></button><button class="faz-b" data-go2="estr"><span class="faz-i">📧</span><span><b>E-mails do dia</b></span></button></div>
+   <div class="ini-av" id="iniAv"><div id="cexcHome"></div><div id="limHome"></div><div class="card grid" id="soSg" hidden style="border-left:5px solid #16a34a"></div><div id="dupHome"></div></div>
+   <div id="agHoje"></div>
+   <p class="hint ini-rel">📊 Minha semana${ehGestor()?', resumo da equipe':''} e painéis ficam em <a href="#" data-go2="rel" data-relr="semana">Relatórios ›</a></p>`;
+  m.onclick=e=>{if(e.target.closest('[data-solar]')){location.href=SOLAR_URL; return} const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep; if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return}
+    if(e.target.closest('[data-kop]')){const a=$('#agHoje'); if(a) a.scrollIntoView({behavior:'smooth',block:'start'}); return}
+    const a=e.target.closest('[data-go2]'); if(a){e.preventDefault(); if(a.dataset.relr){const s=L('relS')||{r:'painel',anos:2,rep:''}; s.r=a.dataset.relr; LS('relS',s)} go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:a.dataset.cm?{cm:a.dataset.cm}:undefined)}};
+  contaTarefas().then(()=>{const t=$('#tnHome'), k=$('#kTar'); if(k) k.textContent=t&&!t.hidden?t.textContent:'0'}); preencherSolar(); soAvisoSigma($('#soSg')); if(ehGestor()) limAviso(); if(ehGestor()) dupAviso(); if(ehGestor()) cexcLista(true).then(()=>{const n=cexcPend().length, el=$('#cexcHome'); if(n&&el&&el.isConnected){el.innerHTML=`<button class="card" id="cexcGo" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid var(--bad)">🗑 <b>${n} pedido${n>1?'s':''} de exclusão de cliente</b> <span class="hint">· veja o motivo e decida se exclui ›</span></button>`; $('#cexcGo').onclick=e=>{e.stopPropagation(); cexcPainel()}}}); agHoje($('#agHoje')); iniMeta()}
+/* número da meta no topo do Início (mesma conta do "Ritmo da meta" dos agentes) */
+async function iniMeta(){const el=$('#kMeta'); if(!el) return; try{const hj=new Date(), ges=ehGestor(), so=!ges||L('agSo')!==false, eu=meuVend(), mine=v=>!so||!eu||norm(v||'').startsWith(eu);
+  const [P,M]=await Promise.all([agPedidos(),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[])]); const MT=agMeta(M,P,mine,so,eu); if(!el.isConnected) return;
+  if(!MT.mT){el.textContent='—'; $('#kMetaT').textContent='sem meta cadastrada'; return} const pc=MT.vT/MT.mT*100, ok=MT.vT>=MT.esp*.95;
+  el.textContent=pc.toFixed(0)+'%'; el.className=ok?'ok':'warn'; $('#kMetaB').style.width=Math.min(100,pc)+'%'; if(!ok) $('#kMetaB').style.background='var(--warn)';
+  const at=MT.L.filter(x=>x.atr).map(x=>x.rep); $('#kMetaT').textContent=`${brl(MT.vT)} de ${brl(MT.mT)}`+(at.length?` · atrasada: ${at.slice(0,2).join(', ')}${at.length>2?'…':''}`:' · no ritmo')}catch(e){el.textContent='—'}}
+function iniOp(n,v){const k=$('#kOp'); if(!k) return; k.textContent=n; const t=$('#kOpT'); if(t) t.textContent=n?brl(v)+' em jogo':'nada pendente 👏'}
 
 /* ---------- grupos de produto ---------- */
 const GRUPOS={sigma:[['Estética automotiva',/POLITRIZ|BOINA|VELCRAD|TOALHA|MICROFIBRA|SNOW|CANECO|ESPUMA|APLICADOR|PRATO SUPORTE|LAVADOR|VASELINA|\bPANO\b|BALDE|GALAO|DISPENSER|CERA|POLIMENTO|ESTETICA|BACIA|GARRAFAO|SEPARADOR DE SUJEIRA|GRADE/],['Pintura e airless',/AIRLESS|BICO LEQUE|PINTURA|PINCE|RODILHO|DESEMPENADEIRA|ESPATULA|\bFILME\b|GICLE|PISTOLA (DE )?PINT|TINTA|ROLO/],['Elétricas e baterias',/BATERIA|CARREGADOR|PARAFUSADEIRA|FURADEIRA|MARTELETE|ESMERILHADEIRA|SERRA|RETIFICA|SOPRADOR|LANTERNA|\bPWR\b|SGTFLEX|ILUMINACAO|ENDOSCOPIO|ELETRIC|BIVOLT|\d+V\b|INTERFACE|TESTE/],['Pneumáticas e ar comprimido',/PNEUM|IMPACTO|REBITADOR|PREGADOR|ENGATE|MANGUEIRA|FILTRO REGULADOR|\bFRL\b|COMPRESSOR|CONECTOR|NIPLE|ACOPLADOR|INFLADOR|CALIBRADOR|MANIFOLD|LUBRIFIC|ESPIRAL|\bAR\b|PISTOLA|CANHAO|LIXADEIRA|GRAMPEADOR|MEDIDOR/],['Elevação, oficina e movimentação',/TALHA|MACACO|CARRINHO|CARRO|BANQUETA|ARMARIO|PAINEL|BANCADA|ELEVADOR|DESTALONADOR|BALANCIM|RODIZIO|\bMESA\b|ENCOLHEDOR|CAVALETE|GUINCHO|PRENSA|EXPOSITOR|ESCADA|BOMBA|LANCA|FUNIL|COLETOR/],['Ferramentas manuais',/CHAVE|SOQUETE|ALICATE|JOGO|CATRACA|EXTENSAO|JUNTA UNIVERSAL|MARTELO|MARRETA|CINZEL|\bSACA|EXTRATOR|TARRAXA|BROCA|FRESA|ESCAREADOR|FERRAMENTA|TORQUIMETRO|ALAVANCA|PINCA|ESCOVA|DISCO/],['Peças e reposição',/REPARO|CARCACA|MOLA|PISTAO|VALVULA|VEDACAO|\bANEL\b|RING|GATILHO|PORCA|PARAFUSO|ARRUELA|PINO|TAMPA|BATENTE|HASTE|LAMINA|REFIL|AGULHA|\bCABO\b|CILINDRO|AMORTECEDOR|LINGUETA|MANIPULO|BASE|SUPORTE|ADAPTADOR|BICO|FILTRO|TUBO|CONE|KIT/]],marcon:[['Hidráulicos e elevação',/^CARRO.*(PANTOGRAF|TELESC|HIDRAUL|GUINCHO|ELEVA|MACACO)/],['Movimentação de carga',/^CARRO.*(PLATAFORMA|CARGA|ARMAZEM|TRANSPORTE DE)/],['Caixas e baús',/^(CAIXA|BAU|BAÚ|MALETA|ESTOJO|BOLSA|MOCHILA|MALA)\b/],['Carros de ferramentas',/^(CARRO|CARRINHO)\b/],['Móveis de oficina',/^(BANCADA|ARMARIO|ARMÁRIO|ARM\b|GAVETEIRO|MODULO|MÓDULO|TAMPO|PAINEL|DIVISORIA|GAB|PRANCHETA|BANDEJA)/],
@@ -1259,7 +1276,7 @@ async function detOrc(id,o0){if(String(id).startsWith('rp:')) return detalhe(id.
     if(e.target.closest('[data-ab]')){if(!confirm('Abrir este orçamento para editar? Ele substitui o orçamento em andamento desta representada.')) return; const q=Q(); q[o.dados.rep]={...o.dados,id:o.id.split('-').slice(2).join('-')||o.dados.id}; setQ(q); ov.remove(); go('orc',{rep:o.dados.rep})}}}
 
 /* ---------- relatórios ---------- */
-const RELS=[['painel','Painel do mês'],['conv','Conversão e positivação'],['perdas','Motivos de perda'],['mes','Vendas mensais'],['rep','Por representada'],['vend','Por vendedor'],['abcc','Curva ABC de clientes'],['abcp','Curva ABC de produtos'],['prod','Produtos vendidos × clientes'],['queda','Clientes em queda'],['recompra','Recompra atrasada'],['cross','Oportunidades entre representadas'],['nunca','Quem não comprou um produto'],['quem','👥 Quem já comprou (por região)']];
+const RELS=[['painel','Painel do mês'],['semana','Minha semana'],['equipe','Resumo da equipe'],['conv','Conversão e positivação'],['perdas','Motivos de perda'],['mes','Vendas mensais'],['rep','Por representada'],['vend','Por vendedor'],['abcc','Curva ABC de clientes'],['abcp','Curva ABC de produtos'],['prod','Produtos vendidos × clientes'],['queda','Clientes em queda'],['recompra','Recompra atrasada'],['cross','Oportunidades entre representadas'],['nunca','Quem não comprou um produto'],['quem','👥 Quem já comprou (por região)']];
 let PEDS=null, PEDS_EXPIRE=0; const CACHE_TTL=5*60*1000;
 /* relatórios: usa o que já foi baixado (período maior serve para um menor), guarda no aparelho e atualiza por trás */
 let PEDS_BG=null; const corta=(x,de)=>x.de===de?x.d:x.d.filter(p=>p.data>=de); const assin=d=>d.length+':'+Math.round(d.reduce((s,p)=>s+(+p.valor||0),0));
@@ -1271,10 +1288,10 @@ async function pedidosPeriodo(de){
   return busca()}
 const MEMO={}; const memo=(k,ttl,fn)=>{const x=MEMO[k]; if(x&&Date.now()<x.t) return x.p; const p=fn().catch(e=>{delete MEMO[k]; throw e}); MEMO[k]={p,t:Date.now()+ttl}; return p};
 async function rel(){const m=$('#main'); const s=L('relS')||{r:'painel',anos:2,rep:''};
-  m.innerHTML=`<div class="sec">Relatórios</div><div class="row" style="margin-bottom:8px">${RELS.map(([k,l])=>`<button class="chip${s.r===k?' on':''}" data-rl="${k}">${l}</button>`).join('')}</div>
+  m.innerHTML=`<div class="sec">Relatórios</div><div class="row" style="margin-bottom:8px">${RELS.filter(([k])=>k!=='equipe'||(ehGestor()&&AG_ON)).map(([k,l])=>`<button class="chip${s.r===k?' on':''}" data-rl="${k}">${l}</button>`).join('')}</div>
    <div class="row"><select id="rrep"><option value="">Todas as representadas</option>${REPLIST.map(r=>`<option${r===s.rep?' selected':''}>${r}</option>`).join('')}</select><select id="ranos">${[[1,'Últimos 12 meses'],[2,'Últimos 2 anos'],[3,'Últimos 3 anos'],[5,'Desde 2022']].map(([v,l])=>`<option value="${v}"${v==s.anos?' selected':''}>${l}</option>`).join('')}</select><button class="chip" id="rcsv">Exportar</button></div>
    <div id="rout" style="margin-top:12px"><p class="hint">Calculando…</p></div>`;
-  m.onclick=e=>{const b=e.target.closest('[data-rl]'); if(b&&b.dataset.rl==='quem') return go('quem'); if(b){s.r=b.dataset.rl; LS('relS',s); rel()}}; $('#rrep').onchange=e=>{s.rep=e.target.value; LS('relS',s); rel()}; $('#ranos').onchange=e=>{s.anos=+e.target.value; LS('relS',s); rel()}; if(s.r==='painel'){$('#rrep').parentNode.hidden=true; return painel($('#rout'))} if(s.r==='perdas') return relPerdas($('#rout'),s.anos,s.rep); if(s.r==='conv') return relConversao($('#rout'),s.rep);
+  m.onclick=e=>{const b=e.target.closest('[data-rl]'); if(b&&b.dataset.rl==='quem') return go('quem'); if(b){s.r=b.dataset.rl; LS('relS',s); rel()}}; $('#rrep').onchange=e=>{s.rep=e.target.value; LS('relS',s); rel()}; $('#ranos').onchange=e=>{s.anos=+e.target.value; LS('relS',s); rel()}; if(s.r==='painel'){$('#rrep').parentNode.hidden=true; return painel($('#rout'))} if(s.r==='semana'){$('#rrep').parentNode.hidden=true; LS('semAb',true); return minhaSemana($('#rout'),true)} if(s.r==='equipe'){$('#rrep').parentNode.hidden=true; if(!ehGestor()){s.r='painel'; LS('relS',s); return rel()} LS('agResAb',true); return agResumo($('#rout'))} if(s.r==='perdas') return relPerdas($('#rout'),s.anos,s.rep); if(s.r==='conv') return relConversao($('#rout'),s.rep);
   const de=new Date(new Date().getFullYear()-(s.anos>=5?5:s.anos),0,1).toISOString().slice(0,10); const out=$('#rout'); let X=[];
   const bar=(v,mx)=>`<span style="display:inline-block;height:9px;border-radius:4px;background:var(--accent);width:${Math.max(2,Math.round(v/mx*140))}px;vertical-align:middle"></span>`;
   const tbl=(h,rows,fmt)=>{X=[h,...rows]; return `<div class="card" style="overflow-x:auto"><table class="t"><tr>${h.map((c,i)=>`<th${i&&fmt&&fmt[i]?' class="n"':''}>${esc(c)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${fmt&&fmt[i]?' class="n"':''}>${fmt&&fmt[i]==='brl'?brl(c):fmt&&fmt[i]==='pct'?pct(c):fmt&&fmt[i]==='raw'?c:esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>`};
@@ -1810,9 +1827,9 @@ async function agHoje(box){if(!box||!AG_ON) return; const ges=ehGestor(), so=!ge
     /* recolhido (padrão): só o resumo e as 3 primeiras em uma linha; "Ampliar" mostra tudo (fica lembrado no aparelho) */
     const metaCurta=()=>{if(!MT.L.length) return ''; const pc=MT.mT?MT.vT/MT.mT*100:0, at=MT.L.filter(x=>x.atr).map(x=>x.rep); return `<div class="hint" style="font-size:13px">🎯 Meta do mês <b class="${MT.vT>=MT.esp?'ok':'warn'}">${pc.toFixed(0)}%</b>${at.length?` · atrasada: ${esc(at.slice(0,3).join(', '))}${at.length>3?'…':''}`:' · no ritmo 👏'}</div>`};
     const linha=(x,i)=>{const t=texto(x); return `<button class="chip" style="text-align:left;border-left:4px solid ${AG_COR[x.ag]}" data-agx="${i}">${t.prioridade===1?'🔥 ':''}<b>${esc(x.n)}</b> · ${esc(x.rep)} · ${brl(x.v)}<br><span class="hint" style="font-size:12px">${esc(AG_NOME[x.ag])} · ${esc(t.porque)}</span></button>`};
-    const draw=(nota)=>{if(!box.isConnected) return; const tot=L2.filter(x=>x.ag!=='ciclo').reduce((s,x)=>s+x.v,0), ab=L('agAb')===true;
+    const draw=(nota)=>{if(!box.isConnected) return; const tot=L2.filter(x=>x.ag!=='ciclo').reduce((s,x)=>s+x.v,0), ab=L('agAb')===true; iniOp(L2.filter(x=>x.ag!=='ciclo').length,tot); const noTopo=!!$('#kMeta');
       box.innerHTML=`<div class="card grid ag"><div class="row" style="justify-content:space-between"><b>🤖 Hoje para você</b><div class="row" style="gap:6px">${ab&&ges?`<button class="chip${so?' on':''}" data-ags="1">Só meus</button><button class="chip${so?'':' on'}" data-ags="0">Equipe toda</button>`:''}${L2.length||MT.L.length?`<button class="chip" data-agab>${ab?'Recolher ▴':'Ampliar ▾'}</button>`:''}</div></div>
-        ${ab?metaHtml():metaCurta()}${L2.length?`<p class="hint" style="margin:0">${L2.length} ${L2.length>1?'oportunidades':'oportunidade'} · ${brl(tot)} em jogo${nota?' · '+esc(nota):''}</p>${ab?L2.map(item).join('')+(ciMais?`<p class="hint" style="margin:0;font-size:12px">E mais ${ciMais} ${ciMais>1?'orçamentos antigos':'orçamento antigo'} sem desfecho; aparecem aqui aos poucos.</p>`:''):L2.slice(0,3).map(linha).join('')+(L2.length>3?`<button class="chip" data-agab style="justify-self:start">Ver mais ${L2.length-3}</button>`:'')}`:'<p class="hint" style="margin:0">Nada pendente na sua carteira hoje. 👏</p>'}</div>`};
+        ${ab?metaHtml():noTopo?'':metaCurta()}${L2.length?`<p class="hint" style="margin:0">${L2.length} ${L2.length>1?'oportunidades':'oportunidade'} · ${brl(tot)} em jogo${nota?' · '+esc(nota):''}</p>${ab?L2.map(item).join('')+(ciMais?`<p class="hint" style="margin:0;font-size:12px">E mais ${ciMais} ${ciMais>1?'orçamentos antigos':'orçamento antigo'} sem desfecho; aparecem aqui aos poucos.</p>`:''):L2.slice(0,3).map(linha).join('')+(L2.length>3?`<button class="chip" data-agab style="justify-self:start">Ver mais ${L2.length-3}</button>`:'')}`:'<p class="hint" style="margin:0">Nada pendente na sua carteira hoje. 👏</p>'}</div>`};
     draw(IA.pend(L2)?'a IA está escrevendo as mensagens…':'');
     if(IA.pend(L2)) agIA(L2,metaTx,IA,so).then(e=>draw(e||'')).catch(()=>draw(''));
     box.onclick=async e=>{const g=s=>e.target.closest(s), n=s=>{const b=g(s); return b?L2[+b.dataset[Object.keys(b.dataset)[0]]]:null}; let x;
@@ -2637,7 +2654,8 @@ async function clientesView(){const m=$('#main'); if(ctx.cnpj) return fichaClien
    <div id="clres" style="margin-top:10px"><p class="hint">Carregando base de clientes…</p></div>`;
   $('#cimp').onclick=()=>importarClientes(); $('#cnovo').onclick=()=>fichaCliente('',true); if(ehGestor()){$('#cexcl').onclick=()=>cexcPainel(); cexcLista(true).then(()=>{const n=cexcPend().length, b=$('#cexcn'); if(b){b.textContent=n; b.hidden=!n}})} $('#csync').onclick=e=>sincronizarReprio(e.target).then(()=>clientesView());
   /* Clientes abre sempre na lista e filtros; Bater carteira é a 2ª opção (ou vem do Início com cm:'cart') */
-  const modo=ctx.cm==='cart'?'cart':'lista'; m.querySelector('.card.grid').insertAdjacentHTML('beforebegin',`<div class="row" style="margin-top:10px"><button class="chip${modo==='lista'?' on':''}" data-cm="lista">📋 Lista e filtros</button><button class="chip${modo==='cart'?' on':''}" data-cm="cart">📞 Bater carteira</button></div>`); m.querySelector('[data-cm]').parentNode.onclick=e=>{const b=e.target.closest('[data-cm]'); if(b) go('cli',{cm:b.dataset.cm})};
+  const modo=ctx.cm==='cart'?'cart':ctx.cm==='coop'?'coop':'lista'; m.querySelector('.card.grid').insertAdjacentHTML('beforebegin',`<div class="row" style="margin-top:10px"><button class="chip${modo==='lista'?' on':''}" data-cm="lista">📋 Lista e filtros</button><button class="chip${modo==='cart'?' on':''}" data-cm="cart">📞 Bater carteira</button><button class="chip${modo==='coop'?' on':''}" data-cm="coop">🏢 Cooperativas</button></div>`); m.querySelector('[data-cm]').parentNode.onclick=e=>{const b=e.target.closest('[data-cm]'); if(b) go('cli',{cm:b.dataset.cm})};
+  if(modo==='coop'){m.querySelector('#clq').closest('.card').hidden=true; return cooperativas($('#clres'))}
   if(modo==='cart'){m.querySelector('#clq').closest('.card').hidden=true; const pb=document.createElement('div'); pb.id='plDia'; pb.style.marginTop='10px'; $('#clres').before(pb); const ba=document.createElement('div'); ba.id='baPl'; ba.style.marginTop='10px'; pb.before(ba); await clientes(); if(!m.isConnected) return; baPlacar(ba); planoDia(pb); return carteira($('#clres'))}
   const C=await clientes(); if(!m.isConnected) return; const Vs=[...TIME]; $('#clv').innerHTML='<option value="">Todos os vendedores</option>'+Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('');
   const ult=c=>{const d=Object.values(c.reps).map(x=>x.ultimo).filter(Boolean).sort().pop(); return d||null};
@@ -3477,7 +3495,7 @@ function plCotas(G,MT,N){const reps=Object.keys(G).filter(r=>G[r].length); if(!r
 /* monta (ou remonta) o plano do dia */
 async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCandidatos(vend);
   /* só as representadas e clientes que o vendedor atende (vendedor_carteira) */
-  {await vcartLista(); const RV=vcartReps(vend), bl=vcartBloq(vend); for(let i=todos.length-1;i>=0;i--){const x=todos[i]; if((x.rep&&REPLIST.includes(x.rep)&&!RV.includes(x.rep))||bl(x.cnpj)) todos.splice(i,1)}}
+  {await vcartLista(); const RV=vcartReps(vend), bl=vcartBloq(vend); for(let i=todos.length-1;i>=0;i--){const x=todos[i]; if((x.rep&&REPLIST.includes(x.rep)&&!RV.includes(x.rep))||bl(x.cnpj)||ehCoop(x.cnpj)) todos.splice(i,1)}}
   todos.forEach(x=>{x.sc2=(x.sc||x.v||1)*(tm.ag.includes(x.ag)?2:1)*(MT.atr&&MT.atr.has(x.rep)?1.3:1); if(tm.ag.includes(x.ag)) x.tema=true});
   const usados=new Set((manter||[]).map(x=>x.cnpj)); RT.forEach(x=>usados.add(x.cnpj));
   const G={}; todos.filter(x=>x.ag!=='ciclo'||tm.ag.includes('ciclo')).sort((a,b)=>b.sc2-a.sc2).forEach(x=>{(G[x.rep]=G[x.rep]||[]).push(x)});
@@ -3557,6 +3575,41 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
 let PL_DICA={};
 function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector('#plDia')) return ''; return `<div class="pcb" style="border-left:4px solid var(--brand)"><div class="row" style="justify-content:space-between;gap:6px"><b>🗓️ Plano do dia${d.rep?' · '+esc(d.rep):''}</b>${d.troca?'<button class="chip" data-pltroca>⇄ Trocar este cliente</button>':''}</div><div style="font-size:14px">${esc(d.porque||d.ag)}</div>${d.falar?`<div class="hint" style="font-size:13px">💡 ${esc(d.falar)}</div>`:''}</div>`}
 /*PLANO-DIA-FIM*/
+/*COOP-INICIO*/
+/* Cooperativas à parte (12/11, pedido do Victor): Coopercitrus, Copercana e Coplana saem do Bater carteira, do Plano do dia e das listas
+   da Base ativa, porque só compram itens já cadastrados na cooperativa e as lojas dependem de aprovação da central.
+   Ficam numa tela própria: Clientes › 🏢 Cooperativas (lojas por cooperativa, última compra por fábrica e itens que já compram). */
+const COOP_RAIZ={'45236791':'Coopercitrus','71320915':'Copercana','48662175':'Coplana'};
+const coopDe=cn=>COOP_RAIZ[String(cn||'').replace(/\D/g,'').slice(0,8)]||'', ehCoop=cn=>!!coopDe(cn);
+let COOP_IT={};
+async function coopItens(raiz){if(COOP_IT[raiz]) return COOP_IT[raiz]; const a=new Date(); a.setMonth(a.getMonth()-24); const m={};
+  try{(await apiAll(`pedido_itens?select=cod,descricao,qtd,total,pedidos!inner(cnpj,data,representada,status)&pedidos.cnpj=like.${raiz}*&pedidos.data=gte.${ymdL(a)}`)).forEach(i=>{const p=i.pedidos||{}, st=String(p.status||'');
+    if(st&&st!=='finalizado'&&!/^APROVADO/i.test(st)) return; const r=p.representada||'', k=r+'|'+String(i.cod||'').trim(); const x=m[k]=m[k]||{rep:r,cod:String(i.cod||'').trim(),d:String(i.descricao||'').split(' |')[0],q:0,v:0,u:'',lojas:new Set()};
+    x.q+=+i.qtd||0; x.v+=+i.total||0; if(String(p.data)>x.u) x.u=String(p.data).slice(0,10); x.lojas.add(String(p.cnpj||'').replace(/\D/g,''))})}catch(e){}
+  return COOP_IT[raiz]=Object.values(m).sort((a,b)=>b.v-a.v)}
+async function cooperativas(box){const C=await clientes(); if(!box.isConnected) return; let sel=L('coopSel')||Object.keys(COOP_RAIZ)[0], aba='lojas', rep='', q='';
+  const lojas=r=>C.filter(c=>String(c.cnpj).slice(0,8)===r);
+  const ultC=c=>Object.values(c.reps||{}).map(x=>x.ultimo).filter(Boolean).sort().pop()||'';
+  const draw=async()=>{const LJ=lojas(sel), reps=[...new Set(LJ.flatMap(c=>Object.keys(c.reps||{})))].sort(), ativ=r=>LJ.filter(c=>c.reps[r]&&c.reps[r].ultimo&&dias(String(c.reps[r].ultimo).slice(0,10))<=90).length;
+    const top=`<div class="card grid" style="gap:10px"><div class="row" style="justify-content:space-between;gap:8px"><b>🏢 Cooperativas</b><span class="hint" style="font-size:12px">Fora do Bater carteira: só compram itens já cadastrados e a loja depende da central.</span></div>
+      <div class="row" style="gap:6px">${Object.entries(COOP_RAIZ).map(([r,n])=>`<button class="chip${sel===r?' on':''}" data-cpsel="${r}">${esc(n)} <span class="hint">${lojas(r).length} lojas</span></button>`).join('')}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${reps.map(r=>`<span class="tag" style="font-size:12px">${esc(RCURTO[r]||r)}: <b>${ativ(r)}</b>/${LJ.filter(c=>c.reps[r]).length} lojas ativas (90 d)</span>`).join('')}</div>
+      <div class="row" style="gap:6px"><button class="chip${aba==='lojas'?' on':''}" data-cpaba="lojas">🏬 Lojas</button><button class="chip${aba==='itens'?' on':''}" data-cpaba="itens">📦 Itens que já compram</button></div></div>`;
+    if(aba==='lojas'){const L2=LJ.slice().sort((a,b)=>ultC(b).localeCompare(ultC(a)));
+      box.innerHTML=top+`<div class="grid" style="gap:6px;margin-top:10px;grid-template-columns:minmax(0,1fr)">${L2.map(c=>`<button class="chip" data-cpc="${esc(c.cnpj)}" style="text-align:left;width:100%;white-space:normal;display:block"><b>${esc(c.cid||c.fa||c.n)}</b> <span class="hint" style="font-size:12px">${esc(fmtCnpj(c.cnpj))}${c.v?' · '+esc(c.v):''}</span><div style="margin-top:4px">${repTags(c,6)}</div></button>`).join('')||'<p class="hint">Nenhuma loja cadastrada.</p>'}</div>`}
+    else{box.innerHTML=top+'<p class="hint" style="margin-top:10px">Carregando os itens que a cooperativa já compra…</p>'; const IT=await coopItens(sel); if(!box.isConnected) return;
+      const RS=[...new Set(IT.map(x=>x.rep))].sort(); if(rep&&!RS.includes(rep)) rep=''; const w=norm(q).trim(); const L2=IT.filter(x=>(!rep||x.rep===rep)&&(!w||norm(x.cod+' '+x.d).includes(w)));
+      box.innerHTML=top+`<div class="card grid" style="gap:8px;margin-top:10px"><p class="hint" style="margin:0;font-size:12px">Itens comprados por qualquer loja da ${esc(COOP_RAIZ[sel])} nos últimos 24 meses: são os que já estão cadastrados lá e podem ser oferecidos às lojas.</p>
+        <div class="row" style="gap:6px"><select data-cprep style="width:auto"><option value="">Todas as fábricas</option>${RS.map(r=>`<option${r===rep?' selected':''}>${esc(r)}</option>`).join('')}</select><input data-cpq placeholder="Buscar código ou descrição" value="${esc(q)}" style="flex:1;min-width:160px"></div>
+        <div class="grid" style="gap:4px;grid-template-columns:minmax(0,1fr)">${L2.slice(0,150).map(x=>`<div class="row" style="justify-content:space-between;gap:8px;font-size:13px;border-bottom:1px solid var(--line);padding:4px 0;flex-wrap:nowrap"><span style="min-width:0"><b>${esc(x.cod)}</b> ${esc(x.d)} <span class="hint">· ${esc(RCURTO[x.rep]||x.rep)} · ${x.lojas.size} loja${x.lojas.size>1?'s':''}</span></span><span class="hint" style="white-space:nowrap">${(+x.q).toLocaleString('pt-BR')} un · últ. ${dbr(x.u)}</span></div>`).join('')||'<p class="hint">Nenhum item encontrado.</p>'}</div>
+        ${L2.length>150?`<p class="hint" style="margin:0">Mostrando 150 de ${L2.length}. Use a busca.</p>`:''}</div>`;
+      const qi=box.querySelector('[data-cpq]'); if(qi&&q){qi.focus(); qi.setSelectionRange(q.length,q.length)}}};
+  box.onclick=e=>{const g=s=>e.target.closest(s); const s=g('[data-cpsel]'); if(s){sel=s.dataset.cpsel; LS('coopSel',sel); return draw()} const a=g('[data-cpaba]'); if(a){aba=a.dataset.cpaba; return draw()}
+    const c=g('[data-cpc]'); if(c){const l=lojas(sel).map(x=>x.cnpj); return painelCliente(c.dataset.cpc,l)}};
+  box.onchange=e=>{if(e.target.matches('[data-cprep]')){rep=e.target.value; draw()}};
+  let tq; box.oninput=e=>{if(e.target.matches('[data-cpq]')){q=e.target.value; clearTimeout(tq); tq=setTimeout(draw,300)}};
+  draw()}
+/*COOP-FIM*/
 /*BASE-ATIVA-INICIO*/
 /* Base ativa por fábrica (12/11, pedido do Victor a partir do Xadrez da Camper e do relatório de prêmio da Marluvas):
    - Meta de base ativa por representada (regras.base_meta) e prazo de inativação (regras.inativa_dias, padrão 90 dias).
@@ -3570,7 +3623,7 @@ let BA_CT=null;
 async function baContatos(){if(BA_CT&&Date.now()-BA_CT.t<3e5) return BA_CT.m; const m={}; try{(await apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-30)}`)).forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!m[k]||c.criado_em>m[k])) m[k]=c.criado_em})}catch(e){} BA_CT={t:Date.now(),m}; return m}
 /* calcula, para cada representada, os ativos e as três listas; vend = só a carteira desse vendedor nas listas */
 async function baCalc(vend){const [C,R]=await Promise.all([clientes(),reps().catch(()=>[])]); await vcartLista();
-  const bl=vend?vcartBloq(vend):()=>false, RV=vend?vcartReps(vend):REPLIST, meu=c=>!vend||norm(c.v||'').startsWith(vend);
+  const bl0=vend?vcartBloq(vend):()=>false, bl=cn=>bl0(cn)||ehCoop(cn), RV=vend?vcartReps(vend):REPLIST, meu=c=>!vend||norm(c.v||'').startsWith(vend);
   const out=[];
   (R||[]).filter(r=>r.ativa!==false).forEach(r=>{const nome=HIST_REP[r.id]||r.nome, D=baPrazo(r), meta=baMeta(r);
     const o={id:r.id,rep:nome,prazo:D,meta,ativos:0,vencem:0,manter:[],recuperar:[],conquistar:[],atende:RV.includes(nome)};
@@ -3593,7 +3646,7 @@ async function baPlacar(box){if(!box) return; const ges=ehGestor(); let vend=meu
       return `<div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><button class="chip" data-bal="${esc(o.rep)}" style="flex:1 1 auto;min-width:0;text-align:left;display:block;white-space:normal">
         <div class="row" style="justify-content:space-between;gap:6px;flex-wrap:nowrap"><b>${esc(baCurto(o.rep))}</b><span style="white-space:nowrap"><b>${o.ativos}</b>${o.meta?`<span class="hint">/${o.meta}</span> ${ok?'<span class="ok">✓</span>':''}`:' <span class="hint">ativos</span>'}</span></div>
         ${o.meta?`<div class="mbar" style="height:5px;margin:4px 0"><i style="width:${p}%${ok?'':';background:var(--warn,#f2b632)'}"></i></div>`:''}
-        ${o.id==='marluvas'&&mlvBase?`<div class="hint" style="font-size:12px">Pela Marluvas (por loja/filial): <b>${mlvBase.real}/${mlvBase.meta}</b>${mlvBase.real<mlvBase.meta?` · faltam ${mlvBase.meta-mlvBase.real}`:' ✓'}</div>`:''}<div class="hint" style="font-size:12px">${o.vencem?`<span class="${risco?'warn':''}">${o.vencem} vence${o.vencem>1?'m':''} em 30 dias</span> · `:''}${o.recuperar.length} para recuperar · ${o.conquistar.length} para conquistar</div></button>
+        ${o.id==='medix'&&o.mdx?`<div class="hint" style="font-size:12px">Pela Medix (portal): <b>${o.mdx.f.ativos||0}</b> ativos em 30 dias · ${o.mdx.f.oportunidade||0} oportunidade · <span class="${o.mdx.f.atencao?'warn':''}">${o.mdx.f.atencao||0} atenção</span> · ${o.mdx.f.inativos||0} inativos</div>`:''}${o.id==='marluvas'&&mlvBase?`<div class="hint" style="font-size:12px">Pela Marluvas (por loja/filial): <b>${mlvBase.real}/${mlvBase.meta}</b>${mlvBase.real<mlvBase.meta?` · faltam ${mlvBase.meta-mlvBase.real}`:' ✓'}</div>`:''}<div class="hint" style="font-size:12px">${o.vencem?`<span class="${risco?'warn':''}">${o.vencem} vence${o.vencem>1?'m':''} em 30 dias</span> · `:''}${o.recuperar.length} para recuperar · ${o.conquistar.length} para conquistar</div></button>
         ${o.id==='marluvas'&&MLV?`<button class="chip" data-mlvp title="Prêmio Marluvas" style="white-space:nowrap">🏆 Prêmio</button>`:''}</div>`};
     const top=metas.length?metas:com.slice(0,3);
     box.innerHTML=`<div class="card grid" style="gap:8px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><button class="chip" data-baab style="border:0;background:none;padding:0;text-align:left"><b>🎯 Base ativa</b> <span class="hint">${metas.length?`${bat}/${metas.length} fábricas na meta`:'clientes que compraram dentro do prazo'} ${aberto?'▴':'▾'}</span></button>${MLV?'<button class="chip" data-mlvp style="white-space:nowrap">🏆 Prêmio Marluvas</button>':''}</div>
@@ -3601,20 +3654,30 @@ async function baPlacar(box){if(!box) return; const ges=ehGestor(); let vend=meu
       ${!aberto&&com.length>top.length?`<button class="chip" data-baab>Ver todas as ${com.length} fábricas ▾</button>`:''}
       ${aberto&&ges?'<p class="hint" style="margin:0;font-size:12px">Meta e prazo de cada fábrica: Representadas › Políticas comerciais (“Meta de base ativa” e “Cliente inativa após”).</p>':''}</div>`};
   box.innerHTML='';
-  try{[B,MLV]=await Promise.all([baCalc(vend),fabRel('marluvas','premio')])}catch(e){return}
+  let MDX=null; try{[B,MLV,MDX]=await Promise.all([baCalc(vend),ges?fabRel('marluvas','premio'):null,fabRel('medix','carteira')])}catch(e){return}
+  if(MDX) baMedixPortal(B,MDX,vend); /* Prêmio Marluvas: só gestor */
   draw();
   box.onclick=e=>{const g=s=>e.target.closest(s);
     if(g('[data-baab]')){aberto=!aberto; LS('baAb',aberto); return draw()}
     if(g('[data-mlvp]')) return mlvPremio(vend);
     const l=g('[data-bal]'); if(l){const o=B.find(x=>x.rep===l.dataset.bal); if(o) baLista(o,vend)}}}
+/* Medix: carteira do portal (robô do PC lê "Carteira de Clientes" todo dia → fab_rel medix/carteira) */
+const MDX_FX={atencao:'Atenção',oportunidade:'Oportunidade',inativos:'Inativo',sem_compra_12m:'Sem compra +6m',ativos:'Ativo',financeiro:'Financeiro'};
+function baMedixPortal(B,MDX,vend){const o=B.find(x=>x.id==='medix'); if(!o) return; const d=MDX.dados||{}, L2=d.clientes||[], f={}; L2.forEach(x=>{const k=x.faixa==='sem_compra_12m'?'sem':x.faixa; f[k]=(f[k]||0)+1});
+  o.mdx={data:MDX.data,f}; const C=CLIS||[], byC={}; C.forEach(c=>{byC[c.cnpj]=c; (c.alias||[]).forEach(a=>byC[a]=c)}); const meu=c=>!vend||norm(c.v||'').startsWith(vend);
+  const ord={atencao:0,oportunidade:1,inativos:2,sem_compra_12m:3};
+  o.portal=L2.filter(x=>x.faixa in ord).map(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''); const c=byC[cn]||{cnpj:cn||('mdx'+x.cod),n:x.razao,fa:'',cid:(x.cidade||'')+(x.uf?'/'+x.uf:''),v:''};
+    return {c,x,info:`${MDX_FX[x.faixa]||x.faixa} · último pedido ${dbr(x.ult)} (${x.dias} dias) · 12 meses ${brl(x.ped12)}${x.fin&&!/dia/i.test(x.fin)?' · financeiro: '+x.fin:''}`}})
+    .filter(y=>!y.c.v||meu(y.c)).sort((a,b)=>ord[a.x.faixa]-ord[b.x.faixa]||(b.x.ped12||0)-(a.x.ped12||0))}
 /* janela com as três listas de uma fábrica */
 async function baLista(o,vend,abaIni){const ct=await baContatos(); let aba=abaIni||(o.manter.length?'manter':o.recuperar.length?'recuperar':'conquistar'), mais=false;
   document.querySelectorAll('.ov[data-ba]').forEach(x=>x.remove()); const ov=document.createElement('div'); ov.className='ov'; ov.dataset.ba=1; document.body.appendChild(ov);
   const ABAS=[['manter','🛡️ Manter','Compraram dentro do prazo, mas vencem nos próximos 30 dias. Se não recomprarem, saem da base ativa.'],
     ['recuperar','↩️ Recuperar',`Já compraram ${o.rep} e pararam (até 24 meses). Os que pararam há menos tempo vêm primeiro.`],
-    ['conquistar','🌱 Conquistar',`Compram outra fábrica conosco nos últimos 6 meses e nunca compraram ${o.rep}.`]];
+    ['conquistar','🌱 Conquistar',`Compram outra fábrica conosco nos últimos 6 meses e nunca compraram ${o.rep}.`],
+    ...(o.portal?[['portal','📋 Pela Medix',`Faixas do portal da Medix (atualizado ${o.mdx?dbr(o.mdx.data):''}): Atenção (61–90 dias) primeiro, depois Oportunidade (31–60), Inativos (91–180) e Sem compra há mais de 6 meses.`]]:[])];
   const falou=cn=>{const u=ct[cn]; return u?dias(u.slice(0,10)):null};
-  const linha=x=>{const c=x.c, f=falou(c.cnpj); const info=aba==='manter'?`último pedido ${dbr(x.ultimo)} · <b class="warn">${x.falta>0?`sai em ${x.falta} dia${x.falta===1?'':'s'}`:'sai hoje'}</b>`:aba==='recuperar'?`último pedido ${dbr(x.ultimo)} · há ${x.d} dias`:`compra ${esc(x.de.map(baCurto).join(', '))}`;
+  const linha=x=>{const c=x.c, f=falou(c.cnpj); const info=aba==='manter'?`último pedido ${dbr(x.ultimo)} · <b class="warn">${x.falta>0?`sai em ${x.falta} dia${x.falta===1?'':'s'}`:'sai hoje'}</b>`:aba==='recuperar'?`último pedido ${dbr(x.ultimo)} · há ${x.d} dias`:aba==='portal'?esc(x.info):`compra ${esc(x.de.map(baCurto).join(', '))}`;
     return `<button class="chip" data-bac="${esc(c.cnpj)}" style="text-align:left;display:flex;justify-content:space-between;gap:8px;width:100%;white-space:normal${f!=null&&f<7?';opacity:.6':''}"><span style="min-width:0"><b>${esc(c.fa||c.n)}</b> <span class="hint" style="font-size:12px">${esc(c.cid||'')}${!vend&&c.v?' · '+esc(c.v):''}</span><div class="hint" style="font-size:12px">${info}</div></span><span class="hint" style="font-size:12px;white-space:nowrap">${f==null?'':f===0?'✓ falou hoje':f<7?`✓ falou há ${f} d`:`falou há ${f} d`}</span></button>`};
   const draw=()=>{const ab=ABAS.find(a=>a[0]===aba), L2=o[aba], lim=mais?L2.length:40;
     ov.innerHTML=`<div class="sh grid" style="gap:10px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><b style="font-size:18px">🎯 ${esc(o.rep)} · base ativa</b><button class="chip" data-x>✕</button></div>
@@ -3642,7 +3705,7 @@ async function mlvItens(){if(MLV_IT&&Date.now()-MLV_IT.t<6e5) return MLV_IT.m; c
   try{(await apiAll(`pedido_itens?select=descricao,total,pedidos!inner(cnpj,data,representada,status)&pedidos.representada=eq.Marluvas&pedidos.data=gte.${ymdL(a)}`)).forEach(i=>{const p=i.pedidos||{}, st=String(p.status||'');
     if(st&&st!=='finalizado'&&!/^APROVADO/i.test(st)) return; const g=mlvLinha(i.descricao); if(!g) return; const cn=String(p.cnpj||'').replace(/\D/g,''); const x=m[g][cn]=m[g][cn]||{v:0,u:''}; x.v+=+i.total||0; if(String(p.data)>x.u) x.u=String(p.data).slice(0,10)})}catch(e){}
   MLV_IT={t:Date.now(),m}; return m}
-async function mlvPremio(vend){const [P,V,K,B]=await Promise.all([fabRel('marluvas','premio'),fabRel('marluvas','vendas'),fabRel('marluvas','cancelados'),baCalc(vend)]);
+async function mlvPremio(vend){if(!ehGestor()) return; const [P,V,K,B]=await Promise.all([fabRel('marluvas','premio'),fabRel('marluvas','vendas'),fabRel('marluvas','cancelados'),baCalc(vend)]);
   if(!P) return toast('Ainda não chegou o relatório da Marluvas');
   const d=P.dados||{}, o=B.find(x=>x.id==='marluvas')||{manter:[],recuperar:[],conquistar:[],ativos:0}, C=await clientes(), byC={}; C.forEach(c=>byC[c.cnpj]=c);
   const mes=String(d.ref||P.ref||'').slice(0,7), ini=mes+'-01';
@@ -3724,7 +3787,7 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     api(`contatos?select=cnpj,tipo,resultado,usuario_nome,criado_em&criado_em=gte.${d7.toISOString()}&order=criado_em.desc&limit=3000`).catch(()=>[])]);
   /* regra do vendedor (vendedor_carteira): só as representadas que ele atende e sem os clientes que ele não atende */
   const quem=vcartQuem(f.vend), RV=vcartReps(quem), bloq=vcartBloq(quem); f.reps=f.reps.filter(r=>RV.includes(r)); const RS=f.reps.length?f.reps:RV, restrito=RV.length<REPLIST.length;
-  const C=C0.filter(c=>!bloq(c.cnpj)), nBloq=C0.length-C.length;
+  const C1=C0.filter(c=>!ehCoop(c.cnpj)) /* cooperativas ficam em Clientes › Cooperativas */, C=C1.filter(c=>!bloq(c.cnpj)), nBloq=C1.length-C.length;
   const repsDe=c=>Object.entries(c.reps||{}).filter(([r])=>RS.includes(r));
   const pend=new Set(tar.map(t=>t.cnpj)); const ultR=c=>{const rs=repsDe(c).map(([,x])=>x.ultimo).filter(Boolean).sort(); return rs.pop()||null};
   const Vs=[...TIME]; const cids=[...new Set(C.map(c=>String(c.cid||'').split('/')[0].trim().toUpperCase()).filter(Boolean))].sort();
@@ -4304,8 +4367,9 @@ async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?
 /* ================= ajuda: tutoriais passo a passo, botão ? de cada tela e central de ajuda (nov/2026) ================= */
 const TUT={
  inicio:{t:'Primeiros passos',d:'Um passeio rápido pelo Início e pela barra de baixo.',r:'home',p:[
-  ['#faz','Aqui começa o seu dia: faça um orçamento novo, bata a carteira ou veja as tarefas para hoje.'],
-  ['.iblks','O resto do Início fica em blocos. Toque no título para abrir ou fechar: "Fábricas" tem o catálogo de cada representada, "Hoje" mostra quem merece atenção e "Minha semana" mostra a meta. O sistema lembra o que você deixou aberto.'],
+  ['.reps-c','No topo ficam as Fábricas: toque numa para abrir o catálogo e montar o orçamento.'],
+  ['.ini-kpi','Os números do dia: meta do mês, tarefas para hoje e oportunidades que os agentes acharam. Toque para abrir.'],
+  ['#faz','Aqui começa o seu dia: orçamento novo, bater carteira, tarefas e e-mails do dia. Logo abaixo vem o "Hoje para você". Minha semana e o resumo da equipe ficam em Relatórios.'],
   ['#nav','Esta barra leva às telas principais. Em Mais › Escolher atalhos você decide quais aparecem.'],
   ['#srchBtn','Buscar acha cliente, pedido ou produto de qualquer tela.'],
   ['#ajudaBtn','Ficou com dúvida? Toque no ? em qualquer tela e aparece o passo a passo dela.']]},

@@ -1,6 +1,7 @@
 {
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
+  {"id": "2026111203", "data": "2026-11-12", "tipo": "novo", "titulo": "Aviso de pedidos para transmitir", "texto": "Quem transmite os pedidos (Igor) vê uma faixa no topo de todas as telas quando há pedido \"Aprovado para transmissão\", com o número de pedidos e o botão Ver e transmitir. O número também aparece no atalho Transmitir e na aba do navegador, e chega um aviso quando entra pedido novo.", "onde": "Topo da tela · Transmitir", "gestor": true},
   {
    "id": "2026111202",
    "data": "2026-11-12",

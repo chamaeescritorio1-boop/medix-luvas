@@ -3576,10 +3576,10 @@ let PL_DICA={};
 function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector('#plDia')) return ''; return `<div class="pcb" style="border-left:4px solid var(--brand)"><div class="row" style="justify-content:space-between;gap:6px"><b>🗓️ Plano do dia${d.rep?' · '+esc(d.rep):''}</b>${d.troca?'<button class="chip" data-pltroca>⇄ Trocar este cliente</button>':''}</div><div style="font-size:14px">${esc(d.porque||d.ag)}</div>${d.falar?`<div class="hint" style="font-size:13px">💡 ${esc(d.falar)}</div>`:''}</div>`}
 /*PLANO-DIA-FIM*/
 /*COOP-INICIO*/
-/* Cooperativas à parte (12/11, pedido do Victor): Coopercitrus e Copercana saem do Bater carteira, do Plano do dia e das listas
+/* Cooperativas à parte (12/11, pedido do Victor): Coopercitrus, Copercana e Coplana saem do Bater carteira, do Plano do dia e das listas
    da Base ativa, porque só compram itens já cadastrados na cooperativa e as lojas dependem de aprovação da central.
    Ficam numa tela própria: Clientes › 🏢 Cooperativas (lojas por cooperativa, última compra por fábrica e itens que já compram). */
-const COOP_RAIZ={'45236791':'Coopercitrus','71320915':'Copercana'};
+const COOP_RAIZ={'45236791':'Coopercitrus','71320915':'Copercana','48662175':'Coplana'};
 const coopDe=cn=>COOP_RAIZ[String(cn||'').replace(/\D/g,'').slice(0,8)]||'', ehCoop=cn=>!!coopDe(cn);
 let COOP_IT={};
 async function coopItens(raiz){if(COOP_IT[raiz]) return COOP_IT[raiz]; const a=new Date(); a.setMonth(a.getMonth()-24); const m={};

@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111206",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Cooperativas fora do Bater carteira",
+   "texto": "Coopercitrus e Copercana saíram do Bater carteira, do Plano do dia e das listas da Base ativa. Em Clientes, o novo botão 🏢 Cooperativas mostra as lojas de cada cooperativa (última compra por fábrica) e a aba 📦 Itens que já compram, com o que já está cadastrado lá para oferecer às lojas."
+  },
+  {
    "id": "2026111205",
    "data": "2026-11-12",
    "tipo": "novo",

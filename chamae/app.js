@@ -2654,7 +2654,8 @@ async function clientesView(){const m=$('#main'); if(ctx.cnpj) return fichaClien
    <div id="clres" style="margin-top:10px"><p class="hint">Carregando base de clientes…</p></div>`;
   $('#cimp').onclick=()=>importarClientes(); $('#cnovo').onclick=()=>fichaCliente('',true); if(ehGestor()){$('#cexcl').onclick=()=>cexcPainel(); cexcLista(true).then(()=>{const n=cexcPend().length, b=$('#cexcn'); if(b){b.textContent=n; b.hidden=!n}})} $('#csync').onclick=e=>sincronizarReprio(e.target).then(()=>clientesView());
   /* Clientes abre sempre na lista e filtros; Bater carteira é a 2ª opção (ou vem do Início com cm:'cart') */
-  const modo=ctx.cm==='cart'?'cart':'lista'; m.querySelector('.card.grid').insertAdjacentHTML('beforebegin',`<div class="row" style="margin-top:10px"><button class="chip${modo==='lista'?' on':''}" data-cm="lista">📋 Lista e filtros</button><button class="chip${modo==='cart'?' on':''}" data-cm="cart">📞 Bater carteira</button></div>`); m.querySelector('[data-cm]').parentNode.onclick=e=>{const b=e.target.closest('[data-cm]'); if(b) go('cli',{cm:b.dataset.cm})};
+  const modo=ctx.cm==='cart'?'cart':ctx.cm==='coop'?'coop':'lista'; m.querySelector('.card.grid').insertAdjacentHTML('beforebegin',`<div class="row" style="margin-top:10px"><button class="chip${modo==='lista'?' on':''}" data-cm="lista">📋 Lista e filtros</button><button class="chip${modo==='cart'?' on':''}" data-cm="cart">📞 Bater carteira</button><button class="chip${modo==='coop'?' on':''}" data-cm="coop">🏢 Cooperativas</button></div>`); m.querySelector('[data-cm]').parentNode.onclick=e=>{const b=e.target.closest('[data-cm]'); if(b) go('cli',{cm:b.dataset.cm})};
+  if(modo==='coop'){m.querySelector('#clq').closest('.card').hidden=true; return cooperativas($('#clres'))}
   if(modo==='cart'){m.querySelector('#clq').closest('.card').hidden=true; const pb=document.createElement('div'); pb.id='plDia'; pb.style.marginTop='10px'; $('#clres').before(pb); const ba=document.createElement('div'); ba.id='baPl'; ba.style.marginTop='10px'; pb.before(ba); await clientes(); if(!m.isConnected) return; baPlacar(ba); planoDia(pb); return carteira($('#clres'))}
   const C=await clientes(); if(!m.isConnected) return; const Vs=[...TIME]; $('#clv').innerHTML='<option value="">Todos os vendedores</option>'+Vs.map(v=>`<option${v===f.vend?' selected':''}>${esc(v)}</option>`).join('');
   const ult=c=>{const d=Object.values(c.reps).map(x=>x.ultimo).filter(Boolean).sort().pop(); return d||null};
@@ -3494,7 +3495,7 @@ function plCotas(G,MT,N){const reps=Object.keys(G).filter(r=>G[r].length); if(!r
 /* monta (ou remonta) o plano do dia */
 async function plMontar(vend,manter){const tm=plTema(), {todos,RT,MT}=await plCandidatos(vend);
   /* só as representadas e clientes que o vendedor atende (vendedor_carteira) */
-  {await vcartLista(); const RV=vcartReps(vend), bl=vcartBloq(vend); for(let i=todos.length-1;i>=0;i--){const x=todos[i]; if((x.rep&&REPLIST.includes(x.rep)&&!RV.includes(x.rep))||bl(x.cnpj)) todos.splice(i,1)}}
+  {await vcartLista(); const RV=vcartReps(vend), bl=vcartBloq(vend); for(let i=todos.length-1;i>=0;i--){const x=todos[i]; if((x.rep&&REPLIST.includes(x.rep)&&!RV.includes(x.rep))||bl(x.cnpj)||ehCoop(x.cnpj)) todos.splice(i,1)}}
   todos.forEach(x=>{x.sc2=(x.sc||x.v||1)*(tm.ag.includes(x.ag)?2:1)*(MT.atr&&MT.atr.has(x.rep)?1.3:1); if(tm.ag.includes(x.ag)) x.tema=true});
   const usados=new Set((manter||[]).map(x=>x.cnpj)); RT.forEach(x=>usados.add(x.cnpj));
   const G={}; todos.filter(x=>x.ag!=='ciclo'||tm.ag.includes('ciclo')).sort((a,b)=>b.sc2-a.sc2).forEach(x=>{(G[x.rep]=G[x.rep]||[]).push(x)});
@@ -3574,6 +3575,41 @@ async function planoDia(box){if(!box) return; const ges=ehGestor(); let vend=meu
 let PL_DICA={};
 function plDicaHtml(cnpj){const d=PL_DICA[cnpj]; if(!d||!document.querySelector('#plDia')) return ''; return `<div class="pcb" style="border-left:4px solid var(--brand)"><div class="row" style="justify-content:space-between;gap:6px"><b>🗓️ Plano do dia${d.rep?' · '+esc(d.rep):''}</b>${d.troca?'<button class="chip" data-pltroca>⇄ Trocar este cliente</button>':''}</div><div style="font-size:14px">${esc(d.porque||d.ag)}</div>${d.falar?`<div class="hint" style="font-size:13px">💡 ${esc(d.falar)}</div>`:''}</div>`}
 /*PLANO-DIA-FIM*/
+/*COOP-INICIO*/
+/* Cooperativas à parte (12/11, pedido do Victor): Coopercitrus e Copercana saem do Bater carteira, do Plano do dia e das listas
+   da Base ativa, porque só compram itens já cadastrados na cooperativa e as lojas dependem de aprovação da central.
+   Ficam numa tela própria: Clientes › 🏢 Cooperativas (lojas por cooperativa, última compra por fábrica e itens que já compram). */
+const COOP_RAIZ={'45236791':'Coopercitrus','71320915':'Copercana'};
+const coopDe=cn=>COOP_RAIZ[String(cn||'').replace(/\D/g,'').slice(0,8)]||'', ehCoop=cn=>!!coopDe(cn);
+let COOP_IT={};
+async function coopItens(raiz){if(COOP_IT[raiz]) return COOP_IT[raiz]; const a=new Date(); a.setMonth(a.getMonth()-24); const m={};
+  try{(await apiAll(`pedido_itens?select=cod,descricao,qtd,total,pedidos!inner(cnpj,data,representada,status)&pedidos.cnpj=like.${raiz}*&pedidos.data=gte.${ymdL(a)}`)).forEach(i=>{const p=i.pedidos||{}, st=String(p.status||'');
+    if(st&&st!=='finalizado'&&!/^APROVADO/i.test(st)) return; const r=p.representada||'', k=r+'|'+String(i.cod||'').trim(); const x=m[k]=m[k]||{rep:r,cod:String(i.cod||'').trim(),d:String(i.descricao||'').split(' |')[0],q:0,v:0,u:'',lojas:new Set()};
+    x.q+=+i.qtd||0; x.v+=+i.total||0; if(String(p.data)>x.u) x.u=String(p.data).slice(0,10); x.lojas.add(String(p.cnpj||'').replace(/\D/g,''))})}catch(e){}
+  return COOP_IT[raiz]=Object.values(m).sort((a,b)=>b.v-a.v)}
+async function cooperativas(box){const C=await clientes(); if(!box.isConnected) return; let sel=L('coopSel')||Object.keys(COOP_RAIZ)[0], aba='lojas', rep='', q='';
+  const lojas=r=>C.filter(c=>String(c.cnpj).slice(0,8)===r);
+  const ultC=c=>Object.values(c.reps||{}).map(x=>x.ultimo).filter(Boolean).sort().pop()||'';
+  const draw=async()=>{const LJ=lojas(sel), reps=[...new Set(LJ.flatMap(c=>Object.keys(c.reps||{})))].sort(), ativ=r=>LJ.filter(c=>c.reps[r]&&c.reps[r].ultimo&&dias(String(c.reps[r].ultimo).slice(0,10))<=90).length;
+    const top=`<div class="card grid" style="gap:10px"><div class="row" style="justify-content:space-between;gap:8px"><b>🏢 Cooperativas</b><span class="hint" style="font-size:12px">Fora do Bater carteira: só compram itens já cadastrados e a loja depende da central.</span></div>
+      <div class="row" style="gap:6px">${Object.entries(COOP_RAIZ).map(([r,n])=>`<button class="chip${sel===r?' on':''}" data-cpsel="${r}">${esc(n)} <span class="hint">${lojas(r).length} lojas</span></button>`).join('')}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${reps.map(r=>`<span class="tag" style="font-size:12px">${esc(RCURTO[r]||r)}: <b>${ativ(r)}</b>/${LJ.filter(c=>c.reps[r]).length} lojas ativas (90 d)</span>`).join('')}</div>
+      <div class="row" style="gap:6px"><button class="chip${aba==='lojas'?' on':''}" data-cpaba="lojas">🏬 Lojas</button><button class="chip${aba==='itens'?' on':''}" data-cpaba="itens">📦 Itens que já compram</button></div></div>`;
+    if(aba==='lojas'){const L2=LJ.slice().sort((a,b)=>ultC(b).localeCompare(ultC(a)));
+      box.innerHTML=top+`<div class="grid" style="gap:6px;margin-top:10px;grid-template-columns:minmax(0,1fr)">${L2.map(c=>`<button class="chip" data-cpc="${esc(c.cnpj)}" style="text-align:left;width:100%;white-space:normal;display:block"><b>${esc(c.cid||c.fa||c.n)}</b> <span class="hint" style="font-size:12px">${esc(fmtCnpj(c.cnpj))}${c.v?' · '+esc(c.v):''}</span><div style="margin-top:4px">${repTags(c,6)}</div></button>`).join('')||'<p class="hint">Nenhuma loja cadastrada.</p>'}</div>`}
+    else{box.innerHTML=top+'<p class="hint" style="margin-top:10px">Carregando os itens que a cooperativa já compra…</p>'; const IT=await coopItens(sel); if(!box.isConnected) return;
+      const RS=[...new Set(IT.map(x=>x.rep))].sort(); if(rep&&!RS.includes(rep)) rep=''; const w=norm(q).trim(); const L2=IT.filter(x=>(!rep||x.rep===rep)&&(!w||norm(x.cod+' '+x.d).includes(w)));
+      box.innerHTML=top+`<div class="card grid" style="gap:8px;margin-top:10px"><p class="hint" style="margin:0;font-size:12px">Itens comprados por qualquer loja da ${esc(COOP_RAIZ[sel])} nos últimos 24 meses: são os que já estão cadastrados lá e podem ser oferecidos às lojas.</p>
+        <div class="row" style="gap:6px"><select data-cprep style="width:auto"><option value="">Todas as fábricas</option>${RS.map(r=>`<option${r===rep?' selected':''}>${esc(r)}</option>`).join('')}</select><input data-cpq placeholder="Buscar código ou descrição" value="${esc(q)}" style="flex:1;min-width:160px"></div>
+        <div class="grid" style="gap:4px;grid-template-columns:minmax(0,1fr)">${L2.slice(0,150).map(x=>`<div class="row" style="justify-content:space-between;gap:8px;font-size:13px;border-bottom:1px solid var(--line);padding:4px 0;flex-wrap:nowrap"><span style="min-width:0"><b>${esc(x.cod)}</b> ${esc(x.d)} <span class="hint">· ${esc(RCURTO[x.rep]||x.rep)} · ${x.lojas.size} loja${x.lojas.size>1?'s':''}</span></span><span class="hint" style="white-space:nowrap">${(+x.q).toLocaleString('pt-BR')} un · últ. ${dbr(x.u)}</span></div>`).join('')||'<p class="hint">Nenhum item encontrado.</p>'}</div>
+        ${L2.length>150?`<p class="hint" style="margin:0">Mostrando 150 de ${L2.length}. Use a busca.</p>`:''}</div>`;
+      const qi=box.querySelector('[data-cpq]'); if(qi&&q){qi.focus(); qi.setSelectionRange(q.length,q.length)}}};
+  box.onclick=e=>{const g=s=>e.target.closest(s); const s=g('[data-cpsel]'); if(s){sel=s.dataset.cpsel; LS('coopSel',sel); return draw()} const a=g('[data-cpaba]'); if(a){aba=a.dataset.cpaba; return draw()}
+    const c=g('[data-cpc]'); if(c){const l=lojas(sel).map(x=>x.cnpj); return painelCliente(c.dataset.cpc,l)}};
+  box.onchange=e=>{if(e.target.matches('[data-cprep]')){rep=e.target.value; draw()}};
+  let tq; box.oninput=e=>{if(e.target.matches('[data-cpq]')){q=e.target.value; clearTimeout(tq); tq=setTimeout(draw,300)}};
+  draw()}
+/*COOP-FIM*/
 /*BASE-ATIVA-INICIO*/
 /* Base ativa por fábrica (12/11, pedido do Victor a partir do Xadrez da Camper e do relatório de prêmio da Marluvas):
    - Meta de base ativa por representada (regras.base_meta) e prazo de inativação (regras.inativa_dias, padrão 90 dias).
@@ -3587,7 +3623,7 @@ let BA_CT=null;
 async function baContatos(){if(BA_CT&&Date.now()-BA_CT.t<3e5) return BA_CT.m; const m={}; try{(await apiAll(`contatos?select=cnpj,criado_em&criado_em=gte.${agMais(-30)}`)).forEach(c=>{const k=String(c.cnpj||'').replace(/\D/g,''); if(k&&(!m[k]||c.criado_em>m[k])) m[k]=c.criado_em})}catch(e){} BA_CT={t:Date.now(),m}; return m}
 /* calcula, para cada representada, os ativos e as três listas; vend = só a carteira desse vendedor nas listas */
 async function baCalc(vend){const [C,R]=await Promise.all([clientes(),reps().catch(()=>[])]); await vcartLista();
-  const bl=vend?vcartBloq(vend):()=>false, RV=vend?vcartReps(vend):REPLIST, meu=c=>!vend||norm(c.v||'').startsWith(vend);
+  const bl0=vend?vcartBloq(vend):()=>false, bl=cn=>bl0(cn)||ehCoop(cn), RV=vend?vcartReps(vend):REPLIST, meu=c=>!vend||norm(c.v||'').startsWith(vend);
   const out=[];
   (R||[]).filter(r=>r.ativa!==false).forEach(r=>{const nome=HIST_REP[r.id]||r.nome, D=baPrazo(r), meta=baMeta(r);
     const o={id:r.id,rep:nome,prazo:D,meta,ativos:0,vencem:0,manter:[],recuperar:[],conquistar:[],atende:RV.includes(nome)};
@@ -3751,7 +3787,7 @@ async function carteira(box){const f=Object.assign({ord:'ret',vend:meuVend(),rep
     api(`contatos?select=cnpj,tipo,resultado,usuario_nome,criado_em&criado_em=gte.${d7.toISOString()}&order=criado_em.desc&limit=3000`).catch(()=>[])]);
   /* regra do vendedor (vendedor_carteira): só as representadas que ele atende e sem os clientes que ele não atende */
   const quem=vcartQuem(f.vend), RV=vcartReps(quem), bloq=vcartBloq(quem); f.reps=f.reps.filter(r=>RV.includes(r)); const RS=f.reps.length?f.reps:RV, restrito=RV.length<REPLIST.length;
-  const C=C0.filter(c=>!bloq(c.cnpj)), nBloq=C0.length-C.length;
+  const C1=C0.filter(c=>!ehCoop(c.cnpj)) /* cooperativas ficam em Clientes › Cooperativas */, C=C1.filter(c=>!bloq(c.cnpj)), nBloq=C1.length-C.length;
   const repsDe=c=>Object.entries(c.reps||{}).filter(([r])=>RS.includes(r));
   const pend=new Set(tar.map(t=>t.cnpj)); const ultR=c=>{const rs=repsDe(c).map(([,x])=>x.ultimo).filter(Boolean).sort(); return rs.pop()||null};
   const Vs=[...TIME]; const cids=[...new Set(C.map(c=>String(c.cid||'').split('/')[0].trim().toUpperCase()).filter(Boolean))].sort();

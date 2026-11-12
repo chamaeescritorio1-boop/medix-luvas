@@ -2,6 +2,45 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111204",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Base ativa por fábrica e Prêmio Marluvas no Bater carteira",
+   "texto": "No topo do Bater carteira aparece a Base ativa de cada fábrica (clientes que compraram no prazo × meta da fábrica, ex.: Camper 25). Toque na fábrica para ver 3 listas: Manter (vencem em 30 dias), Recuperar (pararam) e Conquistar (compram outra fábrica e nunca esta). O Plano do dia agora traz primeiro quem vai sair da base. O 🏆 Prêmio Marluvas mostra os 6 indicadores do relatório diário da Marluvas (chega sozinho pelo e-mail), quanto falta e quem chamar em cada um."
+  },
+  {
+   "id": "2026111202",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "gestor": true,
+   "titulo": "A receber: importar a nota de serviço (NFS-e) da comissão",
+   "texto": "O botão ⬆ Importar XML / NF-e do A receber agora aceita o XML da NFS-e que a Chamaê emite para a fábrica. Ele reconhece a fábrica pelo CNPJ, mostra valor e vencimento para conferir e lança no A receber. Se já existir a comissão do mês dessa fábrica lançada à mão, oferece atualizar em vez de duplicar. Mandar a mesma nota de novo não duplica."
+  },
+  {
+   "id": "2026111203",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Aviso de pedidos para transmitir",
+   "texto": "Quem transmite os pedidos (Igor) vê uma faixa no topo de todas as telas quando há pedido \"Aprovado para transmissão\", com o número de pedidos e o botão Ver e transmitir. O número também aparece no atalho Transmitir e na aba do navegador, e chega um aviso quando entra pedido novo.",
+   "onde": "Topo da tela · Transmitir",
+   "gestor": true
+  },
+  {
+   "id": "2026111202",
+   "data": "2026-11-12",
+   "tipo": "correcao",
+   "titulo": "Busca de clientes mais esperta",
+   "texto": "Agora dá para achar o cliente digitando só o começo ou as iniciais, com ou sem espaço e ponto: R X M, RXM ou R.X.M acham a R X M COMERCIO; IGT acha Irmãos Gonçalves Teixeira. Procura no nome e na fantasia ao mesmo tempo e mostra primeiro o que mais parece. Vale no orçamento, na lista de Clientes, no Bater carteira, no Buscar e na Agenda."
+  },
+  {
+   "id": "2026111201",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "gestor": true,
+   "titulo": "Financeiro: importar XML da NF-e no A receber",
+   "texto": "No A receber agora tem o botão ⬆ Importar XML / NF-e (também dá para arrastar os arquivos para a tela). Ele lê a nota igual à aba Comissões / NF-e e já lança as parcelas da comissão no A receber, uma por duplicata. Se tiver NF-e nova do e-mail, aparece o botão 📧 para importar ali mesmo."
+  },
+  {
    "id": "2026111110",
    "data": "2026-11-11",
    "tipo": "novo",

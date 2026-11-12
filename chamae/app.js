@@ -3610,7 +3610,7 @@ async function baPlacar(box){if(!box) return; const ges=ehGestor(); let vend=meu
       return `<div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><button class="chip" data-bal="${esc(o.rep)}" style="flex:1 1 auto;min-width:0;text-align:left;display:block;white-space:normal">
         <div class="row" style="justify-content:space-between;gap:6px;flex-wrap:nowrap"><b>${esc(baCurto(o.rep))}</b><span style="white-space:nowrap"><b>${o.ativos}</b>${o.meta?`<span class="hint">/${o.meta}</span> ${ok?'<span class="ok">✓</span>':''}`:' <span class="hint">ativos</span>'}</span></div>
         ${o.meta?`<div class="mbar" style="height:5px;margin:4px 0"><i style="width:${p}%${ok?'':';background:var(--warn,#f2b632)'}"></i></div>`:''}
-        ${o.id==='marluvas'&&mlvBase?`<div class="hint" style="font-size:12px">Pela Marluvas (por loja/filial): <b>${mlvBase.real}/${mlvBase.meta}</b>${mlvBase.real<mlvBase.meta?` · faltam ${mlvBase.meta-mlvBase.real}`:' ✓'}</div>`:''}<div class="hint" style="font-size:12px">${o.vencem?`<span class="${risco?'warn':''}">${o.vencem} vence${o.vencem>1?'m':''} em 30 dias</span> · `:''}${o.recuperar.length} para recuperar · ${o.conquistar.length} para conquistar</div></button>
+        ${o.id==='medix'&&o.mdx?`<div class="hint" style="font-size:12px">Pela Medix (portal): <b>${o.mdx.f.ativos||0}</b> ativos em 30 dias · ${o.mdx.f.oportunidade||0} oportunidade · <span class="${o.mdx.f.atencao?'warn':''}">${o.mdx.f.atencao||0} atenção</span> · ${o.mdx.f.inativos||0} inativos</div>`:''}${o.id==='marluvas'&&mlvBase?`<div class="hint" style="font-size:12px">Pela Marluvas (por loja/filial): <b>${mlvBase.real}/${mlvBase.meta}</b>${mlvBase.real<mlvBase.meta?` · faltam ${mlvBase.meta-mlvBase.real}`:' ✓'}</div>`:''}<div class="hint" style="font-size:12px">${o.vencem?`<span class="${risco?'warn':''}">${o.vencem} vence${o.vencem>1?'m':''} em 30 dias</span> · `:''}${o.recuperar.length} para recuperar · ${o.conquistar.length} para conquistar</div></button>
         ${o.id==='marluvas'&&MLV?`<button class="chip" data-mlvp title="Prêmio Marluvas" style="white-space:nowrap">🏆 Prêmio</button>`:''}</div>`};
     const top=metas.length?metas:com.slice(0,3);
     box.innerHTML=`<div class="card grid" style="gap:8px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><button class="chip" data-baab style="border:0;background:none;padding:0;text-align:left"><b>🎯 Base ativa</b> <span class="hint">${metas.length?`${bat}/${metas.length} fábricas na meta`:'clientes que compraram dentro do prazo'} ${aberto?'▴':'▾'}</span></button>${MLV?'<button class="chip" data-mlvp style="white-space:nowrap">🏆 Prêmio Marluvas</button>':''}</div>
@@ -3618,20 +3618,30 @@ async function baPlacar(box){if(!box) return; const ges=ehGestor(); let vend=meu
       ${!aberto&&com.length>top.length?`<button class="chip" data-baab>Ver todas as ${com.length} fábricas ▾</button>`:''}
       ${aberto&&ges?'<p class="hint" style="margin:0;font-size:12px">Meta e prazo de cada fábrica: Representadas › Políticas comerciais (“Meta de base ativa” e “Cliente inativa após”).</p>':''}</div>`};
   box.innerHTML='';
-  try{[B,MLV]=await Promise.all([baCalc(vend),ges?fabRel('marluvas','premio'):null])}catch(e){return} /* Prêmio Marluvas: só gestor */
+  let MDX=null; try{[B,MLV,MDX]=await Promise.all([baCalc(vend),ges?fabRel('marluvas','premio'):null,fabRel('medix','carteira')])}catch(e){return}
+  if(MDX) baMedixPortal(B,MDX,vend); /* Prêmio Marluvas: só gestor */
   draw();
   box.onclick=e=>{const g=s=>e.target.closest(s);
     if(g('[data-baab]')){aberto=!aberto; LS('baAb',aberto); return draw()}
     if(g('[data-mlvp]')) return mlvPremio(vend);
     const l=g('[data-bal]'); if(l){const o=B.find(x=>x.rep===l.dataset.bal); if(o) baLista(o,vend)}}}
+/* Medix: carteira do portal (robô do PC lê "Carteira de Clientes" todo dia → fab_rel medix/carteira) */
+const MDX_FX={atencao:'Atenção',oportunidade:'Oportunidade',inativos:'Inativo',sem_compra_12m:'Sem compra +6m',ativos:'Ativo',financeiro:'Financeiro'};
+function baMedixPortal(B,MDX,vend){const o=B.find(x=>x.id==='medix'); if(!o) return; const d=MDX.dados||{}, L2=d.clientes||[], f={}; L2.forEach(x=>{const k=x.faixa==='sem_compra_12m'?'sem':x.faixa; f[k]=(f[k]||0)+1});
+  o.mdx={data:MDX.data,f}; const C=CLIS||[], byC={}; C.forEach(c=>{byC[c.cnpj]=c; (c.alias||[]).forEach(a=>byC[a]=c)}); const meu=c=>!vend||norm(c.v||'').startsWith(vend);
+  const ord={atencao:0,oportunidade:1,inativos:2,sem_compra_12m:3};
+  o.portal=L2.filter(x=>x.faixa in ord).map(x=>{const cn=String(x.cnpj||'').replace(/\D/g,''); const c=byC[cn]||{cnpj:cn||('mdx'+x.cod),n:x.razao,fa:'',cid:(x.cidade||'')+(x.uf?'/'+x.uf:''),v:''};
+    return {c,x,info:`${MDX_FX[x.faixa]||x.faixa} · último pedido ${dbr(x.ult)} (${x.dias} dias) · 12 meses ${brl(x.ped12)}${x.fin&&!/dia/i.test(x.fin)?' · financeiro: '+x.fin:''}`}})
+    .filter(y=>!y.c.v||meu(y.c)).sort((a,b)=>ord[a.x.faixa]-ord[b.x.faixa]||(b.x.ped12||0)-(a.x.ped12||0))}
 /* janela com as três listas de uma fábrica */
 async function baLista(o,vend,abaIni){const ct=await baContatos(); let aba=abaIni||(o.manter.length?'manter':o.recuperar.length?'recuperar':'conquistar'), mais=false;
   document.querySelectorAll('.ov[data-ba]').forEach(x=>x.remove()); const ov=document.createElement('div'); ov.className='ov'; ov.dataset.ba=1; document.body.appendChild(ov);
   const ABAS=[['manter','🛡️ Manter','Compraram dentro do prazo, mas vencem nos próximos 30 dias. Se não recomprarem, saem da base ativa.'],
     ['recuperar','↩️ Recuperar',`Já compraram ${o.rep} e pararam (até 24 meses). Os que pararam há menos tempo vêm primeiro.`],
-    ['conquistar','🌱 Conquistar',`Compram outra fábrica conosco nos últimos 6 meses e nunca compraram ${o.rep}.`]];
+    ['conquistar','🌱 Conquistar',`Compram outra fábrica conosco nos últimos 6 meses e nunca compraram ${o.rep}.`],
+    ...(o.portal?[['portal','📋 Pela Medix',`Faixas do portal da Medix (atualizado ${o.mdx?dbr(o.mdx.data):''}): Atenção (61–90 dias) primeiro, depois Oportunidade (31–60), Inativos (91–180) e Sem compra há mais de 6 meses.`]]:[])];
   const falou=cn=>{const u=ct[cn]; return u?dias(u.slice(0,10)):null};
-  const linha=x=>{const c=x.c, f=falou(c.cnpj); const info=aba==='manter'?`último pedido ${dbr(x.ultimo)} · <b class="warn">${x.falta>0?`sai em ${x.falta} dia${x.falta===1?'':'s'}`:'sai hoje'}</b>`:aba==='recuperar'?`último pedido ${dbr(x.ultimo)} · há ${x.d} dias`:`compra ${esc(x.de.map(baCurto).join(', '))}`;
+  const linha=x=>{const c=x.c, f=falou(c.cnpj); const info=aba==='manter'?`último pedido ${dbr(x.ultimo)} · <b class="warn">${x.falta>0?`sai em ${x.falta} dia${x.falta===1?'':'s'}`:'sai hoje'}</b>`:aba==='recuperar'?`último pedido ${dbr(x.ultimo)} · há ${x.d} dias`:aba==='portal'?esc(x.info):`compra ${esc(x.de.map(baCurto).join(', '))}`;
     return `<button class="chip" data-bac="${esc(c.cnpj)}" style="text-align:left;display:flex;justify-content:space-between;gap:8px;width:100%;white-space:normal${f!=null&&f<7?';opacity:.6':''}"><span style="min-width:0"><b>${esc(c.fa||c.n)}</b> <span class="hint" style="font-size:12px">${esc(c.cid||'')}${!vend&&c.v?' · '+esc(c.v):''}</span><div class="hint" style="font-size:12px">${info}</div></span><span class="hint" style="font-size:12px;white-space:nowrap">${f==null?'':f===0?'✓ falou hoje':f<7?`✓ falou há ${f} d`:`falou há ${f} d`}</span></button>`};
   const draw=()=>{const ab=ABAS.find(a=>a[0]===aba), L2=o[aba], lim=mais?L2.length:40;
     ov.innerHTML=`<div class="sh grid" style="gap:10px"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:nowrap"><b style="font-size:18px">🎯 ${esc(o.rep)} · base ativa</b><button class="chip" data-x>✕</button></div>

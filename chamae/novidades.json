@@ -5,6 +5,13 @@
    "id": "2026111205",
    "data": "2026-11-12",
    "tipo": "novo",
+   "titulo": "Medix: carteira do portal no Bater carteira",
+   "texto": "Na Base ativa, a Medix mostra as faixas do portal da Medix (ativos, oportunidade, atenção, inativos), lidas todo dia pelo robô. Toque na Medix e abra a aba 📋 Pela Medix para ver quem está em Atenção e Oportunidade e ligar primeiro."
+  },
+  {
+   "id": "2026111205",
+   "data": "2026-11-12",
+   "tipo": "novo",
    "titulo": "Início mais enxuto",
    "texto": "O Início ficou mais limpo: Fábricas no topo, depois 3 números do dia (meta do mês, tarefas para hoje e oportunidades), os botões principais (agora com E-mails do dia) e o Hoje para você. Minha semana e o Resumo da equipe passaram para Relatórios."
   },

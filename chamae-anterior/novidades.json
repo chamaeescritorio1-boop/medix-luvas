@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111602",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: relatório do que acabou e do que vai acabar",
+   "texto": "Na aba Em falta do Sell-out, os botões 📄 PDF e 💬 WhatsApp geram um PDF com foto, o que já acabou e o que vai acabar, com a sugestão de compra, para mandar ao comprador da Palácio. E todo dia, quando chega o relatório da Palácio, sai um e-mail automático com essas listas e a planilha em anexo (quem recebe: Sell-out › ⚙️ Configurar)."
+  },
+  {
    "id": "2026111601",
    "data": "2026-11-16",
    "tipo": "novo",

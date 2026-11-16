@@ -5816,8 +5816,9 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     ${rel&&idade>1&&S.datas[0]&&S.datas[0].data===rel.data?`<p class="warn" style="margin:6px 0">O último relatório é de ${dbr(rel.data)} (há ${idade} dias). Se a Palácio já mandou o de hoje, confira se o robô do e-mail está configurado, ou suba o arquivo aqui.</p>`:''}
     <div class="row ctabs" style="margin:10px 0">${[['res','Resumo'],['fa',`⛔ Em falta${nFa?' ('+nFa+')':''}`],['it','Itens'],['pp','🛒 Pré-pedido'],['per','Vendas por período'],['cfg','⚙️ Configurar']].map(([k,l])=>`<button class="chip${f.ab===k?' on':''}" data-soab="${k}">${l}</button>`).join('')}</div>
     ${['res','it','fa'].includes(f.ab)?`<div class="row" style="gap:6px;margin-bottom:6px"><span class="hint">Fábrica:</span>${['',...fabs].map(x=>`<button class="chip${f.fab===x?' on':''}" data-sofab="${esc(x)}">${x?esc(x):'Todas'}</button>`).join('')}</div>
-`:''}${['res','it','pp'].includes(f.ab)&&C.fils.length>1?`<div class="row" style="gap:6px;margin-bottom:8px"><span class="hint">Estoque de:</span><select id="sofilsel" style="width:auto">${['',...C.fils].map(x=>`<option value="${x}"${f.fil===x?' selected':''}>${x?'Filial '+x:'Todas as filiais (somado)'}</option>`).join('')}</select></div>`:''}`};
-  const Rf=()=>C.R.filter(r=>!f.fab||r.fab===f.fab);
+${(()=>{const MK=f.fab?[...new Set(C.R.filter(r=>r.fab===f.fab).map(r=>r.m).filter(Boolean))].sort():[]; return MK.length>1?`<div class="row" style="gap:6px;margin-bottom:6px"><span class="hint">Marca:</span>${['',...MK].map(x=>`<button class="chip${(f.marca||'')===x?' on':''}" data-somk="${esc(x)}">${x?esc(x):'Todas'}</button>`).join('')}</div>`:''})()}`:''}${['res','it','pp'].includes(f.ab)&&C.fils.length>1?`<div class="row" style="gap:6px;margin-bottom:8px"><span class="hint">Estoque de:</span><select id="sofilsel" style="width:auto">${['',...C.fils].map(x=>`<option value="${x}"${f.fil===x?' selected':''}>${x?'Filial '+x:'Todas as filiais (somado)'}</option>`).join('')}</select></div>`:''}`};
+  /* marca dentro da fábrica (Marcon × Evald), pedido do Victor 16/11 para a apresentação da GurgelMix */
+  const Rf=()=>C.R.filter(r=>(!f.fab||r.fab===f.fab)&&(!f.fab||!f.marca||r.m===f.marca));
   /* vendas com nome em cada número (pedido do Victor: "o jeito que ficou as vendas de 7/15/30/60 dias ta horrivel de entender, assim como a dos meses") */
   const dRel=rel?rel.data:new Date().toISOString().slice(0,10);
   const mesN=k=>{const d=new Date(dRel+'T12:00'); d.setDate(1); d.setMonth(d.getMonth()-k); return MESES[d.getMonth()].slice(0,3).toLowerCase()+'/'+String(d.getFullYear()).slice(2)};
@@ -5991,7 +5992,7 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     const IM={}, all=[...F,...K]; for(let i=0;i<all.length;i+=8) await Promise.all(all.slice(i,i+8).map(async r=>{const u=foto(r); if(u) IM[r.c]=await imgData(u,240)}));
     const logo=await imgData('logo.jpg',900), DEMO=SODEMO;
     /* fábricas do relatório: vão no título (as logos na capa ficaram feias e saíram, Victor 16/11) */
-    const FB=[...new Set([...F,...K].map(r=>r.rep||r.fab).filter(Boolean))];
+    const tc=x=>String(x).toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()), FB=f.fab&&f.marca?[tc(f.marca)]:[...new Set([...F,...K].map(r=>r.rep||r.fab).filter(Boolean))];
     const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=210, H=297, M=12, CW=W-2*M; let y=0;
     const NAVY=[28,35,64], GOLD=[242,182,50], BAL=[253,244,214], GREY=[90,96,120], LINE=[223,226,236], RED=[200,38,38], REDL=[254,236,236], ORA=[222,110,20], ORAL=[255,241,226], GRN=[22,128,72], GRNL=[226,245,234], SOFT=[246,247,251];
     const dt=dbr(rel.data), cliNome=DEMO?'Relatório de exemplo':CI.nome, t=s=>String(s==null?'':s).replace(/[^\x20-\x7E -ÿ]/g,'').replace(/\s+/g,' ').trim();
@@ -5999,7 +6000,7 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     const rr=(x,yy,w,h,r,c,borda)=>{fill(c); if(borda){doc.setDrawColor(...borda); doc.setLineWidth(.3); doc.roundedRect(x,yy,w,h,r,r,'FD')} else doc.roundedRect(x,yy,w,h,r,r,'F')};
     const pill=(x,yy,txt,bg,fg,s)=>{fnt(true,s||7.6); const w=doc.getTextWidth(txt)+5; rr(x,yy,w,5.4,2.7,bg); ink(fg); doc.text(txt,x+2.5,yy+3.8); return w};
     const head=()=>{fill(NAVY); doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24); fill(GOLD); doc.rect(0,30,W,1.2,'F');
-      ink([255,255,255]); fnt(true,15); doc.text('RELATÓRIO DE ESTOQUE',W-M,13,{align:'right'}); fnt(false,9.5); ink(GOLD); doc.text(t(cliNome)+'  ·  '+dt+(f.fab?'  ·  '+f.fab:''),W-M,20,{align:'right'}); y=39; ink(NAVY)};
+      ink([255,255,255]); fnt(true,15); doc.text('RELATÓRIO DE ESTOQUE',W-M,13,{align:'right'}); fnt(false,9.5); ink(GOLD); doc.text(t(cliNome)+'  ·  '+dt+(f.fab?'  ·  '+(f.marca||f.fab):''),W-M,20,{align:'right'}); y=39; ink(NAVY)};
     const novaPag=()=>{doc.addPage(); head()}; const cabe=h=>{if(y+h>H-16) novaPag()};
     const nm=s=>nBR(Math.round(s)), ritmo=g=>soRit(g).replace('por','vende');
     /* ---------- capa ---------- */
@@ -6043,7 +6044,7 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     /* rodapé com página em todas */
     const np=doc.getNumberOfPages(); for(let i=1;i<=np;i++){doc.setPage(i); doc.setDrawColor(...GOLD); doc.setLineWidth(.6); doc.line(M,286,W-M,286); fnt(false,7.6); ink(GREY);
       doc.text('Chamae Representações Comerciais  ·  CNPJ 18.308.187/0001-50  ·  (16) 99793-7802  ·  victor.crepaldi@chamae.com.br',M,291); doc.text(`página ${i} de ${np}`,W-M,291,{align:'right'})}
-    const fname=DEMO?`Relatorio-estoque-exemplo${f.fab?'-'+norm(f.fab).toLowerCase():''}.pdf`:`Estoque-${norm(cliNome).split(' ')[0].toLowerCase()}-${rel.data}${f.fab?'-'+norm(f.fab).toLowerCase():''}.pdf`, blob=doc.output('blob'); if(window.__soPdfHook) return window.__soPdfHook(blob,fname,{F,K});
+    const fname=DEMO?`Relatorio-estoque-exemplo${f.fab?'-'+norm(f.marca||f.fab).toLowerCase():''}.pdf`:`Estoque-${norm(cliNome).split(' ')[0].toLowerCase()}-${rel.data}${f.fab?'-'+norm(f.marca||f.fab).toLowerCase():''}.pdf`, blob=doc.output('blob'); if(window.__soPdfHook) return window.__soPdfHook(blob,fname,{F,K});
     const file=new File([blob],fname,{type:'application/pdf'}), body=DEMO?`Olá! Segue um exemplo do relatório de estoque que mandamos todo dia para os clientes que nos enviam o sell-out: o que já acabou, o que vai acabar e quanto repor de cada um.`:`Olá! Segue o relatório de estoque dos nossos produtos nas suas lojas (${dt}): ${F.length} já acabaram e ${K.length} vão acabar antes de a fábrica entregar. No PDF está quanto repor de cada um. Posso já montar o pedido?`;
     const dl=()=>{const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},1500)};
     if(modo==='wa'){if((MOVEL||waDesk())&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname,text:body}); return}catch(e){if(e.name==='AbortError') return}}
@@ -6077,7 +6078,7 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     h.innerHTML=V.length?`<b>Vendas por dia (60 dias até ${dbr(V[0].data)})</b> <span class="hint">· ${nBR(DD.reduce((s,x)=>s+x[1],0))} un.</span><div style="display:flex;align-items:flex-end;gap:1px;height:70px;margin-top:6px;border-bottom:1px solid var(--line)">${DD.map(([x,q])=>`<i title="${dbr(x)}: ${nBR(q)}" style="flex:1;background:${q<0?'var(--bad)':'var(--accent,#2563eb)'};height:${q?Math.max(3,Math.abs(q)/mx*66):0}px;border-radius:2px 2px 0 0"></i>`).join('')}</div><div class="row" style="justify-content:space-between"><span>${dbr(DD[0][0])}</span><span>${dbr(DD[59][0])}</span></div>`:'Sem vendas registradas por dia ainda (o histórico enche sozinho com o robô).'};
   draw(); Promise.all(Object.values(SO_FAB_REP).map(n=>REPID[n]).filter(Boolean).map(soCatalogo)).then(()=>{if(route==='sellout') draw()}).catch(()=>{});
   m.onclick=async e=>{const t=e.target, d=k=>t.closest('[data-'+k+']');
-    let b=d('soab'); if(b){f.ab=b.dataset.soab; salva(); return draw()} b=d('sofab'); if(b){f.fab=b.dataset.sofab; salva(); return draw()} b=d('sofil'); if(b){f.fil=b.dataset.sofil; PPQ={}; salva(); return recalc()}
+    let b=d('soab'); if(b){f.ab=b.dataset.soab; salva(); return draw()} b=d('sofab'); if(b){f.fab=b.dataset.sofab; f.marca=''; salva(); return draw()} b=d('somk'); if(b){f.marca=b.dataset.somk; salva(); return draw()} b=d('sofil'); if(b){f.fil=b.dataset.sofil; PPQ={}; salva(); return recalc()}
     b=d('sost'); if(b){f.st=b.dataset.sost; f.lim=100; return draw()} b=d('soabc'); if(b){f.abc=b.dataset.soabc; f.lim=100; return draw()} b=d('sosi'); if(b){f.siD=+b.dataset.sosi; salva(); SI=await soSellIn(S,f.siD).catch(()=>({})); return recalc()}
     b=d('sofa'); if(b){f.faf=b.dataset.sofa; if(f.ab!=='fa') f.ab='fa'; return draw()}
     b=d('sogo'); if(b){const g=b.dataset.sogo; if(g==='pp') f.ab='pp'; else {f.ab='it'; f.st=g; f.ord=g==='parado'?'par':'cob'} salva(); return draw()}

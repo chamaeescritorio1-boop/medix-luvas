@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111607",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF do pré-pedido e marca Marcon × Evald",
+   "texto": "No Pré-pedido do Sell-out entraram os botões 📄 PDF e 💬 WhatsApp: a sugestão de compra com foto, motivo de cada item e quanto comprar. Na Marcon dá para escolher a marca (Marcon ou Evald). Com \"Apresentação\" marcada, o PDF sai sem o nome, os códigos e os preços do cliente, para mostrar a outro cliente."
+  },
+  {
    "id": "2026111606",
    "data": "2026-11-16",
    "tipo": "novo",

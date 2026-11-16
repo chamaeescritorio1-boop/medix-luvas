@@ -13,7 +13,7 @@
    "data": "2026-11-16",
    "tipo": "correcao",
    "titulo": "PDF Marluvas separa MTS e MTO de novo",
-   "texto": "No PDF do orçamento Marluvas os itens voltam a sair separados: primeiro o bloco MTS (pronta entrega) e depois o MTO (fabricado sob pedido), cada um com itens, pares e valor. Cada item tem a etiqueta MTS ou MTO ao lado do código, e no fim do PDF vai o aviso de que a Marluvas fatura em pedidos separados."
+   "texto": "No PDF do orçamento Marluvas, quando tem MTS e MTO juntos, os itens voltam a sair como no conversor: Pedido 1 · MTS e Pedido 2 · MTO, com o subtotal de cada pedido (e quanto falta para o mínimo). No fim, antes do TOTAL, aparece o valor de cada pedido separado."
   },
   {
    "id": "2026111606",

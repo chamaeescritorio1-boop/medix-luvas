@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111606",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Relatórios mais enxutos + Produtividade",
+   "texto": "Relatórios agora tem 8 opções em 3 grupos (Acompanhar, Analisar, Buscar). Vendas mensais, Por representada e Por vendedor viraram o Histórico de vendas; as duas Curvas ABC viraram uma; Conversão e Motivos de perda ficaram juntos. Novo: Produtividade, com contatos, clientes atendidos, orçamentos e pedidos do mês por vendedor e por fábrica, e PDF para mandar à fábrica. O Painel do mês abre na hora e confere o Reprio por trás. O Exportar funciona em todos."
+  },
+  {
    "id": "2026111605",
    "data": "2026-11-16",
    "tipo": "novo",

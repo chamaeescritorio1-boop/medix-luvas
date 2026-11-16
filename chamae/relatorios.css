@@ -1,0 +1,13 @@
+/* Relatórios enxutos (16/11): botões em 3 grupos + Produtividade */
+.relnav{display:grid;gap:8px;margin-bottom:10px}
+.relg{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.relg>small{min-width:92px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.relg .row{gap:6px}
+.relfil{gap:8px;align-items:center}
+.relsub{gap:6px;padding-right:6px;margin-right:4px;border-right:1px solid var(--line)}
+.psem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:end;margin:8px 0 6px}
+.psem>div{display:grid;justify-items:center;gap:2px;text-align:center}
+.pbar{display:flex;align-items:flex-end;gap:3px;height:90px;width:100%;justify-content:center;border-bottom:1px solid var(--line)}
+.pbar i{display:block;width:14px;min-height:2px;border-radius:3px 3px 0 0}
+.pdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+@media(max-width:760px){.relg{display:grid;gap:4px}.relg>small{min-width:0}.relsub{border-right:0;padding-right:0;width:100%}}

@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111610",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Relatórios › 💰 Comissão",
+   "texto": "A comissão do mês por representada, igual à planilha: meta × realizado de positivação e de vendas, % da meta, R$ por cliente, % sobre as vendas e o ganho total. Gestor escolhe o vendedor e manda o PDF pelo WhatsApp; cada vendedor vê a própria comissão do mês andando."
+  },
+  {
    "id": "2026111609",
    "data": "2026-11-16",
    "tipo": "novo",

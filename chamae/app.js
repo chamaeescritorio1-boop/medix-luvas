@@ -1349,7 +1349,7 @@ async function detOrc(id,o0){if(String(id).startsWith('rp:')) return detalhe(id.
 /* 16/11 (pedido do Victor): Relatórios enxutos — 16 viraram 8 em 3 grupos. Saíram (repetiam os agentes "Hoje para você" ou o Quem já comprou):
    Produtos vendidos × clientes, Quem não comprou um produto, Clientes em queda, Recompra atrasada, Oportunidades entre representadas.
    Juntos: Vendas mensais + Por representada + Por vendedor = Histórico de vendas; Curva ABC clientes + produtos; Conversão + Motivos de perda. Novo: Produtividade. */
-const RELS=[['painel','Painel do mês','a'],['semana','Minha semana','a'],['equipe','Resumo da equipe','a'],['produt','Produtividade','a'],['hist','Histórico de vendas','b'],['abc','Curva ABC','b'],['conv','Conversão e perdas','b'],['quem','👥 Quem já comprou','c']];
+const RELS=[['painel','Painel do mês','a'],['semana','Minha semana','a'],['equipe','Resumo da equipe','a'],['produt','Produtividade','a'],['comis','💰 Comissão','a'],['hist','Histórico de vendas','b'],['abc','Curva ABC','b'],['conv','Conversão e perdas','b'],['quem','👥 Quem já comprou','c']];
 const REL_GRP=[['a','Acompanhar'],['b','Analisar'],['c','Buscar']];
 const REL_VELHO={mes:['hist','mes'],rep:['hist','rep'],vend:['hist','vend'],abcc:['abc','c'],abcp:['abc','p'],perdas:['conv'],prod:['painel'],queda:['painel'],recompra:['painel'],cross:['painel'],nunca:['painel']};
 let PEDS=null, PEDS_EXPIRE=0; const CACHE_TTL=5*60*1000;
@@ -1374,6 +1374,7 @@ async function rel(){const m=$('#main'); const s=L('relS')||{r:'painel',anos:2,r
   m.onclick=e=>{const b=e.target.closest('[data-rl]'); if(b&&b.dataset.rl==='quem') return go('quem'); if(b){s.r=b.dataset.rl; LS('relS',s); return rel()} const sb=e.target.closest('[data-rsub]'); if(sb){if(s.r==='hist') s.hv=sb.dataset.rsub; else s.av=sb.dataset.rsub; LS('relS',s); return rel()}}; $('#rrep').onchange=e=>{s.rep=e.target.value; LS('relS',s); rel()}; $('#ranos').onchange=e=>{s.anos=+e.target.value; LS('relS',s); rel()};
   if(s.r==='painel'){mostra(0,0,1); return painel(out)} if(s.r==='semana'){mostra(0,0,0); LS('semAb',true); return minhaSemana(out,true)} if(s.r==='equipe'){mostra(0,0,0); LS('agResAb',true); return agResumo(out)}
   if(s.r==='produt'){mostra(0,0,1); return relProdutividade(out)}
+  if(s.r==='comis'){mostra(0,0,1); return relComissao(out)}
   if(s.r==='conv'){mostra(1,1,1); out.innerHTML=`<div id="rc1"></div><div class="sec" style="font-size:18px;margin-top:22px">Por que perdemos</div><p class="hint" style="margin-top:-6px">Orçamentos marcados como perdidos no período escolhido acima.</p><div id="rc2"></div>`;
     const a=$('#rc1'), b=$('#rc2'); await Promise.all([relConversao(a,s.rep),relPerdas(b,s.anos,s.rep)]); out._csv=[...(a._csv||[]),[],...(b._csv||[])]; return}
   mostra(1,1,1); const rr=s.r==='hist'?subV:(subV==='p'?'abcp':'abcc');
@@ -1398,6 +1399,90 @@ async function rel(){const m=$('#main'); const s=L('relS')||{r:'painel',anos:2,r
       const ks=Object.keys(g).sort((a,b)=>g[b].v-g[a].v); const tv=ks.reduce((a,k)=>a+g[k].v,0);
       {let ac=0; out.innerHTML=tbl(['Curva','Representada','Código','Produto','Qtd.','Faturado','% acumulado','Clientes'],ks.map(k=>{ac+=g[k].v; return [ac/tv<=.8?'A':ac/tv<=.95?'B':'C',g[k].rep,g[k].cod,g[k].d.slice(0,60),g[k].q,g[k].v,ac/tv*100,Object.keys(g[k].cl).length]}),[0,0,0,0,1,'brl','pct',1])}}
   }catch(e){out.innerHTML=`<p class="bad">${esc(e.message)}</p>`}}
+
+/*COMISSAO-INICIO*/
+/* ================= Comissão do vendedor (16/11, pedido do Victor: a planilha "RELATORIO <VENDEDOR> <MÊS>" que ele montava à mão) =================
+   Por representada: meta × realizado de positivação (clientes diferentes que compraram) e de vendas (sem IPI, mesmos pedidos do Painel do mês).
+   Positivação: bateu a meta → R$ X por cliente; não bateu → R$ Y por cliente. Vendas: % sobre o vendido pela faixa de % da meta.
+   Regras em metas tipo 'com', ano 0, mês 0, chave 'CFG|{json}' (só gestor muda). Metas = as da tela Metas (tipo 'vr').
+   Gestor escolhe o vendedor; vendedor vê só a própria comissão (mês andando). */
+const COM0={ok:10,nok:3,fx:[[0,0.25],[100,0.361],[120,0.40],[200,0.50]]};
+async function comCfg(){try{const r=await api('metas?select=chave&tipo=eq.com&ano=eq.0&mes=eq.0&chave=like.CFG%7C*'); if(r&&r[0]){const o=JSON.parse(r[0].chave.slice(4)); if(o&&Array.isArray(o.fx)&&o.fx.length) return {...COM0,...o}}}catch(e){} return COM0}
+async function comGravar(o){await api('metas?tipo=eq.com&ano=eq.0&mes=eq.0&chave=like.CFG%7C*',{method:'DELETE',headers:{Prefer:'return=minimal'}});
+  await api('metas',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({ano:0,mes:0,tipo:'com',chave:'CFG|'+JSON.stringify({...o,por:meuNome()||null,em:new Date().toISOString().slice(0,10)})})})}
+const comTaxa=(cfg,p)=>{let t=cfg.fx[0][1]; [...cfg.fx].sort((a,b)=>a[0]-b[0]).forEach(([lim,tx])=>{if(p*100>=lim-1e-9) t=tx}); return t};
+const pctBR=(v,d=2)=>(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%';
+async function relComissao(box){const now=new Date(), ges=ehGestor(), eu=prodQuem(meuNome());
+  const pm=now.getMonth()?[now.getFullYear(),now.getMonth()-1]:[now.getFullYear()-1,11];
+  const st=Object.assign(ges?{y:pm[0],mo:pm[1],vend:'CLAYTON'}:{y:now.getFullYear(),mo:now.getMonth()},L('comS')||{}); if(!ges) st.vend=eu; const save=()=>LS('comS',{...st,vend:ges?st.vend:undefined});
+  const ini=mesIni(st.y,st.mo), fim=mesFim(st.y,st.mo), isCur=st.y===now.getFullYear()&&st.mo===now.getMonth(), V=st.vend;
+  const pg=st.mo===11?MESES[0]+' '+(st.y+1):MESES[st.mo+1]+' '+st.y; const mesN=MESES[st.mo]+' '+st.y;
+  box.innerHTML='<div class="card"><p class="hint">Calculando a comissão…</p></div>';
+  const [P,M,cfg]=await Promise.all([pedidosPeriodo(ini).then(d=>d.filter(p=>p.data<=fim&&prodQuem(p.vendedor)===V)),metasDoMes(st.y,st.mo).then(x=>x||[]),comCfg()]); if(!box.isConnected) return;
+  const R={}; const lin=r=>R[r]=R[r]||{r,mp:null,mv:null,cl:{},v:0,n:0};
+  M.filter(x=>x.tipo==='vr').forEach(x=>{const [v,r]=x.chave.split('|'); if(prodQuem(v)!==V||!r) return; const o=lin(r); if(x.positivacao!=null) o.mp=(o.mp||0)+(+x.positivacao); if(x.valor!=null) o.mv=(o.mv||0)+(+x.valor)});
+  P.forEach(p=>{const o=lin(p.representada||'—'); const c=o.cl[p.cnpj||p.cliente]=o.cl[p.cnpj||p.cliente]||{n:p.cliente,cid:p.cidade,v:0,q:0}; c.v+=+p.valor||0; c.q++; o.v+=+p.valor||0; o.n++});
+  const L2=Object.values(R).map(o=>{const rp=Object.keys(o.cl).length; const pp=o.mp?rp/o.mp:null, pv=o.mv?o.v/o.mv:null; const bate=pp!=null&&pp>=1; const vp=bate?cfg.ok:cfg.nok; const tx=comTaxa(cfg,pv||0);
+    return {...o,rp,pp,pv,bate,vp,tx,gp:vp*rp,gv:o.v*tx/100}}).sort((a,b)=>(b.mv||0)-(a.mv||0)||b.v-a.v);
+  const T=L2.reduce((t,o)=>({mp:t.mp+(o.mp||0),mv:t.mv+(o.mv||0),rp:t.rp+o.rp,v:t.v+o.v,gp:t.gp+o.gp,gv:t.gv+o.gv}),{mp:0,mv:0,rp:0,v:0,gp:0,gv:0}); const G=T.gp+T.gv;
+  const semMeta=L2.filter(o=>o.rp&&o.mp==null).map(o=>o.r);
+  const fxTx=[...cfg.fx].sort((a,b)=>a[0]-b[0]).map(([l,t],i,a)=>`${i?(a[i+1]?`${l}% a ${a[i+1][0]}%`:`${l}% ou mais`):`abaixo de ${a[1]?a[1][0]:100}%`}: ${pctBR(t,Math.round(t*1000)%10?3:2)}`).join(' · ');
+  const corP=p=>p==null?'':p>=1?'color:var(--ok,#168048)':'color:var(--bad,#c0392b)';
+  const D={st,V,mesN,pg,isCur,L2,T,G,cfg,fxTx};
+  box.innerHTML=`<div class="card grid"><div class="row" style="justify-content:space-between;align-items:flex-end;gap:10px">
+      <div><b style="font-size:18px">${ges?'💰 Comissão de '+esc(V):'💰 Sua comissão'}</b><br><small class="hint">Vendas de ${mesN.toLowerCase()}${isCur?' (até hoje, ainda andando)':''} · paga em ${pg.toLowerCase()}</small></div>
+      <div class="row"><select id="cmo">${MESES.map((n,i)=>`<option value="${i}"${i===st.mo?' selected':''}>${n}</option>`).join('')}</select><select id="cy">${[0,1].map(i=>now.getFullYear()-i).map(y=>`<option${y===st.y?' selected':''}>${y}</option>`).join('')}</select>${ges?`<select id="cven">${TIME.map(v=>`<option${v===V?' selected':''}>${esc(v)}</option>`).join('')}</select>`:''}</div></div>
+    <div class="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr))"><div class="kpi"><small>Ganho total</small><b style="font-size:24px">${brl(G)}</b><small>${isCur?'se o mês fechasse hoje':'positivação + vendas'}</small></div>
+      <div class="kpi"><small>Positivação</small><b>${brl(T.gp)}</b><small>${T.rp} clientes · meta ${T.mp||'—'}</small></div><div class="kpi"><small>Vendas</small><b>${brl(T.gv)}</b><small>${brl(T.v)} vendido · meta ${T.mv?brl(T.mv):'—'}</small></div></div>
+    ${semMeta.length?`<p class="warn" style="margin:0">Sem meta de positivação em ${semMeta.map(esc).join(', ')}: conta como não batida (R$ ${cfg.nok} por cliente). ${ges?'Preencha em Mais › Metas.':''}</p>`:''}
+    ${CEL()?L2.map(o=>`<div class="card" data-crr="${esc(o.r)}" style="padding:12px;cursor:pointer"><div class="row" style="justify-content:space-between"><b>${esc(o.r)} <small class="hint">▾</small></b><b>${brl(o.gp+o.gv)}</b></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:13px"><div><small class="hint">Positivação</small><br>${o.rp} de ${o.mp??'—'} <b style="${corP(o.pp)}">${o.pp==null?'':pctBR(o.pp*100,0)}</b><br><small class="hint">${brl(o.vp)} por cliente = ${brl(o.gp)}</small></div>
+        <div><small class="hint">Vendas</small><br>${brl(o.v)} <b style="${corP(o.pv)}">${o.pv==null?'':pctBR(o.pv*100,0)}</b><br><small class="hint">meta ${o.mv!=null?brl(o.mv):'—'} · ${pctBR(o.tx,Math.round(o.tx*1000)%10?3:2)} = ${brl(o.gv)}</small></div></div>
+        ${st.ab===o.r?`<table class="t" style="margin-top:8px">${Object.entries(o.cl).sort((a,b)=>b[1].v-a[1].v).map(([cn,c])=>`<tr data-ccl="${esc(cn)}"><td>${esc(c.n||cn)}</td><td class="n">${brl(c.v)}</td></tr>`).join('')||'<tr><td class="hint">Nenhum pedido.</td></tr>'}</table>`:''}</div>`).join('')+`<div class="row" style="justify-content:space-between;font-weight:800;padding:4px 4px 0"><span>GANHO TOTAL</span><span>${brl(G)}</span></div>`:`<div style="overflow-x:auto"><table class="t"><tr><th rowspan="2">Representada</th><th class="n" colspan="2">Meta</th><th class="n" colspan="2">Realizado</th><th class="n" colspan="2">% da meta</th><th class="n" colspan="2">Comissão</th><th class="n" colspan="2">Ganho</th></tr>
+      <tr><th class="n">Posit.</th><th class="n">Vendas</th><th class="n">Posit.</th><th class="n">Vendas</th><th class="n">Posit.</th><th class="n">Vendas</th><th class="n">Por cliente</th><th class="n">Sobre vendas</th><th class="n">Posit.</th><th class="n">Vendas</th></tr>
+      ${L2.map(o=>`<tr data-crr="${esc(o.r)}" style="cursor:pointer"><td><b>${esc(o.r)}</b> <small class="hint">▾</small></td><td class="n">${o.mp??'—'}</td><td class="n">${o.mv!=null?brl(o.mv):'—'}</td><td class="n">${o.rp}</td><td class="n">${brl(o.v)}</td><td class="n" style="${corP(o.pp)}">${o.pp==null?'—':pctBR(o.pp*100,0)}</td><td class="n" style="${corP(o.pv)}">${o.pv==null?'—':pctBR(o.pv*100,0)}</td><td class="n">${brl(o.vp)}</td><td class="n">${pctBR(o.tx,Math.round(o.tx*1000)%10?3:2)}</td><td class="n">${brl(o.gp)}</td><td class="n">${brl(o.gv)}</td></tr>
+        ${st.ab===o.r?`<tr><td colspan="11" style="background:var(--soft,rgba(127,127,127,.06))"><small class="hint">Clientes que compraram (${o.rp}) · ${o.n} pedidos</small><table class="t">${Object.entries(o.cl).sort((a,b)=>b[1].v-a[1].v).map(([cn,c])=>`<tr data-ccl="${esc(cn)}" style="cursor:pointer"><td>${esc(c.n||cn)}</td><td>${esc(c.cid||'')}</td><td class="n">${c.q} ped.</td><td class="n">${brl(c.v)}</td></tr>`).join('')||'<tr><td class="hint">Nenhum pedido.</td></tr>'}</table></td></tr>`:''}`).join('')||'<tr><td colspan="11" class="hint">Sem metas nem vendas neste mês.</td></tr>'}
+      <tr style="font-weight:700"><td>TOTAL</td><td class="n">${T.mp||'—'}</td><td class="n">${T.mv?brl(T.mv):'—'}</td><td class="n">${T.rp}</td><td class="n">${brl(T.v)}</td><td></td><td></td><td></td><td></td><td class="n">${brl(T.gp)}</td><td class="n">${brl(T.gv)}</td></tr>
+      <tr style="font-weight:800"><td colspan="9" style="text-align:right">GANHO TOTAL</td><td class="n" colspan="2">${brl(G)}</td></tr></table></div>`}
+    <small class="hint">Regras: positivação = R$ ${cfg.ok} por cliente se bateu a meta, R$ ${cfg.nok} se não bateu. Vendas (sem IPI), pelo % da meta: ${fxTx}. Toque numa representada para ver os clientes.</small>
+    <div class="row"><button class="btn" id="cpdf">📄 PDF</button><button class="btn ghost" id="cwa">🟢 WhatsApp</button>${ges?'<button class="btn ghost" id="ccfg">⚙ Regras da comissão</button>':''}</div><div id="ccfgBox" hidden></div></div>`;
+  box._csv=[['Representada','Meta positivação','Meta vendas','Positivação','Vendas','% positivação','% vendas','R$ por cliente','% sobre vendas','Ganho positivação','Ganho vendas'],...L2.map(o=>[o.r,o.mp??'',o.mv??'',o.rp,o.v,o.pp==null?'':o.pp*100,o.pv==null?'':o.pv*100,o.vp,o.tx,o.gp,o.gv]),['TOTAL',T.mp,T.mv,T.rp,T.v,'','','','',T.gp,T.gv],['GANHO TOTAL','','','','','','','','','',G]];
+  const cfgEd=()=>{const bx=box.querySelector('#ccfgBox'); bx.hidden=!bx.hidden; if(bx.hidden) return; const fx=[...cfg.fx].sort((a,b)=>a[0]-b[0]);
+    bx.innerHTML=`<div class="grid" style="gap:8px;border-top:1px solid var(--line);padding-top:10px"><b>Regras da comissão (valem para todos os vendedores e meses)</b>
+      <div class="row"><label class="f">Bateu a meta de positivação: R$ por cliente<input type="number" step="0.01" id="cok" value="${cfg.ok}"></label><label class="f">Não bateu: R$ por cliente<input type="number" step="0.01" id="cnok" value="${cfg.nok}"></label></div>
+      <table class="t" id="cfx"><tr><th>A partir de (% da meta de vendas)</th><th>Comissão sobre as vendas (%)</th></tr>${fx.map(([l,t],i)=>`<tr><td><input type="number" step="1" data-fl value="${l}"${i?'':' readonly'} style="width:90px"></td><td><input type="number" step="0.001" data-ft value="${t}" style="width:90px"></td></tr>`).join('')}</table>
+      <div class="row"><button class="btn sm" id="cfxadd">+ faixa</button><button class="btn" id="csave">Salvar regras</button><button class="btn ghost sm" id="cpad">Voltar ao padrão</button></div></div>`};
+  box.onchange=e=>{const id=e.target.id; if(id==='cmo') st.mo=+e.target.value; else if(id==='cy') st.y=+e.target.value; else if(id==='cven') st.vend=e.target.value; else return; st.ab=''; save(); relComissao(box)};
+  box.onclick=async e=>{const id=e.target.id; if(id==='cpdf') return comPdf(D,e.target,'pdf'); if(id==='cwa') return comPdf(D,e.target,'wa'); if(id==='ccfg') return cfgEd();
+    if(id==='cfxadd'){const tb=box.querySelector('#cfx'); tb.insertAdjacentHTML('beforeend','<tr><td><input type="number" step="1" data-fl style="width:90px"></td><td><input type="number" step="0.001" data-ft style="width:90px"></td></tr>'); return}
+    if(id==='cpad'||id==='csave'){const o=id==='cpad'?COM0:{ok:+box.querySelector('#cok').value||0,nok:+box.querySelector('#cnok').value||0,fx:[...box.querySelectorAll('#cfx tr')].slice(1).map(tr=>[tr.querySelector('[data-fl]').value,tr.querySelector('[data-ft]').value]).filter(([l,t])=>l!==''&&t!=='').map(([l,t])=>[+l,+t])};
+      if(!o.fx.length||!o.fx.some(f=>f[0]===0)) return toast('A primeira faixa precisa começar em 0%'); e.target.disabled=true; try{await comGravar(o); toast('Regras salvas'); return relComissao(box)}catch(err){toast('Erro: '+err.message); e.target.disabled=false} return}
+    const c=e.target.closest('[data-ccl]'); if(c) return go('cli',{cnpj:c.dataset.ccl}); const r=e.target.closest('[data-crr]'); if(r){st.ab=st.ab===r.dataset.crr?'':r.dataset.crr; return relComissao(box)}}}
+/* PDF da comissão: mesmo padrão dos outros (faixa azul com logo, linha dourada) — para mandar ao vendedor */
+async function comPdf(D,btn,modo){const b0=btn.textContent; btn.disabled=true; btn.textContent='Gerando…';
+  try{await loadJsPDF(); const logo=await imgData('logo.jpg',900); const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'}), W=297, H=210, M=12, CW=W-2*M; let y=0;
+    const NAVY=[28,35,64], GOLD=[242,182,50], GREY=[90,96,120], SOFT=[246,247,251], OK=[22,128,72], BAD=[192,57,43];
+    const t=s=>String(s==null?'':s).replace(/[^\x20-\x7E -ÿ]/g,'').replace(/\s+/g,' ').trim(); const fill=c=>doc.setFillColor(...c), ink=c=>doc.setTextColor(...c), fnt=(b,s)=>{doc.setFont('helvetica',b?'bold':'normal'); doc.setFontSize(s)};
+    fill(NAVY); doc.rect(0,0,W,28,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,61,22); fill(GOLD); doc.rect(0,28,W,1.2,'F'); ink([255,255,255]); fnt(true,15); doc.text('RELATÓRIO DE COMISSÃO',W-M,12,{align:'right'});
+    fnt(false,9.5); ink(GOLD); doc.text(t(`${D.V}  ·  vendas de ${D.mesN.toLowerCase()}${D.isCur?' (até '+new Date().toLocaleDateString('pt-BR')+')':''}  ·  paga em ${D.pg.toLowerCase()}`),W-M,19,{align:'right'}); y=36;
+    const k=[[brl(D.G),'GANHO TOTAL'],[brl(D.T.gp),`POSITIVAÇÃO (${D.T.rp} clientes)`],[brl(D.T.gv),`VENDAS (${brl(D.T.v)})`]], kw=(CW-6)/3;
+    k.forEach(([n,l],i)=>{const x=M+i*(kw+3); fill(SOFT); doc.roundedRect(x,y,kw,17,2.5,2.5,'F'); fill(i?NAVY:GOLD); doc.roundedRect(x,y,1.8,17,.9,.9,'F'); ink(GREY); fnt(true,7); doc.text(t(l),x+5,y+5.5); ink(NAVY); fnt(true,15); doc.text(n,x+5,y+13.5)}); y+=24;
+    const C=[['Representada',M+2,'l'],['Meta posit.',M+62,'r'],['Meta vendas',M+92,'r'],['Posit.',M+110,'r'],['Vendas',M+140,'r'],['% posit.',M+160,'r'],['% vendas',M+180,'r'],['R$/cliente',M+200,'r'],['% s/ vendas',M+221,'r'],['Ganho posit.',M+246,'r'],['Ganho vendas',M+CW-2,'r']];
+    fill(NAVY); doc.rect(M,y,CW,8,'F'); ink([255,255,255]); fnt(true,7.6); C.forEach(([l,x,a])=>doc.text(l,x,y+5.3,{align:a==='r'?'right':'left'})); y+=8;
+    D.L2.forEach((o,i)=>{if(i%2) {fill(SOFT); doc.rect(M,y,CW,7.5,'F')} fnt(false,8.8); ink(NAVY); const v=[t(o.r),o.mp??'-',o.mv!=null?brl(o.mv):'-',o.rp,brl(o.v),o.pp==null?'-':pctBR(o.pp*100,0),o.pv==null?'-':pctBR(o.pv*100,0),brl(o.vp),pctBR(o.tx,Math.round(o.tx*1000)%10?3:2),brl(o.gp),brl(o.gv)];
+      C.forEach(([,x,a],j)=>{if(j===5||j===6){const p=j===5?o.pp:o.pv; ink(p==null?GREY:p>=1?OK:BAD); fnt(true,8.8)} else {ink(NAVY); fnt(j===0||j>=9,8.8)} doc.text(String(v[j]),x,y+5,{align:a==='r'?'right':'left'})}); y+=7.5});
+    doc.setDrawColor(...GOLD); doc.setLineWidth(.5); doc.line(M,y+.5,M+CW,y+.5); y+=1; fnt(true,9); ink(NAVY);
+    [['TOTAL',0],[String(D.T.mp||'-'),1],[D.T.mv?brl(D.T.mv):'-',2],[String(D.T.rp),3],[brl(D.T.v),4],[brl(D.T.gp),9],[brl(D.T.gv),10]].forEach(([s,j])=>doc.text(s,C[j][1],y+5.5,{align:C[j][2]==='r'?'right':'left'})); y+=9;
+    fill(GOLD); doc.roundedRect(M+CW-80,y,80,11,2,2,'F'); ink(NAVY); fnt(true,8); doc.text('GANHO TOTAL',M+CW-76,y+7); fnt(true,13); doc.text(brl(D.G),M+CW-3,y+7.6,{align:'right'}); y+=18;
+    fnt(false,8); ink(GREY); doc.text(doc.splitTextToSize(t(`Como é calculado: positivação = clientes diferentes que compraram da representada no mês; bateu a meta, R$ ${D.cfg.ok} por cliente, não bateu, R$ ${D.cfg.nok} por cliente. Vendas = valor dos produtos sem IPI; a comissão sobre as vendas depende do % da meta atingido (${D.fxTx}).`),CW),M,y);
+    fnt(false,7.4); doc.text('Chamae Representações Comerciais  ·  gerado pelo Sistema em '+new Date().toLocaleDateString('pt-BR'),M,H-6);
+    const fname=`Comissao-${norm(D.V).toLowerCase()}-${D.st.y}-${String(D.st.mo+1).padStart(2,'0')}.pdf`, blob=doc.output('blob'); if(window.__comPdfHook) return window.__comPdfHook(blob,fname,D);
+    const file=new File([blob],fname,{type:'application/pdf'}), body=`Olá ${D.V.charAt(0)+D.V.slice(1).toLowerCase()}! Segue o relatório de comissão das vendas de ${D.mesN.toLowerCase()}: ganho total ${brl(D.G)} (positivação ${brl(D.T.gp)} + vendas ${brl(D.T.gv)}).`;
+    const dl=()=>{const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},1500)};
+    if(modo==='wa'){if((MOVEL||waDesk())&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname,text:body}); return}catch(e){if(e.name==='AbortError') return}}
+      dl(); window.open('https://wa.me/?text='+encodeURIComponent(body),'_blank'); return toast('PDF baixado · arraste o arquivo para a conversa do WhatsApp')}
+    dl(); toast('PDF baixado')}catch(e){toast('Erro no PDF: '+e.message)}finally{btn.disabled=false; btn.textContent=b0}}
+/*COMISSAO-FIM*/
 
 /*PRODUT-INICIO*/
 /* ================= Produtividade (16/11, pedido do Victor; v2 16/11 tarde) =================

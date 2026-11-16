@@ -6,7 +6,7 @@ const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=
 const brl=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); const pct=v=>(+v||0).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
 const G=k=>{try{return JSON.parse(localStorage.getItem('chamae_'+k))}catch(e){return null}}, S=(k,v)=>{try{localStorage.setItem('chamae_'+k,JSON.stringify(v))}catch(e){}};
 /* filtros de busca (produtos, pedidos, clientes, tarefas, metas, relatórios, grupos) valem só enquanto a tela está aberta */
-const TEMPF=/^(prodF|pedF|cliF|cartF|tarF|metasF|relS|grp_|mxf_)/, MEMF={};
+const TEMPF=/^(prodF|pedF|cliF|cartF|tarF|metasF|relS|grp_|mxf_|mlf_)/, MEMF={};
 const L=k=>{if(TEMPF.test(k)) return MEMF[k]===undefined?null:JSON.parse(MEMF[k]); try{return JSON.parse(localStorage.getItem('chs_'+k))}catch(e){return null}}, LS=(k,v)=>{if(TEMPF.test(k)){MEMF[k]=JSON.stringify(v); return} try{localStorage.setItem('chs_'+k,JSON.stringify(v))}catch(e){}};
 try{Object.keys(localStorage).filter(k=>k.startsWith('chs_')&&TEMPF.test(k.slice(4))).forEach(k=>localStorage.removeItem(k))}catch(e){}
 const FILTROS_DA_TELA={prod:['prodF'],ped:['pedF'],cli:['cliF','cartF'],tar:['tarF'],metas:['metasF'],rel:['relS'],rep:['grp_']};
@@ -510,8 +510,10 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   const GC={}; C.forEach(p=>{const g=grupoOf(rep,p); GC[g]=(GC[g]||0)+1}); const grupos=Object.keys(GC).sort((a,b)=>a==='Outros'?1:b==='Outros'?-1:a.localeCompare(b)); let pg=0;
   const enc=L('enc_'+rep)||{on:false,sel:[]}; let qtxt='', gsel=L('grp_'+rep)||'';
   const mxF=rep==='medix'&&MX_FILTROS?(L('mxf_'+rep)||{}):null;
-  const noG0=p=>gsel==='__camp'?!!CP[p.id]:(qtxt.trim()||!gsel||grupoOf(rep,p)===gsel), noG=p=>noG0(p)&&mxOk(p,mxF); if(gsel==='__camp'&&!nCamp) gsel='';
-  const render=()=>{if(mxF&&$('#mxw')) $('#mxw').innerHTML=mxFiltrosHtml(buscaProd(C.filter(noG0),qtxt,rep).filter(p=>!o.tabela||P[p.id]),mxF); const all=buscaProd(C.filter(noG),qtxt,rep); const list=all.filter(p=>!o.tabela||P[p.id]); const semPreco=all.length-list.length;
+  const mlF=rep==='marluvas'&&ML_REF&&CONV_PASTA?Object.assign(mlVazio(),L('mlf_'+rep)||{}):null; let mlAb=!!(mlF&&mlN(mlF)&&L('ml_aberto')!==false), mlInfo=null;
+  const noG0=p=>gsel==='__camp'?!!CP[p.id]:(qtxt.trim()||!gsel||grupoOf(rep,p)===gsel), noG=p=>noG0(p)&&mxOk(p,mxF)&&mlOk(p,mlF); if(gsel==='__camp'&&!nCamp) gsel='';
+  const render=()=>{if(mxF&&$('#mxw')) $('#mxw').innerHTML=mxFiltrosHtml(buscaProd(C.filter(noG0),qtxt,rep).filter(p=>!o.tabela||P[p.id]),mxF);
+    if(mlF&&$('#mlw')){$('#mlw').innerHTML=mlAb?mlPainel(buscaProd(C.filter(noG0),qtxt,rep).filter(p=>!o.tabela||P[p.id]),mlF,mlInfo):''; const rb=$('#caBtnRef'); if(rb){const n=mlN(mlF); rb.innerHTML=`🎚 Refinar características${n?` <b>(${n})</b>`:''}`; rb.classList.toggle('on',mlAb||!!n); rb.setAttribute('aria-expanded',mlAb)}} const all=buscaProd(C.filter(noG),qtxt,rep); const list=all.filter(p=>!o.tabela||P[p.id]); const semPreco=all.length-list.length;
     /* Medix: os tamanhos do mesmo produto num card só, com estoque por tamanho (como no conversor) */
     const FM=rep==='medix'&&TAM_MEDIX&&!enc.on?famMedix(C.filter(p=>!o.tabela||P[p.id])):null; const U=FM?famUnid(list,FM):list; if(pg*POR_PAG>=U.length) pg=Math.max(0,Math.ceil(U.length/POR_PAG)-1);
     const FDM=(window._fdm=window._fdm||{}); const fdOn=F=>F.fd?(FDM[F[0].id]!=null?FDM[F[0].id]:!F.some(p=>o.itens.some(i=>i.pid===p.id))&&F.fd.some(p=>o.itens.some(i=>i.pid===p.id))):false;
@@ -532,7 +534,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
        ${enc.on?`<button class="${es?'btn':'btn ghost'} sm" data-es="${p.id}">${es?'✓ No encarte':'+ Encarte'}</button>`:GRc[p.cod]?`<div class="row">${inQ&&gradeTxt(inQ.gq)?`<span class="hint" style="font-size:12px;width:100%">${esc(gradeTxt(inQ.gq))} · <b>${inQ.qt}</b> pares</span>`:''}<button class="btn sm${inQ?' ghost':''}" data-cgr="${p.id}">${inQ?'✎ Editar grade':'+ Orçamento'}</button>${fichaBtn(p)}</div>`:`<div class="row"><div class="qty"><button data-m="${p.id}" aria-label="Menos">−</button><input data-q="${p.id}" type="number" inputmode="numeric" min="0" value="${inQ?inQ.qt:''}" placeholder="0" aria-label="Quantidade"><button data-p="${p.id}" aria-label="Mais">+</button></div>${fichaBtn(p)}</div>`}</div></div>`}).join('')||'<p class="hint">Nenhum produto.</p>';
     $('#cnt').textContent=`${U.length} produtos${U.length!==list.length?` (${list.length} códigos)`:''}${U.length>POR_PAG?` · ${pg*POR_PAG+1}–${Math.min(U.length,(pg+1)*POR_PAG)}`:''}${semPreco?` · ${semPreco} sem preço nesta tabela`:''}`; $('#pgr').innerHTML=pager(U.length,pg); $('#encBar').hidden=!enc.on; $('#encN').textContent=enc.sel.length};
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">${repIcon(rep,32)} ${esc(repName(rep))}</div><div class="row">${EXTERNAL[rep]&&!CONV_PASTA?`<button class="chip on" id="caBtn">⇄ Converter CA</button>`:''}<button class="chip${enc.on?' on':''}" id="encT">Encarte</button>${o.itens.length?'<button class="chip" id="czer">🧹</button>':''}<button class="btn sm" data-go2="orc">Orçamento (${o.itens.length})</button></div></div>
-   ${EXTERNAL[rep]&&CONV_PASTA?caCampo('caQ','caBtn'):''}
+   ${EXTERNAL[rep]&&CONV_PASTA?caCampo('caQ','caBtn'):''}${mlF?'<div id="mlw"></div>':''}
    <div class="card grid" style="margin:10px 0"><label class="f">Cliente<input id="cq" type="search" placeholder="Buscar cliente por nome, CNPJ ou cidade" value="${o.cli?esc(o.cli.n):''}"></label><div id="cres"></div>
     ${o.cli&&o.cli.ult?`<p class="hint" style="margin:0">Último pedido: ${esc(String(o.cli.ult.ultimo||'').split('-').reverse().join('/'))} · prazo ${esc(o.cli.ult.ultimo_prazo||'—')}</p>`:''}
     <div class="r2"><label class="f">${NVc.length?'Nível de comissão (padrão dos itens)':'Tabela de preço'+(o.cli?' (do cliente)':'')}<select id="tab">${T.map(t=>`<option value="${t.id}"${t.id==o.tabela?' selected':''}>${esc(t.nome)}</option>`).join('')||'<option value="">Nenhuma tabela importada</option>'}</select></label>
@@ -552,6 +554,16 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
   const stkBox=cod=>m.querySelector(`[data-stkbox="${CSS.escape(cod)}"]`);
   const stkAtualiza=async(cod,force)=>{const pr=sigmaStk(cod,force); let b=stkBox(cod); if(b) b.innerHTML=stkHtml(cod); const v=await pr; b=stkBox(cod); if(b) b.innerHTML=stkHtml(cod); return v};
   const curList=()=>buscaProd(C.filter(noG),qtxt,rep).filter(p=>P[p.id]);
+  /* Refinar características (Marluvas): sem nada no campo abre/fecha o painel; com CA ou descrição já marca o que der */
+  const mlRolar=sel=>{const el=$(sel); if(el) window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-90,behavior:'smooth'})};
+  const mlRefinar=async q=>{if(!mlF) return; const rb=$('#caBtnRef'); q=String(q||'').trim();
+    if(!q){mlAb=!mlAb; LS('ml_aberto',mlAb); render(); if(mlAb) $('#mlw').scrollIntoView({block:'nearest'}); return}
+    let x=null, txt=q; const nca=(q.match(/^CA (\d+)$/)||[])[1];
+    if(nca){if(rb) rb.disabled=true; try{x=(await baseCA()).get(caCod(nca))||null}catch(e){} if(rb) rb.disabled=false; if(!x){mlInfo={q:'CA '+nca,nao:'Não achei este CA na base oficial de calçados. Marque as características abaixo.'}; mlAb=true; render(); return}
+      txt=[x.n,x.d,x.cor].join(' ')}
+    gsel=''; LS('grp_'+rep,''); m.querySelectorAll('[data-g]').forEach(b=>b.classList.toggle('on',!b.dataset.g));
+    const lst=buscaProd(C.filter(noG0),qtxt,rep).filter(p=>!o.tabela||P[p.id]); const own=nca?lst.filter(p=>caCod(p.ca)===caCod(nca)):[]; const oa=own.length?own[0].attrs||{}:null; const r=mlAplicar(oa?{tipo:oa.tipo,bico:oa.bico,cano:oa.cano,fech:oa.fech,sol:oa.sol,mat:oa.mat,cor:oa.cor,f:[...(oa.f||[])]}:mlLer(txt,!!x),lst);
+    Object.keys(mlF).forEach(k=>delete mlF[k]); Object.assign(mlF,r.F); LS('mlf_'+rep,mlF); mlInfo={q,x,own:own.map(p=>p.cod),ok:r.ok,sem:r.sem,nao:!r.ok.length?'Não reconheci características neste texto. Marque abaixo.':''}; mlAb=true; LS('ml_aberto',true); pg=0; render(); mlRolar('#mlw')};
   /* Medix: encarte em PDF sai com o preço do encarte de cada item (como no conversor); sem encarte, o da tabela aberta */
   const PE=()=>rep==='medix'&&ENC_REF?Object.fromEntries(Object.entries(P).map(([k,v])=>[k,v&&v.enc?{...v,liq:rHU(v.enc*fz)}:v])):P;
   m.onclick=async e=>{const tg=e.target; const sk=tg.closest('[data-stk]'); if(sk) return stkAtualiza(sk.dataset.stk,true); const pgb=tg.closest('[data-pg]'); if(pgb){pg=+pgb.dataset.pg; render(); return window.scrollTo(0,0)} const a=tg.closest('[data-go2]'); if(a) return go('orc',{rep});
@@ -560,7 +572,9 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
     const g=tg.closest('[data-g]'); if(g){gsel=g.dataset.g; pg=0; LS('grp_'+rep,gsel); m.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('on',x===g)); return render()}
     if(tg.id==='czer'){if(confirm('Zerar o carrinho? Se tiver itens, fica guardado em Salvos como rascunho.')){await limparCarrinho(rep); return repView()} return}
     if(tg.id==='caBtn') return abrirCA(rep,o,caTermo($('#caQ')));
-    if(tg.id==='caBtnRef') return abrirCA(rep,o,caTermo($('#caQ')),true);
+    if(tg.id==='caBtnRef'){if(!mlF) return abrirCA(rep,o,caTermo($('#caQ')),true); return mlRefinar(caTermo($('#caQ')))}
+    if(mlF){const mq=tg.closest('[data-mlq]'); if(mq){const [k,v]=mq.dataset.mlq.split('|'); if(k==='f') mlF.f=mlF.f.includes(v)?mlF.f.filter(x=>x!==v):[...mlF.f,v]; else mlF[k]=mlF[k]===v?'':v; LS('mlf_'+rep,mlF); pg=0; return render()}
+      if(tg.id==='mlClr'){Object.keys(mlF).forEach(k=>delete mlF[k]); mlF.f=[]; mlInfo=null; LS('mlf_'+rep,mlF); pg=0; return render()} if(tg.id==='mlVer') return mlRolar('#cnt'); if(tg.id==='mlX'){mlAb=false; LS('ml_aberto',false); return render()}}
     if(tg.id==='encT'){enc.on=!enc.on; LS('enc_'+rep,enc); tg.classList.toggle('on',enc.on); return render()}
     const es=tg.closest('[data-es]'); if(es){const id=+es.dataset.es; enc.sel=enc.sel.includes(id)?enc.sel.filter(x=>x!==id):[...enc.sel,id]; LS('enc_'+rep,enc); return render()}
     if(tg.id==='encAll'){const ids=curList().map(p=>p.id); enc.sel=[...new Set([...enc.sel,...ids])]; LS('enc_'+rep,enc); toast(ids.length+' adicionados — toque para tirar os que não quiser'); return render()}
@@ -576,7 +590,7 @@ async function repView(){const rep=ctx.rep; const m=$('#main'); m.innerHTML='<p 
     const mi=tg.closest('[data-m]'),pl=tg.closest('[data-p]'); if(mi||pl){const pid=+(mi||pl).dataset[mi?'m':'p']; const p=C.find(x=>x.id===pid); const cur=(o.itens.find(i=>i.pid===pid)||{}).qt||0; setQt(pid,cur+(pl?1:-1)*passoQ(p))}};
   m.onchange=e=>{const fx=e.target.closest('[data-mxf]'); if(fx&&mxF){mxF[fx.dataset.mxf]=fx.value; LS('mxf_'+rep,mxF); pg=0; return render()} const i=e.target.closest('[data-q]'); if(i) setQt(+i.dataset.q,+i.value)};
   m.addEventListener('toggle',e=>{if(e.target.id==='mxBox') LS('mx_aberto',e.target.open)},true);
-  render()}
+  render(); if(mlF&&window._mlPend!=null){const q=window._mlPend; window._mlPend=null; if($('#caQ')) $('#caQ').value=q.replace(/^CA /,''); if(q) mlRefinar(q); else{mlAb=true; render()}}}
 
 /* ---------- conversor de CA (o mesmo motor dos apps, embutido; só Marluvas e Medix) ---------- */
 /* campo "Converter CA" das pastas Marluvas/Medix (CONV_PASTA) */
@@ -584,6 +598,52 @@ const caCampo=(inp,btn,mini)=>`<div class="${mini?'':'card '}row" style="${mini?
 const caTermo=inp=>{const v=String((inp&&inp.value)||'').trim(); return /^(ca\s*)?[\d.\s]{3,9}$/i.test(v)?'CA '+v.replace(/\D/g,''):v};
 /* esconde no conversor o que o Sistema já tem (cliente, tabela, prazo, catálogo, orçamento, ajustes): fica só a busca de CA */
 const CA_SO_CSS='header,nav,#v-cat,#v-orc,#v-cfg,#doneBar,#svBar,#svTop,#home [data-hgo="orc"],#home [data-hgo="enc"],#home [data-clis],#home [data-pain],#home .rc,#home h4:has(+ .rc),#hCli,#hCliRes{display:none!important}body{padding-bottom:12px!important}#v-conv{display:block!important}';
+/*MLREF-INICIO*/
+/* 16/11/2026: "🎚 Refinar características" da Marluvas direto na tela da representada (como no conversor):
+   painel com Tipo, Biqueira, Solado, Material, Cano, Fechamento, Cor e Recursos, contando os produtos de cada opção e filtrando o catálogo logo abaixo.
+   Com CA (ou descrição) no campo Converter CA, lê o CA na base oficial e já marca as características (só as que têm Marluvas equivalente).
+   Usa produtos.attrs (tipo, bico, sol, mat, cano, fech, cor, f[]) que vieram do catálogo do conversor. false = volta a abrir o conversor por cima */
+const ML_REF=true;
+const ML_CAMPOS=[['tipo','Tipo'],['bico','Biqueira'],['sol','Solado'],['mat','Material'],['cano','Cano'],['fech','Fechamento'],['cor','Cor'],['f','Recursos']];
+const ML_LAB={tipo:{BOTINA:'Botina',SAPATO:'Sapato',TENIS:'Tênis',COTURNO:'Coturno',BOTA:'Bota',PVC:'Bota PVC',SANDALIA:'Sandália'},bico:{COMP:'Composite',PLAS:'Plástico',ACO:'Aço',SEM:'Sem biqueira'},
+  sol:{PU:'Poliuretano (PU)',PUBOR:'PU / Borracha',BOR:'Borracha',PVC:'PVC'},mat:{COURO:'Couro',MICRO:'Microfibra',PVC:'PVC',EVA:'EVA',TEXTIL:'Têxtil'},cano:{BAIXO:'Baixo',MEDIO:'Médio',ALTO:'Alto'},
+  fech:{CADARCO:'Cadarço',ELASTICO:'Elástico',VELCRO:'Velcro'},cor:{CAFE:'Café'},f:{PERF:'Palmilha antiperfuração',ELET:'Eletricista',HIDRO:'Hidrofugado',META:'Metatarso',SRV:'Antiderrapante SRV',TERM:'Térmico',ANTI:'Antiestático',CHAMA:'Antichama'}};
+const ML_ORD={tipo:['BOTINA','SAPATO','TENIS','COTURNO','BOTA','PVC','SANDALIA'],bico:['COMP','PLAS','ACO','SEM'],sol:['PU','PUBOR','BOR','PVC'],cano:['BAIXO','MEDIO','ALTO'],fech:['ELASTICO','CADARCO','VELCRO'],f:['PERF','ELET','HIDRO','META','SRV','TERM','ANTI','CHAMA']};
+const mlLab=(k,v)=>(ML_LAB[k]||{})[v]||(String(v).charAt(0)+String(v).slice(1).toLowerCase());
+const mlVazio=()=>({f:[]});
+const mlN=F=>!F?0:ML_CAMPOS.reduce((a,[k])=>a+(k==='f'?(F.f||[]).length:F[k]?1:0),0);
+const mlOk=(p,F)=>{if(!F) return true; const a=(p&&p.attrs)||{}; for(const [k] of ML_CAMPOS){if(k==='f'){if((F.f||[]).some(x=>!(a.f||[]).includes(x))) return false} else if(F[k]&&a[k]!==F[k]) return false} return true};
+/* lê o texto do CA (nome + descrição + cor) ou o que o vendedor digitou e devolve as características no formato do catálogo */
+function mlLer(txt,doCA){const T=' '+norm(txt).replace(/[^A-Z0-9/]+/g,' ')+' ', R={f:[]}, tem=re=>re.test(T); const ap=T.split(' APROVADO PARA ')[0];
+  const tl=(T.match(/ TIPO ([A-E]) /)||[])[1];
+  R.tipo=tem(/ COTURNO/)?'COTURNO':tem(/ TENIS /)?'TENIS':tem(/ SANDALIA/)?'SANDALIA':tem(/ BOTINA/)?'BOTINA':tem(/ SAPATO| CALCADO BAIXO/)?'SAPATO':tem(/ BOTA/)?(tem(/ PVC | BORRACHA NATURAL| IMPERMEAVEL/)&&!tem(/ COURO| MICROFIBRA/)?'PVC':'BOTA'):tl==='A'?'SAPATO':tl==='B'?'BOTINA':(tl==='C'||tl==='D'||tl==='E')?'BOTA':'';
+  R.cano=tl==='A'?'BAIXO':tl==='B'?'MEDIO':tl?'ALTO':tem(/ CANO BAIXO/)?'BAIXO':tem(/ CANO MEDIO/)?'MEDIO':tem(/ CANO ALTO/)?'ALTO':{SAPATO:'BAIXO',TENIS:'BAIXO',BOTINA:'MEDIO',COTURNO:'ALTO',BOTA:'ALTO',PVC:'ALTO'}[R.tipo]||'';
+  const bq=(T.match(/ BI(?:QUEIRA|CO)S? (?:DE |EM |DO TIPO |TIPO )?(?:SEGURANCA )?(?:DE |EM )?(ACO|COMPOSIT\w*|COMPOSTO|PLASTIC\w*|POLIPROPILENO|TERMOPLASTIC\w*|POLIMER\w*|NAO METALIC\w*|POLICARBONATO|NYLON|PVC)/)||[])[1]||'';
+  R.bico=/ACO/.test(bq)?'ACO':/COMPOS|NAO METAL/.test(bq)?'COMP':bq?'PLAS':tem(/ SEM BIQUEIRA| SEM BICO| OCUPACIONAL| NAO HAJA RISCOS? DE QUEDA/)?'SEM':!doCA?(tem(/ COMPOSITE/)?'COMP':tem(/ ACO /)?'ACO':tem(/ PLASTIC/)?'PLAS':''):'';
+  const so=(ap.match(/ SOLADO (.{0,70})/)||[])[1]||(!doCA?T:'');
+  R.sol=/POLIURETANO.{0,30}BORRACHA|BORRACHA.{0,30}POLIURETANO| PU ?\/ ?BORRACHA/.test(so)?'PUBOR':/POLIURETANO| PU | TPU /.test(' '+so)?'PU':/BORRACHA/.test(so)?'BOR':/ PVC /.test(' '+so)?'PVC':'';
+  const semSol=ap.replace(/ SOLADO .{0,70}/,' '); const mt=(semSol.match(/ (MICROFIBRA|COURO|VAQUETA|NOBUCK|NUBUCK|VELUR|CAMURCA|EVA|PVC|TEXTIL|TECIDO|MALHA|NYLON|POLIESTER|LAMINADO SINTETICO)/)||[])[1]||'';
+  R.mat=/MICRO/.test(mt)?'MICRO':/COURO|VAQUETA|NOBUCK|NUBUCK|VELUR|CAMURCA/.test(mt)?'COURO':mt==='EVA'?'EVA':mt==='PVC'?'PVC':mt?'TEXTIL':'';
+  R.fech=tem(/ ELASTICO/)?'ELASTICO':tem(/ CADARCO/)?'CADARCO':tem(/ VELCRO| FECHAMENTO EM CONTATO/)?'VELCRO':'';
+  const cr=(T.match(/ (PRET[OA]|BRANC[OA]|MARROM|CAFE|CINZA|VERDE|LARANJA|GRAFITE|AZUL|BEGE|AMAREL[OA]|VERMELH[OA])/)||[])[1]||''; R.cor=cr.replace(/A$/,'O').replace(/^CAFO$/,'CAFE');
+  if(tem(/ PERFURA/)) R.f.push('PERF'); if(tem(/ ELETRIC| DIELETRIC| ELETRICISTA/)) R.f.push('ELET'); if(tem(/ HIDROFUG| HIDRORREPEL| WATER ?PRO| WRU /)) R.f.push('HIDRO'); if(tem(/ METATARS/)) R.f.push('META');
+  if(tem(/ ANTIDERRAP| SR[ABCV] /)) R.f.push('SRV'); if(tem(/ TERMIC| FRIGORIF| BAIXAS? TEMPERATURA| ALTAS? TEMPERATURA/)) R.f.push('TERM'); if(tem(/ ANTIESTAT| DISSIPATIV| CONDUTIV/)) R.f.push('ANTI'); if(tem(/ CHAMA| INCENDIO| BOMBEIRO/)) R.f.push('CHAMA');
+  return R}
+/* marca as características na ordem de importância, pulando a que deixaria a lista vazia (sem Marluvas equivalente) */
+function mlAplicar(R,lst){const F=mlVazio(), ok=[], sem=[]; const tenta=(k,v)=>{const G=k==='f'?{...F,f:[...F.f,v]}:{...F,[k]:v}; if(lst.some(p=>mlOk(p,G))){Object.assign(F,G); ok.push(k==='f'?mlLab('f',v):ML_CAMPOS.find(c=>c[0]===k)[1]+': '+mlLab(k,v))} else sem.push(k==='f'?mlLab('f',v):ML_CAMPOS.find(c=>c[0]===k)[1]+': '+mlLab(k,v))};
+  ['tipo','bico','cano','fech','sol','mat'].forEach(k=>{if(R[k]) tenta(k,R[k])}); R.f.forEach(v=>tenta('f',v)); if(R.cor) tenta('cor',R.cor); return {F,ok,sem}}
+function mlPainel(lst,F,info){const n=mlN(F);
+  const linha=([k,lab])=>{const cnt={}; lst.forEach(p=>{const a=p.attrs||{}; if(k==='f'){if(!mlOk(p,F)) return; (a.f||[]).forEach(v=>{if(!F.f.includes(v)) cnt[v]=(cnt[v]||0)+1})} else {if(!a[k]||!mlOk(p,{...F,[k]:''})) return; cnt[a[k]]=(cnt[a[k]]||0)+1}});
+    if(k==='f') F.f.forEach(v=>cnt[v]=lst.filter(p=>mlOk(p,F)).length); else if(F[k]&&cnt[F[k]]==null) cnt[F[k]]=0;
+    const ord=ML_ORD[k]||[]; const ks=Object.keys(cnt).sort((a,b)=>((ord.indexOf(a)+1)||99)-((ord.indexOf(b)+1)||99)||cnt[b]-cnt[a]||a.localeCompare(b)); if(!ks.length) return '';
+    return `<span class="mlk">${esc(lab)}</span><div class="mlv">${ks.map(v=>{const on=k==='f'?F.f.includes(v):F[k]===v; return `<button class="chip${on?' on':''}" data-mlq="${k}|${esc(v)}" aria-pressed="${on}"${!on&&!cnt[v]?' disabled':''}>${esc(mlLab(k,v))} <small>${on&&k!=='f'?'✓':cnt[v]}</small></button>`}).join('')}</div>`};
+  const ca=info&&info.x, sit=ca?caSit(ca):null;
+  return `<div class="card mlref" id="mlBox" style="margin:0 0 10px">
+   ${info?`<div class="mlca">${ca?`<b>CA ${esc(ca.c)} · ${esc(ca.f||'')}</b><div class="hint" style="font-size:13px">${esc(ca.n||'')}${ca.r?' · Ref. '+esc(ca.r):''}${ca.cor?' · Cor '+esc(ca.cor):''}${sit?' · '+esc(sit.t):''}</div>${ca.d?`<details><summary class="hint" style="cursor:pointer;font-size:13px">${esc(String(ca.d).split(' | ')[0].slice(0,150))}${String(ca.d).length>150?'… ver descrição completa':''}</summary><p class="hint" style="font-size:13px;margin:4px 0 0">${esc(ca.d)}</p></details>`:''}`:`<b>${esc(info.q)}</b>${info.nao?`<div class="hint" style="font-size:13px">${esc(info.nao)}</div>`:''}`}
+    ${info.own&&info.own.length?`<div style="font-size:13px;margin-top:4px;font-weight:600">✓ CA da própria Marluvas: ${esc(info.own.join(', '))}</div>`:''}${info.ok&&info.ok.length?`<div class="tags" style="margin-top:6px">${info.ok.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}${info.sem&&info.sem.length?`<div class="hint" style="font-size:12px;margin-top:4px">Sem Marluvas equivalente, não marquei: ${esc(info.sem.join(' · '))}</div>`:''}</div>`:''}
+   <div class="row" style="justify-content:space-between;align-items:center"><b>🎚 Refinar por características${n?` <span class="tag" style="border-color:var(--accent);color:var(--accent)">${n} marcada${n>1?'s':''}</span>`:''}</b><div class="row" style="gap:6px">${(()=>{const q=lst.filter(p=>mlOk(p,F)).length; return `<button class="btn sm" id="mlVer"${q?'':' disabled'}>Ver ${q} produto${q===1?'':'s'} ↓</button>`})()}${n?'<button class="btn ghost sm" id="mlClr">Limpar filtros</button>':''}<button class="btn ghost sm" id="mlX" title="Esconder o painel (os filtros continuam valendo)">Fechar</button></div></div>
+   <div class="mlgrid">${ML_CAMPOS.map(linha).join('')}</div></div>`}
+/*MLREF-FIM*/
 function caSoBusca(fr){const ap=()=>{try{const d=fr.contentDocument; if(!d||!d.head||d.getElementById('caSo')) return; const st=d.createElement('style'); st.id='caSo'; st.textContent=CA_SO_CSS; d.head.appendChild(st)}catch(_){}};
   fr.addEventListener('load',ap); let ref=!!fr.dataset.refinar, t0=Date.now(); const iv=setInterval(()=>{if(!fr.isConnected) return clearInterval(iv); ap();
     if(ref){try{const d=fr.contentDocument; const b=[...d.querySelectorAll('button,summary,[role=button]')].find(x=>/refinar/i.test(x.textContent||'')&&x.offsetParent); const f=d.querySelector('.filters');
@@ -880,7 +940,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
     if(t.id==='oiqc') return itensQueCompra(rep,o.cli,o);
     if(t.id==='oimp') return importarItensOrc(rep,o);
     if(t.id==='otec') return go('tec',{rep});
-    if(t.closest('[data-go3]')){const e_=L('enc_'+rep)||{sel:[]}; e_.on=false; LS('enc_'+rep,e_); return go('rep',{rep})} if(t.id==='oca') return abrirCA(rep,o,caTermo($('#ocaQ'))); if(t.id==='ocaRef') return abrirCA(rep,o,caTermo($('#ocaQ')),true);
+    if(t.closest('[data-go3]')){const e_=L('enc_'+rep)||{sel:[]}; e_.on=false; LS('enc_'+rep,e_); return go('rep',{rep})} if(t.id==='oca') return abrirCA(rep,o,caTermo($('#ocaQ'))); if(t.id==='ocaRef'){if(rep==='marluvas'&&ML_REF){window._mlPend=caTermo($('#ocaQ')); return go('rep',{rep})} return abrirCA(rep,o,caTermo($('#ocaQ')),true)}
     const c=t.closest('[data-cli]'); if(c){const cn=c.dataset.cli;
       /* passo a passo: vai na hora para Produtos com o que já está carregado; prazo, tabela e contatos chegam logo depois */
       if(PS===1){const cl=(CLIS||[]).find(x=>x.cnpj===cn); if(cl){o.cli={cnpj:cl.cnpj,n:cl.n,fa:cl.fa||'',cid:cl.cid,em:cl.em||'',tel:cl.tel||'',ult:cl.reps[HIST_REP[rep]]||null,ct:[]}; o.pas=2; saveQ(o); window.scrollTo(0,0); orc();

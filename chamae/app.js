@@ -5759,31 +5759,59 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
      ${semLT.length?`<div class="card" style="margin-top:12px;border-left:5px solid #d97706"><b>${semLT.length} item(ns) vendendo sem lead time cadastrado</b> <span class="hint">(usam o padrão de ${cfg('lt_padrao')} dias)</span><div class="hint" style="margin-top:4px">${semLT.slice(0,30).map(r=>`<button class="chip" data-soit="${esc(r.c)}">${esc(r.m)} ${esc(r.k)}</button>`).join(' ')}</div></div>`:''}
      <div class="card grid" style="margin-top:12px"><div class="row" style="gap:6px">${[['lt','Lead time por código ('+Object.keys(S.P.lt).length+')'],['emb','Embalagem mínima ('+Object.keys(S.P.emb).length+')'],['cart','Carteira ('+S.cart.length+')']].map(([k,l])=>`<button class="chip${CFT===k?' on':''}" data-cft="${k}">${l}</button>`).join('')}</div>
       <input id="socfq" type="search" placeholder="Procurar código" value="${esc(CFQ)}">${ges&&CFT==='lt'?`<div class="row"><select id="soltm" style="width:auto">${marcas.map(x=>`<option>${esc(x)}</option>`).join('')}</select><input id="soltc" placeholder="Código" style="width:130px"><input id="soltd" placeholder="Dias" style="width:80px"><button class="chip" id="soltadd">+ Incluir</button></div>`:''}<div id="socfl">${lista}</div></div>`};
-  /* PDF para o comprador da Palácio: Em falta (sem os zerados há meses) + Vai faltar, com foto e sugestão (pedido do Victor, 16/11) */
+  /* PDF para o comprador / dono da Palácio (Victor 16/11: "fácil de entender, bonito, intuitivo, com nossas cores e logo"):
+     capa com resumo (3 números, por fábrica, como ler) + "Já acabaram" e "Vão acabar" em cartões com foto, selo colorido e balão "Repor". */
   const pdfFalta=async modo=>{const F=Rf().filter(r=>r.st==='falta'&&!r.fa.velha).sort((a,b)=>b.fa.perdR-a.fa.perdR), K=Rf().filter(r=>r.st==='risco').sort((a,b)=>(a.cob||0)-(b.cob||0));
     if(!F.length&&!K.length) return toast('Nada em falta nem para faltar'+(f.fab?' em '+f.fab:''));
     toast('Montando o PDF…'); await loadJsPDF(); await Promise.all([...new Set([...F,...K].map(r=>repId(r)).filter(Boolean))].map(id=>soCatalogo(id).catch(()=>null)));
-    const IM={}; const all=[...F,...K]; for(let i=0;i<all.length;i+=8) await Promise.all(all.slice(i,i+8).map(async r=>{const u=foto(r); if(u) IM[r.c]=await imgData(u,180)}));
-    const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=210, H=297, M=10; let y=0, pg=1; const dt=dbr(rel.data);
-    const sanit=s=>String(s||'').replace(/[^\x20-\x7E -ÿ]/g,'');
-    const topo=()=>{doc.setFillColor(30,58,138); doc.rect(0,0,W,20,'F'); doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.text(sanit(CI.nome)+' · itens em falta e que vão faltar',M,9);
-      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(`Sell-out de ${dt}${f.fab?' · '+f.fab:''} · Chamaê Representações`,M,15); doc.text('pág. '+pg,W-M,15,{align:'right'}); y=27; doc.setTextColor(20)};
-    const novaPag=()=>{doc.addPage(); pg++; topo()};
-    const secao=(t,cor,sub)=>{if(y>H-40) novaPag(); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...cor); doc.text(t,M,y); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(100); doc.text(sub,M,y+4.5); y+=9; doc.setTextColor(20)};
-    const linha=(r,cor,info,sug)=>{const h=20; if(y+h>H-12) novaPag(); doc.setDrawColor(226,232,240); doc.setFillColor(...cor); doc.rect(M,y,1.4,h-2,'F');
-      const im=IM[r.c]; if(im){const s=Math.min(16/im.w,16/im.h); try{doc.addImage(im.d,'JPEG',M+3+(16-im.w*s)/2,y+1+(16-im.h*s)/2,im.w*s,im.h*s)}catch(e){}} else {doc.setFillColor(241,245,249); doc.rect(M+3,y+1,16,16,'F')}
-      const x=M+22; doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(sanit(r.k||r.c),x,y+4.5); const wk=doc.getTextWidth(sanit(r.k||r.c)); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(110); doc.text(`  ${r.fab} · cód. Palácio ${r.c}`,x+wk,y+4.5); doc.setTextColor(20);
-      doc.setFontSize(8.5); doc.text(doc.splitTextToSize(sanit(r.d),120).slice(0,2),x,y+8.8); doc.setFontSize(8.5); doc.setTextColor(...cor); doc.text(info,x,y+16.2); doc.setTextColor(20);
-      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.text(sug[0],W-M,y+6,{align:'right'}); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(110); if(sug[1]) doc.text(sug[1],W-M,y+10,{align:'right'}); doc.setTextColor(20);
-      doc.line(M,y+h-1,W-M,y+h-1); y+=h};
-    const sugTx=r=>r.cart>0?['Já pedido',`${nBR(Math.round(r.cart))} un. na carteira${r.ct&&r.ct.d?' · prev. '+dbr(r.ct.d).slice(0,5):''}`]:r.sug>0?[`Sugestão: ${nBR(r.sug)} un.`,r.emb>1?`embalagem de ${r.emb}`:'']:['—',''];
-    const pt=s=>String(s).replace(/~/g,'aprox. ');
-    topo(); const dia=F.reduce((s,r)=>s+r.fa.porDia,0);
-    doc.setFontSize(10); doc.text(`${F.length} item(ns) em falta · ${K.length} vão faltar${F.length?` · deixando de vender cerca de ${brl(dia)} por dia (a custo)`:''}`,M,y); y+=7;
-    if(F.length){secao(`Em falta (${F.length})`,[185,28,28],'Estoque zerado em todas as lojas e vendia antes. Os que mais deixaram de vender primeiro.'); F.forEach(r=>linha(r,[185,28,28],pt(`Sem estoque ${haTx(r.fa)} · vendia ${soRit(r.fa.giroD)} · perdeu ${brl(r.fa.perdR)}`),sugTx(r)))}
-    if(K.length){y+=3; secao(`Vão faltar (${K.length})`,[194,65,12],'O estoque acaba antes de chegar a reposição. Os que acabam primeiro no topo.'); K.forEach(r=>linha(r,[194,65,12],pt(`Estoque ${nBR(Math.round(r.est))} · vende ${soRit(r.giro)} · acaba em ~${Math.round(r.cob||0)} dias (repor leva ~${Math.round(r.hor)})`),sugTx(r)))}
-    const fname=`Palacio-em-falta-${rel.data}${f.fab?'-'+norm(f.fab).toLowerCase():''}.pdf`, blob=doc.output('blob'); if(window.__soPdfHook) return window.__soPdfHook(blob,fname,{F,K});
-    const file=new File([blob],fname,{type:'application/pdf'}), body=`Bom dia! Segue o relatório do sell-out de ${dt}: ${F.length} item(ns) em falta e ${K.length} que vão faltar, com a sugestão de compra. Posso já montar o pedido?`;
+    const IM={}, all=[...F,...K]; for(let i=0;i<all.length;i+=8) await Promise.all(all.slice(i,i+8).map(async r=>{const u=foto(r); if(u) IM[r.c]=await imgData(u,240)}));
+    const logo=await imgData('logo.jpg',900);
+    const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=210, H=297, M=12, CW=W-2*M; let y=0;
+    const NAVY=[28,35,64], GOLD=[242,182,50], BAL=[253,244,214], GREY=[90,96,120], LINE=[223,226,236], RED=[200,38,38], REDL=[254,236,236], ORA=[222,110,20], ORAL=[255,241,226], GRN=[22,128,72], GRNL=[226,245,234], SOFT=[246,247,251];
+    const dt=dbr(rel.data), cliNome=CI.nome, t=s=>String(s==null?'':s).replace(/[^\x20-\x7E -ÿ]/g,'').replace(/\s+/g,' ').trim();
+    const fill=c=>doc.setFillColor(...c), ink=c=>doc.setTextColor(...c), fnt=(b,s)=>{doc.setFont('helvetica',b?'bold':'normal'); doc.setFontSize(s)};
+    const rr=(x,yy,w,h,r,c,borda)=>{fill(c); if(borda){doc.setDrawColor(...borda); doc.setLineWidth(.3); doc.roundedRect(x,yy,w,h,r,r,'FD')} else doc.roundedRect(x,yy,w,h,r,r,'F')};
+    const pill=(x,yy,txt,bg,fg,s)=>{fnt(true,s||7.6); const w=doc.getTextWidth(txt)+5; rr(x,yy,w,5.4,2.7,bg); ink(fg); doc.text(txt,x+2.5,yy+3.8); return w};
+    const head=()=>{fill(NAVY); doc.rect(0,0,W,30,'F'); if(logo) doc.addImage(logo.d,'JPEG',M,3,66,24); fill(GOLD); doc.rect(0,30,W,1.2,'F');
+      ink([255,255,255]); fnt(true,15); doc.text('RELATÓRIO DE ESTOQUE',W-M,13,{align:'right'}); fnt(false,9.5); ink(GOLD); doc.text(t(cliNome)+'  ·  '+dt+(f.fab?'  ·  '+f.fab:''),W-M,20,{align:'right'}); y=39; ink(NAVY)};
+    const novaPag=()=>{doc.addPage(); head()}; const cabe=h=>{if(y+h>H-16) novaPag()};
+    const nm=s=>nBR(Math.round(s)), ritmo=g=>soRit(g).replace('por','vende');
+    /* ---------- capa ---------- */
+    head(); const dia=F.reduce((s,r)=>s+r.fa.porDia,0), SG=[...F,...K].filter(r=>r.sug>0&&!(r.cart>0)), inv=SG.reduce((s,r)=>s+r.sug*r.cu,0);
+    fnt(true,16); ink(NAVY); doc.text('Como está o estoque dos nossos produtos',M,y+2); fnt(false,9.5); ink(GREY);
+    doc.text(doc.splitTextToSize(`Fizemos as contas com as vendas e o estoque das suas lojas de ${dt}. Aqui está o que já acabou, o que vai acabar antes de a fábrica conseguir entregar e quanto repor de cada um.`,CW),M,y+8); y+=19;
+    const kw=(CW-8)/3; [[F.length,'produtos','JÁ ACABARAM','estoque zero em todas as lojas',RED,REDL],[K.length,'produtos','VÃO ACABAR','antes de a reposição chegar',ORA,ORAL],[brl(dia),'por dia','DEIXANDO DE VENDER','nos produtos que acabaram',NAVY,BAL]].forEach(([n,u,tt,sub,c,bg],i)=>{const x=M+i*(kw+4);
+      rr(x,y,kw,30,3,bg); fill(c); doc.roundedRect(x,y,2.2,30,1.1,1.1,'F'); ink(c); fnt(true,7.8); doc.text(tt,x+6,y+6.5); fnt(true,typeof n==='number'?22:15.5); doc.text(String(n),x+6,y+17.5); const wn=doc.getTextWidth(String(n)); fnt(false,8.5); doc.text(u,x+7+wn,y+17.5); ink(GREY); fnt(false,7.6); doc.text(sub,x+6,y+25)});
+    y+=36;
+    if(SG.length){rr(M,y,CW,14,3,BAL); fill(GOLD); doc.roundedRect(M,y,2.2,14,1.1,1.1,'F'); ink(NAVY); fnt(true,10.5); doc.text(`Para resolver: repor ${SG.length} produto${SG.length>1?'s':''}`,M+6,y+6); fnt(false,8.6); ink(GREY);
+      doc.text(`Cerca de ${brl(inv)} a preço de custo. A quantidade de cada um está no balão amarelo "Repor".`,M+6,y+10.8); y+=20}
+    const porF=[...new Set([...F,...K].map(r=>r.fab))].map(x=>({x,fa:F.filter(r=>r.fab===x).length,ri:K.filter(r=>r.fab===x).length,pd:F.filter(r=>r.fab===x).reduce((s,r)=>s+r.fa.porDia,0)})).sort((a,b)=>b.pd-a.pd||b.ri-a.ri);
+    if(porF.length>1){fnt(true,11); ink(NAVY); doc.text('Por fábrica',M,y+3); y+=7; const mx=Math.max(...porF.map(p=>p.pd),1);
+      fnt(true,7.4); ink(GREY); doc.text('FÁBRICA',M+2,y+3); doc.text('JÁ ACABARAM',M+52,y+3,{align:'right'}); doc.text('VÃO ACABAR',M+78,y+3,{align:'right'}); doc.text('DEIXANDO DE VENDER POR DIA',M+86,y+3); y+=5;
+      porF.forEach((p,i)=>{if(i%2===0){rr(M,y,CW,8,1.5,SOFT)} ink(NAVY); fnt(true,9.5); doc.text(t(p.x),M+2,y+5.4); fnt(true,9.5); ink(RED); doc.text(p.fa?String(p.fa):'—',M+52,y+5.4,{align:'right'}); ink(ORA); doc.text(p.ri?String(p.ri):'—',M+78,y+5.4,{align:'right'});
+        const bw=(CW-120)*p.pd/mx; if(bw>0){rr(M+86,y+2.4,Math.max(1.5,bw),3.4,1.7,RED)} ink(NAVY); fnt(false,8.6); doc.text(p.pd?brl(p.pd):'—',M+86+Math.max(1.5,bw)+2,y+5.4); y+=8}); y+=6}
+    cabe(40); fnt(true,11); ink(NAVY); doc.text('Como ler os cartões',M,y+3); y+=7; rr(M,y,CW,31,3,SOFT);
+    let yy=y+6; [[' SEM ESTOQUE HÁ 10 DIAS ',RED,REDL,'O produto acabou em todas as lojas. Mostramos quanto vendia e quanto já deixou de vender.'],[' ACABA EM 5 DIAS ',ORA,ORAL,'Ainda tem estoque, mas acaba antes de a fábrica entregar (a barra mostra quanto falta).'],[' REPOR 12 un. ',NAVY,BAL,'Quanto pedir agora para cobrir as vendas até a próxima entrega, já na embalagem da fábrica.'],[' JÁ PEDIDO ',GRN,GRNL,'Já está em pedido com a fábrica: não precisa pedir de novo.']].forEach(([p,c,bg,tx])=>{const w=pill(M+4,yy-3.9,p.trim(),bg,c,7.2); ink(GREY); fnt(false,8.2); doc.text(tx,M+4+44,yy); yy+=6.6}); y+=37;
+    /* ---------- cartões ---------- */
+    const secao=(n,titulo,sub,c,bg)=>{cabe(42); rr(M,y,CW,13,3,bg); fill(c); doc.circle(M+7.5,y+6.5,4,'F'); ink([255,255,255]); fnt(true,10); doc.text(String(n),M+7.5,y+8,{align:'center'}); ink(c); fnt(true,12.5); doc.text(titulo,M+14,y+6.2); fnt(false,8.2); ink(GREY); doc.text(sub,M+14,y+10.6); y+=17};
+    const cartao=(r,tipo)=>{const h=27; cabe(h+3); const c=tipo==='fa'?RED:ORA; rr(M,y,CW,h,3,[255,255,255],LINE); fill(c); doc.roundedRect(M,y,2.2,h,1.1,1.1,'F');
+      const im=IM[r.c]; rr(M+5,y+3,21,21,2,[255,255,255],LINE); if(im){const s=Math.min(19/im.w,19/im.h); try{doc.addImage(im.d,'JPEG',M+5+(21-im.w*s)/2,y+3+(21-im.h*s)/2,im.w*s,im.h*s)}catch(e){}} else {ink([170,175,190]); fnt(false,6.5); doc.text('sem foto',M+15.5,y+14.5,{align:'center'})}
+      const x=M+30, wTx=CW-30-46; ink(NAVY); fnt(true,10.5); const cod=t(r.k||r.c); doc.text(cod,x,y+6); const wc=doc.getTextWidth(cod); fnt(false,7.2); ink(GREY); doc.text(`${t(r.fab)}  ·  cód. ${t(cliNome).split(' ')[0]} ${r.c}`,x+wc+2.5,y+6);
+      fnt(false,8.3); ink([40,44,60]); const dl=doc.splitTextToSize(t(r.d),wTx).slice(0,2); doc.text(dl,x,y+10.6);
+      if(tipo==='fa'){const fa=r.fa; pill(x,y+16.9,`SEM ESTOQUE ${haTx(fa).toUpperCase()}`,REDL,RED); fnt(false,7.8); ink(GREY); doc.text(`Vendia ${soRit(fa.giroD)}  ·  já deixou de vender cerca de ${brl(fa.perdR)}`,x,y+25)}
+      else {const dur=Math.max(0,Math.round(r.cob||0)), w=pill(x,y+16.9,dur<=0?'ACABA A QUALQUER MOMENTO':`ACABA EM ${dur} DIA${dur>1?'S':''}`,ORAL,ORA); const bx=x+w+3, bw=Math.max(10,wTx-w-3), p=Math.min(1,(r.cob||0)/Math.max(1,r.hor));
+        rr(bx,y+18.8,bw,1.8,.9,[236,238,244]); rr(bx,y+18.8,Math.max(1.8,bw*p),1.8,.9,ORA); fnt(false,7.8); ink(GREY); doc.text(`Tem ${nm(r.est)} un.  ·  vende ${soRit(r.giro)}  ·  a fábrica leva cerca de ${Math.round(r.hor)} dias para entregar`,x,y+25)}
+      const bxX=W-M-42, bxY=y+4, bxW=38, bxH=19;
+      if(r.cart>0){rr(bxX,bxY,bxW,bxH,3,GRNL); ink(GRN); fnt(true,7.4); doc.text('JÁ PEDIDO',bxX+bxW/2,bxY+5.4,{align:'center'}); fnt(true,13); doc.text(nm(r.cart)+' un.',bxX+bxW/2,bxY+12.3,{align:'center'}); fnt(false,7); doc.text(r.ct&&r.ct.d?'previsão '+dbr(r.ct.d).slice(0,5):'na fábrica',bxX+bxW/2,bxY+16.6,{align:'center'})}
+      else if(r.sug>0){rr(bxX,bxY,bxW,bxH,3,BAL,GOLD); ink(NAVY); fnt(true,7.4); doc.text('REPOR',bxX+bxW/2,bxY+5.4,{align:'center'}); fnt(true,15); doc.text(nm(r.sug)+' un.',bxX+bxW/2,bxY+12.8,{align:'center'}); fnt(false,7); ink(GREY); doc.text(r.emb>1?`caixa com ${r.emb}`:r.cu?'cerca de '+brl(r.sug*r.cu):'',bxX+bxW/2,bxY+16.8,{align:'center'})}
+      y+=h+3};
+    let n=0; if(F.length){secao(++n,`Já acabaram (${F.length})`,'Primeiro os que mais deixaram de vender.',RED,REDL); F.forEach(r=>cartao(r,'fa'))}
+    if(K.length){y+=2; secao(++n,`Vão acabar (${K.length})`,'Primeiro os que acabam antes.',ORA,ORAL); K.forEach(r=>cartao(r,'ri'))}
+    /* rodapé com página em todas */
+    const np=doc.getNumberOfPages(); for(let i=1;i<=np;i++){doc.setPage(i); doc.setDrawColor(...GOLD); doc.setLineWidth(.6); doc.line(M,286,W-M,286); fnt(false,7.6); ink(GREY);
+      doc.text('Chamae Representações Comerciais  ·  CNPJ 18.308.187/0001-50  ·  (16) 99793-7802  ·  victor.crepaldi@chamae.com.br',M,291); doc.text(`página ${i} de ${np}`,W-M,291,{align:'right'})}
+    const fname=`Estoque-${norm(cliNome).split(' ')[0].toLowerCase()}-${rel.data}${f.fab?'-'+norm(f.fab).toLowerCase():''}.pdf`, blob=doc.output('blob'); if(window.__soPdfHook) return window.__soPdfHook(blob,fname,{F,K});
+    const file=new File([blob],fname,{type:'application/pdf'}), body=`Olá! Segue o relatório de estoque dos nossos produtos nas suas lojas (${dt}): ${F.length} já acabaram e ${K.length} vão acabar antes de a fábrica entregar. No PDF está quanto repor de cada um. Posso já montar o pedido?`;
     const dl=()=>{const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},1500)};
     if(modo==='wa'){if((MOVEL||waDesk())&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname,text:body}); return}catch(e){if(e.name==='AbortError') return}}
       dl(); window.open('https://wa.me/?text='+encodeURIComponent(body),'_blank'); return toast('PDF baixado · arraste o arquivo para a conversa do WhatsApp')}

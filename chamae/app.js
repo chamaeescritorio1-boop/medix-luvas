@@ -5747,9 +5747,6 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
      <div class="card grid"><b>Carteira pendente na fábrica</b><p class="hint" style="margin:0">O que a Palácio já pediu e a fábrica ainda não entregou: entra no cálculo para não sugerir comprar de novo. Suba o arquivo da Marluvas (export SAP .xlsx, pego só as linhas da Palácio), o relatório de pedidos da Marcon (.xlsx com a aba 2-Pedidos, um por loja: Franca e Cássia; pego a coluna Qt.Pendente; EV… vira Evald), o CSV da Marcon ou uma planilha simples com Marca, Código, Qtd. e Data. Cada arquivo substitui a carteira daquela fábrica (ou daquela loja). <b>Item que está na carteira não entra no pré-pedido</b>: o cliente já pediu.</p>
       <table class="t"><tr><th>Marca</th><th class="n">Linhas</th><th class="n">Pendente</th><th>Próxima entrega</th><th>Subida em</th><th></th></tr>${Object.entries(cartG).map(([k,g])=>`<tr><td>${esc(k)}</td><td class="n">${g.n}</td><td class="n">${nBR(g.q)}</td><td>${g.d?dbr(g.d):'—'}</td><td>${g.up?soQuando(g.up):'—'}<div class="hint">${esc([...g.lj].join(' · '))}</div></td><td><button class="chip" data-cartx="${esc(k)}">Apagar</button></td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem carteira cadastrada.</td></tr>'}</table>
       <label class="btn ghost" style="cursor:pointer;justify-self:start">⬆ Subir carteira (pode escolher vários arquivos)<input id="socart" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label></div>
-     <div class="card grid" style="margin-top:12px"><b>🖼 Logo do cliente no PDF</b><p class="hint" style="margin:0">Aparece na capa do PDF da aba Em falta, ao lado da logo da fábrica. Use PNG ou JPG (pode ser o print da logo do site).</p>
-      <div class="row" style="gap:10px">${S.P.logo.cliente?`<img src="${S.P.logo.cliente}" alt="" style="max-height:48px;max-width:180px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px">`:'<span class="hint">Sem logo cadastrada.</span>'}
-      ${ges?`<label class="btn ghost" style="cursor:pointer">⬆ ${S.P.logo.cliente?'Trocar':'Subir'} logo<input id="sologo" type="file" accept="image/*" hidden></label>${S.P.logo.cliente?'<button class="chip" id="sologox">Tirar</button>':''}`:''}</div></div>
      <div class="card grid" style="margin-top:12px"><b>📧 E-mail diário do que vai acabar</b><p class="hint" style="margin:0">Todo dia, quando chega o relatório da Palácio, o robô manda um e-mail com os itens em falta e os que vão faltar (com a planilha em anexo). Se deixar sem e-mail, vai para a caixa que recebe o relatório.${S.P.mail.ult&&S.P.mail.ult.txt?` Último enviado: relatório de ${dbr(S.P.mail.ult.txt)}.`:''}</p>
       <label class="row" style="gap:6px"><input type="checkbox" id="somailon"${!(S.P.mail.on&&+S.P.mail.on.valor===0)?' checked':''}${dis}> Mandar o e-mail todo dia</label>
       <label class="f">Para quem (separe por vírgula)<input id="somailpara" value="${esc((S.P.mail.para&&S.P.mail.para.txt)||'')}" placeholder="vazio = a caixa que recebe o relatório"${dis}></label>
@@ -5770,10 +5767,8 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     toast('Montando o PDF…'); await loadJsPDF(); await Promise.all([...new Set([...F,...K].map(r=>repId(r)).filter(Boolean))].map(id=>soCatalogo(id).catch(()=>null)));
     const IM={}, all=[...F,...K]; for(let i=0;i<all.length;i+=8) await Promise.all(all.slice(i,i+8).map(async r=>{const u=foto(r); if(u) IM[r.c]=await imgData(u,240)}));
     const logo=await imgData('logo.jpg',900), DEMO=SODEMO;
-    /* logos: das fábricas que aparecem (representadas.regras.logo) e do cliente (Configurar; some na apresentação) — Victor 16/11 */
-    const R0=await reps().catch(()=>[]), FB=[...new Set([...F,...K].map(r=>r.rep||r.fab).filter(Boolean))], RL=[];
-    for(const nmR of FB){const x=(R0||[]).find(z=>z.id===REPID[nmR]||z.nome===nmR), lg=x&&x.regras&&x.regras.logo; RL.push({n:nmR,im:lg?await imgData(lg,500):null})}
-    const CLG=!DEMO&&S.P.logo&&S.P.logo.cliente?await imgData(S.P.logo.cliente,600):null;
+    /* fábricas do relatório: vão no título (as logos na capa ficaram feias e saíram, Victor 16/11) */
+    const FB=[...new Set([...F,...K].map(r=>r.rep||r.fab).filter(Boolean))];
     const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=210, H=297, M=12, CW=W-2*M; let y=0;
     const NAVY=[28,35,64], GOLD=[242,182,50], BAL=[253,244,214], GREY=[90,96,120], LINE=[223,226,236], RED=[200,38,38], REDL=[254,236,236], ORA=[222,110,20], ORAL=[255,241,226], GRN=[22,128,72], GRNL=[226,245,234], SOFT=[246,247,251];
     const dt=dbr(rel.data), cliNome=DEMO?'Relatório de exemplo':CI.nome, t=s=>String(s==null?'':s).replace(/[^\x20-\x7E -ÿ]/g,'').replace(/\s+/g,' ').trim();
@@ -5791,14 +5786,7 @@ async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).
     const intro=DEMO?`Exemplo com dados reais de um cliente nosso em ${dt} (nome, códigos e valores de cada item escondidos). É este relatório que a sua empresa passa a receber: o que já acabou, o que vai acabar antes de a fábrica entregar e quanto repor de cada um.`
       :`Fizemos as contas com as vendas e o estoque das suas lojas de ${dt}. Aqui está o que já acabou, o que vai acabar antes de a fábrica conseguir entregar e quanto repor de cada um.`;
     const IL=doc.splitTextToSize(intro,CW); doc.text(IL,M,y+8); y+=10+IL.length*4.2;
-    /* faixa com as logos: para quem (cliente) e de quais fábricas */
-    const lgFit=(im,x,yy,w,h)=>{const s=Math.min(w/im.w,h/im.h); try{doc.addImage(im.d,'JPEG',x+(w-im.w*s)/2,yy+(h-im.h*s)/2,im.w*s,im.h*s)}catch(e){}};
-    rr(M,y,CW,22,3,[255,255,255],LINE); fnt(true,7); ink(GREY); doc.text('RELATÓRIO PARA',M+4,y+5); doc.text(RL.length>1?'FÁBRICAS':'FÁBRICA',M+CW/2+4,y+5);
-    if(DEMO){doc.setDrawColor(...GOLD); doc.setLineWidth(.4); doc.setLineDashPattern([1.2,1],0); doc.roundedRect(M+4,y+7,60,12,2,2,'S'); doc.setLineDashPattern([],0); ink(GOLD); fnt(true,9); doc.text('SUA LOGO AQUI',M+34,y+14.4,{align:'center'})}
-    else if(CLG) lgFit(CLG,M+4,y+7,60,12); else {ink(NAVY); fnt(true,11); doc.text(doc.splitTextToSize(t(CI.nome),CW/2-8)[0],M+4,y+15)}
-    doc.setDrawColor(...LINE); doc.setLineWidth(.3); doc.line(M+CW/2,y+4,M+CW/2,y+18);
-    {const n=Math.max(1,RL.length), gap=3, bw=Math.min(40,(CW/2-8-gap*(n-1))/n); RL.forEach((L,i)=>{const x=M+CW/2+4+i*(bw+gap); if(L.im) lgFit(L.im,x,y+7,bw,12); else {ink(NAVY); fnt(true,10); doc.text(t(L.n),x,y+15)}})}
-    y+=28;
+    y+=2;
     const kw=(CW-8)/3; [[F.length,'produtos','JÁ ACABARAM','estoque zero em todas as lojas',RED,REDL],[K.length,'produtos','VÃO ACABAR','antes de a reposição chegar',ORA,ORAL],[brl(dia),'por dia','DEIXANDO DE VENDER','nos produtos que acabaram',NAVY,BAL]].forEach(([n,u,tt,sub,c,bg],i)=>{const x=M+i*(kw+4);
       rr(x,y,kw,30,3,bg); fill(c); doc.roundedRect(x,y,2.2,30,1.1,1.1,'F'); ink(c); fnt(true,7.8); doc.text(tt,x+6,y+6.5); fnt(true,typeof n==='number'?22:15.5); doc.text(String(n),x+6,y+17.5); const wn=doc.getTextWidth(String(n)); fnt(false,8.5); doc.text(u,x+7+wn,y+17.5); ink(GREY); fnt(false,7.6); doc.text(sub,x+6,y+25)});
     y+=36;

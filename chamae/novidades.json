@@ -5,8 +5,8 @@
    "id": "2026111605",
    "data": "2026-11-16",
    "tipo": "novo",
-   "titulo": "Sell-out: PDF com as logos e modo apresentação",
-   "texto": "O PDF da aba Em falta agora diz de qual fábrica está falando no título e mostra as logos da fábrica e do cliente (a logo do cliente se sobe em ⚙️ Configurar). E tem a opção \"Apresentação (sem os dados do cliente)\": esconde o nome, a logo, os códigos e os valores de cada item do cliente e mostra \"Como funciona\", para apresentar a outro cliente."
+   "titulo": "Sell-out: PDF com a fábrica no título e modo apresentação",
+   "texto": "O PDF da aba Em falta agora diz de qual fábrica está falando no título. E tem a opção \"Apresentação (sem os dados do cliente)\": esconde o nome, os códigos e os valores de cada item do cliente e mostra \"Como funciona\", para apresentar a outro cliente."
   },
   {
    "id": "2026111604",

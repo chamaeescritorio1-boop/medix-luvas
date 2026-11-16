@@ -26,3 +26,7 @@
 .toast.tentav{display:flex;flex-wrap:wrap;gap:8px;align-items:center;pointer-events:auto;z-index:40;width:min(560px,94vw);max-width:94vw}
 .toast.tentav .chip{min-height:34px;padding:4px 10px}
 .pfunbox{display:grid;gap:4px}
+/* 16/11 Painel: seleção de vendedor/representada */
+.pfsel{gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.pfsel label.f{flex:1 1 200px;max-width:280px}
+.pfsel select{width:100%}

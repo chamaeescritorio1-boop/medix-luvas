@@ -18,7 +18,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 AQUI = os.path.dirname(os.path.abspath(__file__))
 PUBLICAS = ['proposta.html', 'cliente.html', 'proposta-servico.html']   # páginas do cliente: código compacto, sem custos
 CENTRAL = 'index.html'                                                 # central do vendedor: código embaralhado
-SOLTAS = ['js/qrcode.js']                                              # bibliotecas carregadas sob demanda
+SOLTAS = ['js/qrcode.js', 'js/pdf-drive.js']                                              # bibliotecas carregadas sob demanda
 
 
 def chave():

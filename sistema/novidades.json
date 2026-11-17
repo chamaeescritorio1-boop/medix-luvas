@@ -1,6 +1,7 @@
 {
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
+  {"id": "2026111701", "data": "2026-11-17", "tipo": "correcao", "titulo": "Robô não marca mais pedido sozinho", "texto": "O robô Fechar o ciclo não muda mais um orçamento para \"Pedido transmitido\" sozinho. Quando acha um pedido parecido do mesmo cliente, só deixa um aviso no detalhe do orçamento com os botões ✓ É este pedido / Não foi."},
   {"id": "2026111601", "data": "2026-11-16", "tipo": "correcao", "titulo": "PDF Marluvas separa MTS e MTO de novo", "texto": "No PDF do orçamento Marluvas, quando tem MTS e MTO juntos, os itens voltam a sair como no conversor: Pedido 1 · MTS e Pedido 2 · MTO, com o subtotal de cada pedido (e quanto falta para o mínimo). No fim, antes do TOTAL, aparece o valor de cada pedido separado."},
   {"id": "2026111203", "data": "2026-11-12", "tipo": "novo", "titulo": "Aviso de pedidos para transmitir", "texto": "Quem transmite os pedidos (Igor) vê uma faixa no topo de todas as telas quando há pedido \"Aprovado para transmissão\", com o número de pedidos e o botão Ver e transmitir. O número também aparece no atalho Transmitir e na aba do navegador, e chega um aviso quando entra pedido novo.", "onde": "Topo da tela · Transmitir", "gestor": true},
   {

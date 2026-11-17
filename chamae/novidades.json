@@ -2,6 +2,14 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111707",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "🚚 Frete estimado da Marcon (Alfa e Floresta)",
+   "texto": "No orçamento da Marcon, no passo Pagamento e transporte, aparece o FRETE ESTIMADO da Alfa e da Floresta para a cidade do cliente, com o cálculo de cada uma. A transportadora que não atende a cidade sai da lista. O valor é só estimativa (o frete final vem no CT-e) e não entra no total; sai também no PDF e no WhatsApp com aviso em destaque.",
+   "onde": "Orçamento › Marcon › Pagamento e transporte"
+  },
+  {
    "id": "2026111706",
    "data": "2026-11-17",
    "tipo": "novo",

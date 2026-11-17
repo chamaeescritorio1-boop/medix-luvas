@@ -145,3 +145,11 @@
 .opas-p .oult{font-size:12px;padding:3px 7px}
 .ogr-row .oult{justify-self:end;text-align:right;border-left:0;border-right:3px solid #5aa9ff}
 .ogr-row .oult0{border-right-color:var(--line)}
+
+/* duplicar orçamento para outro(s) cliente(s) — 17/11/2026 */
+.dup .card{margin-top:10px}
+.dup-sel{display:flex;flex-wrap:wrap;gap:6px;min-height:28px;align-items:center}
+.dup-c{display:inline-flex;align-items:center;gap:6px;font-size:14px;padding:4px 6px 4px 10px;background:#4fd18b22;color:inherit;border:1px solid #4fd18b66}
+.dup-x{border:0;background:transparent;color:var(--bad,#ff7a70);font-size:16px;line-height:1;padding:2px 4px;cursor:pointer;min-height:0}
+.dup-ck{display:flex;gap:10px;align-items:flex-start;font-size:15px;line-height:1.35;cursor:pointer}
+.dup-ck input{width:20px;height:20px;min-height:0;flex:0 0 20px;margin-top:2px}

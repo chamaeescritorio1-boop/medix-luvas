@@ -27,3 +27,17 @@
 /* Linhas que não quebram (ex.: Logo da representada com 📤): o campo encolhe em vez de empurrar o botão para fora da tela */
 label.f>.row{min-width:0}
 .row[style*="nowrap"]>input{min-width:0}
+
+/* Transmitir: fotos dos produtos e anexos do pedido */
+.trfoto{width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;cursor:zoom-in;display:block}
+.trfoto0{display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;background:rgba(127,127,127,.12);cursor:default;text-align:center}
+.tranx{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.tranx-i{display:grid;gap:4px;justify-items:center;padding:6px;border:1px solid var(--line,rgba(127,127,127,.3));border-radius:10px;background:var(--surface,transparent);color:inherit;font:inherit;cursor:pointer;min-width:0}
+.tranx-i img{width:100%;height:84px;object-fit:cover;border-radius:6px;background:#fff}
+.tranx-ic{height:84px;display:flex;align-items:center;justify-content:center;font-size:38px}
+.tranx-i small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;opacity:.8}
+.trmin{display:flex;gap:4px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.trmin img{width:34px;height:34px;object-fit:contain;background:#fff;border-radius:5px}
+.trmin span{font-size:12px;opacity:.7}
+.trfoto-m{display:none}
+@media (max-width:600px){.trcol{display:none}.trfoto-m{display:block;width:64px;height:64px;margin-bottom:4px}}

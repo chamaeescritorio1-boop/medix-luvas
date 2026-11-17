@@ -40,3 +40,17 @@ Se os custos e margens não vierem do banco, a central não abre (mensagem na te
 
 **Este é o único lugar de trabalho do solar.** O repositório `VitimGm/chamasolar-sistema` ficou para trás: não publicar a partir dele
 (o `publicar-chamae.py` de lá apaga o código protegido e as melhorias feitas aqui).
+
+## Google Drive (desde 16/11/2026)
+- Os documentos dos clientes vão para o drive compartilhado **CHAMA SOLAR**, não mais para o Storage `sol-arquivos`.
+  Cada orçamento ganha a pasta `ANO/MM - MÊS/NOME - CIDADE (CÓDIGO)/` com `1 PROPOSTAS`, `2 CONTA E DOCUMENTOS`,
+  `3 VISITA TÉCNICA`, `4 PROJETO`, `5 CONTRATO E PAGAMENTO` (criada quando o orçamento é salvo com nome, ou no primeiro arquivo).
+- Edge Functions: `sol-drive` (pastas, envio, lixeira, link temporário; só usuário do solar) e `sol-drive-arquivo`
+  (entrega o arquivo para o cliente por link assinado com validade; `verify_jwt` desligado de propósito). Fontes em `servidor/`.
+- Conta de serviço `sistema-solar@chama-solar-sistema.iam.gserviceaccount.com` (projeto Google Cloud `chama-solar-sistema`,
+  organização chamae.com.br), membro "Administrador de conteúdo" do drive CHAMA SOLAR. Chave só no secret `GOOGLE_SA_JSON`.
+- Na janela de proposta, contrato, procuração e laudo: botão **"📁 Guardar PDF na pasta do cliente"** (gera o PDF com
+  `js/pdf-drive.js` e envia para o Drive). Ficha do cliente → Documentos: botão **"📂 Pasta no Drive"**.
+- Apagar um arquivo pelo sistema manda para a lixeira do Drive (30 dias para recuperar).
+- Arquivos antigos da Groner foram copiados para `SISTEMA - ARQUIVOS DO GRONER/ANO/MM - MÊS/CLIENTE (GRN-x)/` e cada linha de
+  `sol_cliente_arquivos` guarda `drive_id`/`drive_link`. Banco: `sql/008_google_drive.sql` (desfazer junto).

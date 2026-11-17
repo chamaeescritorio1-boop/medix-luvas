@@ -1,0 +1,32 @@
+/* Relatórios enxutos (16/11): botões em 3 grupos + Produtividade */
+.relnav{display:grid;gap:8px;margin-bottom:10px}
+.relg{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.relg>small{min-width:92px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.relg .row{gap:6px}
+.relfil{gap:8px;align-items:center}
+.relsub{gap:6px;padding-right:6px;margin-right:4px;border-right:1px solid var(--line)}
+.psem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:end;margin:8px 0 6px}
+.psem>div{display:grid;justify-items:center;gap:2px;text-align:center}
+.pbar{display:flex;align-items:flex-end;gap:3px;height:90px;width:100%;justify-content:center;border-bottom:1px solid var(--line)}
+.pbar i{display:block;width:14px;min-height:2px;border-radius:3px 3px 0 0}
+.pdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+@media(max-width:760px){.relg{display:grid;gap:4px}.relg>small{min-width:0}.relsub{border-right:0;padding-right:0;width:100%}}
+/* Produtividade v2: tipo de cliente, grade dia a dia, aviso "Como foi?" */
+.ppill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;color:var(--pc);border:1px solid var(--pc);background:color-mix(in srgb,var(--pc) 14%,transparent)}
+.pfun td,.pfun th{padding:6px 8px}
+.pgrade{font-size:12.5px}
+.pgrade th small{display:block;font-weight:400;opacity:.7}
+.pgrade th.fds,.pgrade td.fds{opacity:.6}
+.pgrade th.hoje{color:var(--accent)}
+.pgrade td.pdc{min-width:30px;text-align:center;border-radius:6px;font-weight:700}
+.pgrade td.c-ok{background:color-mix(in srgb,#4fd18b 30%,transparent)}
+.pgrade td.c-warn{background:color-mix(in srgb,#f2b632 30%,transparent)}
+.pgrade td.c-bad{background:color-mix(in srgb,#ff7a70 26%,transparent)}
+.pgrade td.fut{background:transparent}
+.toast.tentav{display:flex;flex-wrap:wrap;gap:8px;align-items:center;pointer-events:auto;z-index:40;width:min(560px,94vw);max-width:94vw}
+.toast.tentav .chip{min-height:34px;padding:4px 10px}
+.pfunbox{display:grid;gap:4px}
+/* 16/11 Painel: seleção de vendedor/representada */
+.pfsel{gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.pfsel label.f{flex:1 1 200px;max-width:280px}
+.pfsel select{width:100%}

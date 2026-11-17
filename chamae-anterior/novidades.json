@@ -2,11 +2,145 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111611",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Comissão: ajustar a positivação",
+   "texto": "O gestor pode corrigir a positivação de uma representada no ✎ (fica marcada \"Sistema: N\" ao lado e com * no PDF). Vazio volta a usar a conta do Sistema.",
+   "gestor": true
+  },
+  {
+   "id": "2026111610",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Relatórios › 💰 Comissão",
+   "texto": "A comissão do mês por representada, igual à planilha: meta × realizado de positivação e de vendas, % da meta, R$ por cliente, % sobre as vendas e o ganho total. Gestor escolhe o vendedor e manda o PDF pelo WhatsApp; cada vendedor vê a própria comissão do mês andando."
+  },
+  {
+   "id": "2026111609",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Painel do mês: escolher vendedor e representada",
+   "texto": "No topo do Painel do mês agora tem as listas Vendedor (Todos ou cada um) e Representada (Todas ou cada uma). Tocar nas barras continua funcionando."
+  },
+  {
+   "id": "2026111608",
+   "data": "2026-11-16",
+   "tipo": "correcao",
+   "titulo": "Sell-out: código EV… conta como Evald",
+   "texto": "No filtro de marca da Marcon, todo código que começa com EV conta como Evald, mesmo se o cliente cadastrou como Marcon. E o título do PDF diz as marcas que estão nele (ex.: \"produtos Marcon e Evald\" quando a marca está em Todas)."
+  },
+  {
+   "id": "2026111607",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF do pré-pedido e marca Marcon × Evald",
+   "texto": "No Pré-pedido do Sell-out entraram os botões 📄 PDF e 💬 WhatsApp: a sugestão de compra com foto, motivo de cada item e quanto comprar. Na Marcon dá para escolher a marca (Marcon ou Evald). Com \"Apresentação\" marcada, o PDF sai sem o nome, os códigos e os preços do cliente, para mostrar a outro cliente."
+  },
+  {
+   "id": "2026111606",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: filtro de marca (Marcon × Evald)",
+   "texto": "No Sell-out, ao escolher a fábrica Marcon, aparece a linha \"Marca\" para ver só Marcon ou só Evald. Vale nas abas Resumo, Itens e Em falta, e no PDF (o título passa a ser da marca escolhida)."
+  },
+  {
+   "id": "2026111609",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Produtividade: dia a dia, prospecção e contato automático",
+   "texto": "Ao tocar em WhatsApp, Ligar, E-mail ou enviar o PDF do orçamento, o Sistema já anota o contato e, quando você volta, pergunta \"Como foi?\" (1 toque). Em Relatórios › Produtividade: atendimentos por dia de cada vendedor com a meta, cada cliente separado em Base ativa, Reativação ou Prospecção, cobertura da carteira, clientes conquistados e reativados. O PDF para a fábrica também mostra isso."
+  },
+  {
+   "id": "2026111608",
+   "data": "2026-11-16",
+   "tipo": "correcao",
+   "titulo": "Pedido transmitido pelo assistente fica com o vendedor certo",
+   "texto": "Quando o Igor (assistente) transmite um pedido na fábrica, a venda continua no nome do vendedor do orçamento (ou de quem fez o orçamento). O nome do Igor aparece só como \"transmitido por\". Na lista de Pedidos a coluna Vendedor mostra o vendedor escolhido no orçamento, não quem digitou, e o Igor deixa de aparecer como vendedor no Resumo da semana."
+  },
+  {
+   "id": "2026111607",
+   "data": "2026-11-16",
+   "tipo": "correcao",
+   "titulo": "PDF Marluvas separa MTS e MTO de novo",
+   "texto": "No PDF do orçamento Marluvas, quando tem MTS e MTO juntos, os itens voltam a sair como no conversor: Pedido 1 · MTS e Pedido 2 · MTO, com o subtotal de cada pedido (e quanto falta para o mínimo). No fim, antes do TOTAL, aparece o valor de cada pedido separado."
+  },
+  {
+   "id": "2026111606",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Relatórios mais enxutos + Produtividade",
+   "texto": "Relatórios agora tem 8 opções em 3 grupos (Acompanhar, Analisar, Buscar). Vendas mensais, Por representada e Por vendedor viraram o Histórico de vendas; as duas Curvas ABC viraram uma; Conversão e Motivos de perda ficaram juntos. Novo: Produtividade, com contatos, clientes atendidos, orçamentos e pedidos do mês por vendedor e por fábrica, e PDF para mandar à fábrica. O Painel do mês abre na hora e confere o Reprio por trás. O Exportar funciona em todos."
+  },
+  {
+   "id": "2026111605",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF com a fábrica no título e modo apresentação",
+   "texto": "O PDF da aba Em falta agora diz de qual fábrica está falando no título. E tem a opção \"Apresentação (sem os dados do cliente)\": esconde o nome, os códigos e os valores de cada item do cliente e mostra \"Como funciona\", para apresentar a outro cliente."
+  },
+  {
+   "id": "2026111604",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF só com o que ainda não tem pedido",
+   "texto": "Na aba Em falta, marque \"Só os que ainda não têm pedido\" ao lado do botão do PDF: saem do PDF os itens que já estão na carteira da fábrica e os que já tiveram pedido nosso depois de acabar. A escolha fica salva."
+  },
+  {
+   "id": "2026111603",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF do estoque com a nossa cara",
+   "texto": "O PDF da aba Em falta (botões 📄 PDF e 💬 WhatsApp) ficou pronto para mandar ao comprador ou ao dono da loja: logo e cores da Chamae, capa com o resumo (quantos acabaram, quantos vão acabar, quanto está deixando de vender por dia e quanto repor), por fábrica, como ler, e um cartão por produto com foto, selo colorido e o balão \"Repor\"."
+  },
+  {
+   "id": "2026111602",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: relatório do que acabou e do que vai acabar",
+   "texto": "Na aba Em falta do Sell-out, os botões 📄 PDF e 💬 WhatsApp geram um PDF com foto, o que já acabou e o que vai acabar, com a sugestão de compra, para mandar ao comprador da Palácio. E todo dia, quando chega o relatório da Palácio, sai um e-mail automático com essas listas e a planilha em anexo (quem recebe: Sell-out › ⚙️ Configurar)."
+  },
+  {
+   "id": "2026111601",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Marluvas: Refinar características na própria tela",
+   "texto": "Na pasta Marluvas, o botão Refinar características abre o painel ali mesmo, logo abaixo do Converter CA: tipo, biqueira, solado, material, cano, fechamento, cor e recursos, com quantos produtos tem em cada opção, filtrando o catálogo na hora. Digite um CA do concorrente (ou uma descrição) e toque em Refinar: o Sistema lê o CA e já marca as características que têm Marluvas equivalente."
+  },
+  {
+   "id": "2026111207",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Fotos e anexos na tela Transmitir",
+   "texto": "Na tela Transmitir cada item aparece com a foto do produto (toque para ampliar) e os anexos do pedido (ordem de compra, fotos, PDFs) ficam abertos logo no começo. Na lista, cada pedido mostra as miniaturas dos produtos e quantos anexos tem."
+  },
+  {
+   "id": "2026111206",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Cooperativas fora do Bater carteira",
+   "texto": "Coopercitrus, Copercana e Coplana saíram do Bater carteira, do Plano do dia e das listas da Base ativa. Em Clientes, o novo botão 🏢 Cooperativas mostra as lojas de cada cooperativa (última compra por fábrica) e a aba 📦 Itens que já compram, com o que já está cadastrado lá para oferecer às lojas."
+  },
+  {
+   "id": "2026111205",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Medix: carteira do portal no Bater carteira",
+   "texto": "Na Base ativa, a Medix mostra as faixas do portal da Medix (ativos, oportunidade, atenção, inativos), lidas todo dia pelo robô. Toque na Medix e abra a aba 📋 Pela Medix para ver quem está em Atenção e Oportunidade e ligar primeiro."
+  },
+  {
+   "id": "2026111205",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Início mais enxuto",
+   "texto": "O Início ficou mais limpo: Fábricas no topo, depois 3 números do dia (meta do mês, tarefas para hoje e oportunidades), os botões principais (agora com E-mails do dia) e o Hoje para você. Minha semana e o Resumo da equipe passaram para Relatórios."
+  },
+  {
    "id": "2026111204",
    "data": "2026-11-12",
    "tipo": "novo",
    "titulo": "Base ativa por fábrica e Prêmio Marluvas no Bater carteira",
-   "texto": "No topo do Bater carteira aparece a Base ativa de cada fábrica (clientes que compraram no prazo × meta da fábrica, ex.: Camper 25). Toque na fábrica para ver 3 listas: Manter (vencem em 30 dias), Recuperar (pararam) e Conquistar (compram outra fábrica e nunca esta). O Plano do dia agora traz primeiro quem vai sair da base. O 🏆 Prêmio Marluvas mostra os 6 indicadores do relatório diário da Marluvas (chega sozinho pelo e-mail), quanto falta e quem chamar em cada um."
+   "texto": "No topo do Bater carteira aparece a Base ativa de cada fábrica (clientes que compraram no prazo × meta da fábrica, ex.: Camper 25). Toque na fábrica para ver 3 listas: Manter (vencem em 30 dias), Recuperar (pararam) e Conquistar (compram outra fábrica e nunca esta). O Plano do dia agora traz primeiro quem vai sair da base. Para gestores, o 🏆 Prêmio Marluvas mostra os 6 indicadores do relatório diário da Marluvas (chega sozinho pelo e-mail), quanto falta e quem chamar em cada um."
   },
   {
    "id": "2026111202",

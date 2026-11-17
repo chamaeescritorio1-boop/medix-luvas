@@ -5963,7 +5963,10 @@ async function soLerCarteira(f,cli){const nomeCli=norm((SO_CLIS[cli]||{}).nome||
   if(col('MATERIAL')>=0&&col('PARES ABERTO')>=0){const cm=col('MATERIAL'), cq=col('PARES ABERTO'), cd=col('DATA REMESSA ATP','DATA REMESSA'), cc=col('NOME EMISSOR ORDEM','NOME EMISSOR');
     rows.forEach(r=>{if(!String(r[cm]||'').trim()) return; if(cc>=0&&!norm(r[cc]).includes(nomeCli)) return; out.push({marca:'MARLUVAS',cod:String(r[cm]).trim().toUpperCase(),qtd:nu(r[cq]),data_prev:dt(r[cd])})}); return {fab:'MARLUVAS',L:out,de:rows.length}}
   if(col('PRODUTO')>=0&&col('QT.PENDENTE','QT PENDENTE','QTD. PENDENTE','QTD PENDENTE')>=0){const cp=col('PRODUTO'), cq=col('QT.PENDENTE','QT PENDENTE','QTD. PENDENTE','QTD PENDENTE'), ce=col('EMISSAOPV','EMISSAO'), cn=col('PEDIDO'), cl=col('CIDADE');
-    let cid=''; rows.forEach(r=>{const p=String(r[cp]||'').trim(), q=nu(r[cq]); if(!p||q<=0) return; if(cl>=0&&r[cl]) cid=String(r[cl]).trim(); const em=dt(r[ce]);
+    /* 17/11: o relatório "Pedidos" da Marcon (só a aba 2-Pedidos, sem 1-Parametros) traz as colunas Cliente e Loja: pego só as linhas do cliente e a loja da coluna */
+    const ccl=col('CLIENTE'), clj=h.findIndex(x=>x==='LOJA'), doCli=r=>{const d=String(r[ccl]??'').replace(/\D/g,''); return ccl<0||d.length<8||d.startsWith(cli)||cli.startsWith(d)};
+    if(!A.loja&&clj>=0){const lj=[...new Set(rows.filter(r=>String(r[cp]||'').trim()&&doCli(r)).map(r=>String(r[clj]??'').trim()).filter(Boolean))]; if(lj.length===1) A.loja=lj[0]}
+    let cid=''; rows.forEach(r=>{const p=String(r[cp]||'').trim(), q=nu(r[cq]); if(!p||q<=0||!doCli(r)) return; if(cl>=0&&r[cl]) cid=String(r[cl]).trim(); const em=dt(r[ce]);
       out.push({marca:/^EV/i.test(p)?'EVALD':'MARCON',cod:p.toUpperCase(),qtd:q,data_prev:null,det:`ped. ${String(r[cn]||'').trim()}${em?' de '+dbr(em):''}`})});
     return {fab:'MARCON',L:out,de:rows.filter(r=>String(r[cp]||'').trim()).length,loja:A.loja?('loja '+A.loja+(cid?' '+cid:'')):''}}
   if(col('PRODUTO')>=0&&col('QTD. PROGRAMADA','QTD PROGRAMADA')>=0){const cp=col('PRODUTO'), cq=col('QTD. PROGRAMADA','QTD PROGRAMADA'), cd=col('ACORDADA');
@@ -6342,10 +6345,14 @@ ${(()=>{const MK=f.fab?[...new Set(C.R.filter(r=>r.fab===f.fab).map(r=>r.mk).fil
     if(t.dataset.ltv&&ges){const [mm,cc]=t.dataset.ltv.split('|'), v=t.value.trim().toUpperCase(); if(!v) return; const row={tipo:'lt',marca:mm,cod:cc,valor:/^\d/.test(v)?+v.replace(',','.'):null,txt:/^\d/.test(v)?null:v};
       try{await salvaParam([row]); S.P.lt[t.dataset.ltv]={v:row.valor,t:row.txt}; toast('✓ Lead time salvo'); C=soCalc(S,{fil:f.fil,si:SI,siDias:f.siD,up:UP})}catch(err){toast('Erro: '+err.message)} return}
     if(t.dataset.embv&&ges){const v=Math.max(1,+t.value||1); try{await salvaParam([{tipo:'emb',cod:t.dataset.embv,valor:v}]); S.P.emb[t.dataset.embv]=v; toast('✓ Embalagem salva'); C=soCalc(S,{fil:f.fil,si:SI,siDias:f.siD,up:UP})}catch(err){toast('Erro: '+err.message)} return}
-    if(t.id==='soup'){const fl=t.files[0]; if(!fl) return; toast('Lendo o relatório…'); try{const r=await soSubirRelatorio(cli,fl); if(r){toast(`✓ Relatório de ${dbr(r.dia)} com ${r.n} itens gravado`); go('sellout',{cnpj:ctx.cnpj,data:'',ab:f.ab,recarga:1})}}catch(err){toast('Não consegui ler: '+err.message)} return}
+    if(t.id==='soup'){const fl=t.files[0]; if(!fl) return; toast('Lendo o relatório…');
+      /* 17/11: se o arquivo não é o sell-out (abas PRODUTO/ESTOQUE) e sim a carteira da fábrica, sobe como carteira em vez de dar erro */
+      try{await loadXLSX(); const nm=XLSX.read(await fl.arrayBuffer(),{bookSheets:true}).SheetNames.map(x=>String(x).trim().toUpperCase()); if(!(nm.includes('PRODUTO')&&nm.includes('ESTOQUE'))) return subirCarteira([fl])}catch(_){}
+      try{const r=await soSubirRelatorio(cli,fl); if(r){toast(`✓ Relatório de ${dbr(r.dia)} com ${r.n} itens gravado`); go('sellout',{cnpj:ctx.cnpj,data:'',ab:f.ab,recarga:1})}}catch(err){toast('Não consegui ler: '+err.message)} return}
     if(t.id==='sologo'&&ges){const fl=t.files[0]; if(!fl) return; try{const bm=await createImageBitmap(fl), sc=Math.min(1,600/bm.width,240/bm.height), c=document.createElement('canvas'); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(bm,0,0,c.width,c.height); const d=c.toDataURL('image/jpeg',.9);
       await salvaParam([{tipo:'logo',cod:'cliente',txt:d}]); S.P.logo.cliente=d; toast('✓ Logo salva'); draw()}catch(err){toast('Erro: '+err.message)} return}
-    if(t.id==='socart'){const fls=[...t.files]; if(!fls.length) return; try{const LL=[]; for(const fl of fls){const r=await soLerCarteira(fl,cli); LL.push({fl,r})}
+    if(t.id==='socart') return subirCarteira([...t.files])};
+  const subirCarteira=async fls=>{if(!fls.length) return; try{const LL=[]; for(const fl of fls){const r=await soLerCarteira(fl,cli); LL.push({fl,r})}
       const tot=LL.reduce((s,x)=>s+x.r.L.length,0); if(!tot) return toast('Nenhuma linha pendente encontrada'+(LL.some(x=>x.r.fab==='MARLUVAS')?' (procurei as linhas da Palácio)':''));
       const desc=LL.map(x=>`${x.fl.name}: ${x.r.L.length} pendente(s) de ${[...new Set(x.r.L.map(y=>y.marca))].join('/')}${x.r.loja?' ('+x.r.loja+')':''}`).join('\n');
       if(!confirm(`Carteira encontrada:\n${desc}\n\nSubstituir a carteira que está no Sistema${LL.every(x=>x.r.loja)?' destas lojas':' destas fábricas'}?`)) return;
@@ -6355,7 +6362,7 @@ ${(()=>{const MK=f.fab?[...new Set(C.R.filter(r=>r.fab===f.fab).map(r=>r.mk).fil
           if(r.loja) await api(`so_carteira?cliente=eq.${cli}&marca=eq.${encodeURIComponent(mk)}&origem=not.ilike.${encodeURIComponent('*loja *')}`,{method:'DELETE'})}}
       const rows=LL.flatMap(({fl,r})=>r.L.map(({det,...x})=>({cliente:cli,...x,origem:[r.loja,det,fl.name].filter(Boolean).join(' · ').slice(0,200)})));
       for(let k=0;k<rows.length;k+=500) await api('so_carteira',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(rows.slice(k,k+500))});
-      S.cart=(await api(`so_carteira?select=id,marca,cod,qtd,data_prev,origem,criado_em&cliente=eq.${cli}&order=marca,cod&limit=5000`))||[]; toast(`✓ Carteira atualizada: ${rows.length} linha(s) pendente(s)`); recalc()}catch(err){toast('Carteira: '+err.message)} return}};
+      S.cart=(await api(`so_carteira?select=id,marca,cod,qtd,data_prev,origem,criado_em&cliente=eq.${cli}&order=marca,cod&limit=5000`))||[]; toast(`✓ Carteira atualizada: ${rows.length} linha(s) pendente(s)`); recalc()}catch(err){toast('Carteira: '+err.message)}};
   m.oninput=e=>{const t=e.target; if(t.id==='soq'){f.q=t.value; f.lim=100; clearTimeout(m._sq); m._sq=setTimeout(()=>{draw(); const i=$('#soq'); if(i){i.focus(); i.setSelectionRange(i.value.length,i.value.length)}},300)}
     if(t.id==='socfq'){CFQ=t.value; clearTimeout(m._sq); m._sq=setTimeout(()=>{draw(); const i=$('#socfq'); if(i){i.focus(); i.setSelectionRange(i.value.length,i.value.length)}},300)}};
   if(f.ab==='per') carregaPer()}

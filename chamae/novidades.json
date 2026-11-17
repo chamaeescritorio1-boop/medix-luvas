@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111702",
+   "data": "2026-11-17",
+   "tipo": "correcao",
+   "titulo": "Nenhum orçamento some mais",
+   "texto": "Busca por nº do orçamento (ex.: 755), nº na Sigma/fábrica, OC, cliente, CNPJ ou produto em todo o histórico (Pedidos › Orçamentos, Salvos e Buscar). Trocar o cliente de um orçamento já salvo cria um orçamento novo; o original continua salvo. Botão 🕘 Histórico no orçamento e 🗑 Lixeira (gestor) para restaurar excluídos. O Reprio foi desligado."
+  },
+  {
    "id": "2026111701",
    "data": "2026-11-17",
    "tipo": "novo",

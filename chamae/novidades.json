@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111704",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "Sell-out: conferir a carteira antes de gravar",
+   "texto": "Ao subir a carteira da fábrica abre uma janela com tudo o que foi lido do arquivo (loja, pedidos, cada item com a quantidade pendente). Você confere e grava; depois mostra o que entrou. Em ⚙️ Configurar aparece quem subiu."
+  },
+  {
    "id": "2026111703",
    "data": "2026-11-17",
    "tipo": "correcao",

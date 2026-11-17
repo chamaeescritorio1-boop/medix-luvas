@@ -5975,6 +5975,21 @@ async function soLerCarteira(f,cli){const nomeCli=norm((SO_CLIS[cli]||{}).nome||
   if(cm<0||cc<0||cq<0) throw new Error('planilha sem as colunas Marca, Código e Qtd.');
   rows.forEach(r=>{if(!String(r[cc]||'').trim()) return; out.push({marca:norm(r[cm]).trim(),cod:String(r[cc]).trim().toUpperCase(),qtd:nu(r[cq]),data_prev:cd>=0?dt(r[cd]):null})}); return {fab:'',L:out,de:rows.length}}
 
+/* 17/11 (pedido do Victor): quem sobe a carteira vê, item por item, o que foi lido do arquivo — antes de gravar (confirmar) e depois (o que entrou) */
+function soCartJanela(LL,gravado){return new Promise(ok=>{const ov=document.createElement('div'); ov.className='ov';
+  const tot=LL.reduce((s,x)=>s+x.r.L.reduce((a,y)=>a+(+y.qtd||0),0),0), nl=LL.reduce((s,x)=>s+x.r.L.length,0);
+  const bloco=({fl,r})=>{const q=r.L.reduce((a,y)=>a+(+y.qtd||0),0), mk={}; r.L.forEach(y=>{mk[y.marca]=(mk[y.marca]||0)+1});
+    const peds=[...new Set(r.L.map(y=>y.det).filter(Boolean))];
+    return `<div class="card grid" style="gap:6px"><div><b>📄 ${esc(fl.name)}</b></div>
+     <div class="hint">${esc(r.fab||'Planilha')}${r.loja?' · '+esc(r.loja):' · todas as lojas'} · <b>${nBR(r.L.length)}</b> item(ns) pendente(s) · <b>${nBR(q)}</b> un. · ${Object.entries(mk).map(([k,v])=>esc(k)+' '+v).join(' · ')}${r.de?` · li ${nBR(r.de)} linhas do arquivo`:''}</div>
+     ${peds.length?`<div class="hint">Pedidos: ${peds.map(esc).join(' · ')}</div>`:''}
+     <div style="max-height:46vh;overflow:auto"><table class="t"><tr><th>Marca</th><th>Código</th><th class="n">Pendente</th><th>Pedido / previsão</th></tr>${r.L.map(y=>`<tr><td>${esc(y.marca)}</td><td><b>${esc(y.cod)}</b></td><td class="n">${nBR(y.qtd)}</td><td class="hint">${esc(y.det||(y.data_prev?'prev. '+dbr(y.data_prev):'—'))}</td></tr>`).join('')}</table></div></div>`};
+  ov.innerHTML=`<div class="sh grid" style="max-width:760px;width:100%;max-height:92vh;overflow:auto">
+    <div class="sec" style="margin:0">${gravado?'✓ Carteira gravada':'📦 Conferir a carteira antes de gravar'}</div>
+    <p class="hint" style="margin:0">${gravado?`Entraram <b>${nBR(nl)}</b> item(ns), <b>${nBR(tot)}</b> unidades. Esses itens <b>não entram no pré-pedido</b> (a Palácio já pediu).`:`Li <b>${nBR(nl)}</b> item(ns) pendente(s), <b>${nBR(tot)}</b> unidades. Confira abaixo. Ao gravar, substitui a carteira que está no Sistema ${LL.every(x=>x.r.loja)?'destas lojas':'destas fábricas'}.`}</p>
+    ${LL.map(bloco).join('')}
+    <div class="row" style="justify-content:flex-end;gap:8px">${gravado?'<button class="btn" data-ok="1">Fechar</button>':'<button class="btn ghost" data-ok="0">Cancelar</button><button class="btn" data-ok="1">Gravar carteira</button>'}</div></div>`;
+  document.body.appendChild(ov); ov.onclick=e=>{const b=e.target.closest('[data-ok]'); if(b||e.target===ov){ov.remove(); ok(!!(b&&b.dataset.ok==='1'))}}})}
 async function selloutView(){const m=$('#main'); const cli=Object.keys(SO_CLIS).find(k=>String(ctx.cnpj||'').startsWith(k))||Object.keys(SO_CLIS)[0], CI=SO_CLIS[cli];
   const f=Object.assign({vis:'',ab:'res',fab:'',fil:'',st:'',abc:'',q:'',ord:'pri',siD:30,ppFab:'',lim:100},L('soS')||{}); f.lim=100; if(ctx.ab) f.ab=ctx.ab; const salva=()=>LS('soS',{...f,q:''});
   m.innerHTML=`<div class="sec">📈 Sell-out · ${esc(CI.nome)}</div><p class="hint">Carregando o relatório…</p>`;
@@ -6180,7 +6195,7 @@ ${(()=>{const MK=f.fab?[...new Set(C.R.filter(r=>r.fab===f.fab).map(r=>r.mk).fil
   const config=()=>{const cfg=k=>S.P.cfg[k]!=null?S.P.cfg[k]:SO_CFG0[k], dis=ges?'':' disabled';
     const semLT=C.R.filter(r=>r.ltCad==='Sem cadastro (padrão)'&&(+r.v60||0)>0);
     const marcas=[...new Set([...C.R.map(r=>r.m),...Object.keys(S.P.fab)])].filter(Boolean).sort();
-    const cartG={}; S.cart.forEach(c=>{const g=cartG[c.marca]=cartG[c.marca]||{n:0,q:0,d:null,up:'',lj:new Set()}; g.n++; g.q+=+c.qtd||0; if(c.data_prev&&(!g.d||c.data_prev<g.d)) g.d=c.data_prev; if(c.criado_em>g.up) g.up=c.criado_em; const l=(String(c.origem||'').match(/loja \d+( [A-ZÀ-Ú]+)?/i)||[])[0]; if(l) g.lj.add(l)});
+    const cartG={}; S.cart.forEach(c=>{const g=cartG[c.marca]=cartG[c.marca]||{n:0,q:0,d:null,up:'',lj:new Set()}; g.n++; g.q+=+c.qtd||0; if(c.data_prev&&(!g.d||c.data_prev<g.d)) g.d=c.data_prev; if(c.criado_em>g.up) g.up=c.criado_em; const l=(String(c.origem||'').match(/loja \d+( [A-ZÀ-Ú]+)?/i)||[])[0]; if(l) g.lj.add(l); const pq=(String(c.origem||'').match(/· por (\S+)$/)||[])[1]; if(pq&&c.criado_em>=g.up) g.por=pq});
     const qq=norm(CFQ).trim(); let lista='';
     if(CFT==='lt'){const L=Object.entries(S.P.lt).map(([k,v])=>{const [mm,cc]=k.split('|'); return {mm,cc,v}}).filter(x=>!qq||norm(x.mm+' '+x.cc).includes(qq)).sort((a,b)=>a.mm.localeCompare(b.mm)||a.cc.localeCompare(b.cc,'pt',{numeric:true}));
       lista=`<table class="t"><tr><th>Marca</th><th>Código (Marluvas sem o número)</th><th class="n">Lead time</th><th></th></tr>${L.slice(0,40).map(x=>`<tr><td>${esc(x.mm)}</td><td>${esc(x.cc)}</td><td class="n"><input data-ltv="${esc(x.mm+'|'+x.cc)}" value="${x.v.t||(x.v.v??'')}" style="width:110px;text-align:right"${dis}></td><td>${ges?`<button class="chip" data-ltx="${esc(x.mm+'|'+x.cc)}">✕</button>`:''}</td></tr>`).join('')}</table>${L.length>40?`<p class="hint">Mostrando 40 de ${L.length}: procure pelo código.</p>`:''}<p class="hint">Em dias, ou escreva FORA DE LINHA.</p>`}
@@ -6189,7 +6204,7 @@ ${(()=>{const MK=f.fab?[...new Set(C.R.filter(r=>r.fab===f.fab).map(r=>r.mk).fil
     else {const L=S.cart.filter(c=>!qq||norm(c.marca+' '+c.cod).includes(qq)); lista=`<table class="t"><tr><th>Marca</th><th>Código</th><th class="n">Pendente</th><th>Previsão</th></tr>${L.slice(0,200).map(c=>`<tr><td>${esc(c.marca)}</td><td>${esc(c.cod)}</td><td class="n">${nBR(c.qtd)}</td><td>${c.data_prev?dbr(c.data_prev):'—'}</td></tr>`).join('')}</table>${L.length>200?`<p class="hint">Mostrando 200 de ${L.length}.</p>`:''}`}
     return `${ges?'':'<p class="hint">Só os gestores mudam parâmetros, lead times e embalagens. Todos podem subir a carteira e o relatório.</p>'}
      <div class="card grid"><b>Carteira pendente na fábrica</b><p class="hint" style="margin:0">O que a Palácio já pediu e a fábrica ainda não entregou: entra no cálculo para não sugerir comprar de novo. Suba o arquivo da Marluvas (export SAP .xlsx, pego só as linhas da Palácio), o relatório de pedidos da Marcon (.xlsx com a aba 2-Pedidos, um por loja: Franca e Cássia; pego a coluna Qt.Pendente; EV… vira Evald), o CSV da Marcon ou uma planilha simples com Marca, Código, Qtd. e Data. Cada arquivo substitui a carteira daquela fábrica (ou daquela loja). <b>Item que está na carteira não entra no pré-pedido</b>: o cliente já pediu.</p>
-      <table class="t"><tr><th>Marca</th><th class="n">Linhas</th><th class="n">Pendente</th><th>Próxima entrega</th><th>Subida em</th><th></th></tr>${Object.entries(cartG).map(([k,g])=>`<tr><td>${esc(k)}</td><td class="n">${g.n}</td><td class="n">${nBR(g.q)}</td><td>${g.d?dbr(g.d):'—'}</td><td>${g.up?soQuando(g.up):'—'}<div class="hint">${esc([...g.lj].join(' · '))}</div></td><td><button class="chip" data-cartx="${esc(k)}">Apagar</button></td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem carteira cadastrada.</td></tr>'}</table>
+      <table class="t"><tr><th>Marca</th><th class="n">Linhas</th><th class="n">Pendente</th><th>Próxima entrega</th><th>Subida em</th><th></th></tr>${Object.entries(cartG).map(([k,g])=>`<tr><td>${esc(k)}</td><td class="n">${g.n}</td><td class="n">${nBR(g.q)}</td><td>${g.d?dbr(g.d):'—'}</td><td>${g.up?soQuando(g.up):'—'}${g.por?' por '+esc(g.por):''}<div class="hint">${esc([...g.lj].join(' · '))}</div></td><td><button class="chip" data-cartx="${esc(k)}">Apagar</button></td></tr>`).join('')||'<tr><td colspan="6" class="hint">Sem carteira cadastrada.</td></tr>'}</table>
       <label class="btn ghost" style="cursor:pointer;justify-self:start">⬆ Subir carteira (pode escolher vários arquivos)<input id="socart" type="file" accept=".xlsx,.xls,.csv" multiple hidden></label></div>
      <div class="card grid" style="margin-top:12px"><b>📧 E-mail diário do que vai acabar</b><p class="hint" style="margin:0">Todo dia, quando chega o relatório da Palácio, o robô manda um e-mail com os itens em falta e os que vão faltar (com a planilha em anexo). Se deixar sem e-mail, vai para a caixa que recebe o relatório.${S.P.mail.ult&&S.P.mail.ult.txt?` Último enviado: relatório de ${dbr(S.P.mail.ult.txt)}.`:''}</p>
       <label class="row" style="gap:6px"><input type="checkbox" id="somailon"${!(S.P.mail.on&&+S.P.mail.on.valor===0)?' checked':''}${dis}> Mandar o e-mail todo dia</label>
@@ -6355,14 +6370,14 @@ ${(()=>{const MK=f.fab?[...new Set(C.R.filter(r=>r.fab===f.fab).map(r=>r.mk).fil
   const subirCarteira=async fls=>{if(!fls.length) return; try{const LL=[]; for(const fl of fls){const r=await soLerCarteira(fl,cli); LL.push({fl,r})}
       const tot=LL.reduce((s,x)=>s+x.r.L.length,0); if(!tot) return toast('Nenhuma linha pendente encontrada'+(LL.some(x=>x.r.fab==='MARLUVAS')?' (procurei as linhas da Palácio)':''));
       const desc=LL.map(x=>`${x.fl.name}: ${x.r.L.length} pendente(s) de ${[...new Set(x.r.L.map(y=>y.marca))].join('/')}${x.r.loja?' ('+x.r.loja+')':''}`).join('\n');
-      if(!confirm(`Carteira encontrada:\n${desc}\n\nSubstituir a carteira que está no Sistema${LL.every(x=>x.r.loja)?' destas lojas':' destas fábricas'}?`)) return;
+      if(!(await soCartJanela(LL,false))) return;
       const apagado=new Set(); for(const {r} of LL){const mks=[...new Set(r.L.map(x=>x.marca).concat(r.fab==='MARCON'?['MARCON','EVALD']:[]))];
         for(const mk of mks){const k=mk+'|'+(r.loja||''); if(apagado.has(k)) continue; apagado.add(k);
           await api(`so_carteira?cliente=eq.${cli}&marca=eq.${encodeURIComponent(mk)}${r.loja?'&origem=ilike.'+encodeURIComponent('*'+r.loja.split(' ').slice(0,2).join(' ')+'*'):''}`,{method:'DELETE'});
           if(r.loja) await api(`so_carteira?cliente=eq.${cli}&marca=eq.${encodeURIComponent(mk)}&origem=not.ilike.${encodeURIComponent('*loja *')}`,{method:'DELETE'})}}
-      const rows=LL.flatMap(({fl,r})=>r.L.map(({det,...x})=>({cliente:cli,...x,origem:[r.loja,det,fl.name].filter(Boolean).join(' · ').slice(0,200)})));
+      const rows=LL.flatMap(({fl,r})=>r.L.map(({det,...x})=>({cliente:cli,...x,origem:[r.loja,det,fl.name,meuNome()?'por '+meuNome():''].filter(Boolean).join(' · ').slice(0,200)})));
       for(let k=0;k<rows.length;k+=500) await api('so_carteira',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(rows.slice(k,k+500))});
-      S.cart=(await api(`so_carteira?select=id,marca,cod,qtd,data_prev,origem,criado_em&cliente=eq.${cli}&order=marca,cod&limit=5000`))||[]; toast(`✓ Carteira atualizada: ${rows.length} linha(s) pendente(s)`); recalc()}catch(err){toast('Carteira: '+err.message)}};
+      S.cart=(await api(`so_carteira?select=id,marca,cod,qtd,data_prev,origem,criado_em&cliente=eq.${cli}&order=marca,cod&limit=5000`))||[]; toast(`✓ Carteira atualizada: ${rows.length} linha(s) pendente(s)`); recalc(); soCartJanela(LL,true)}catch(err){toast('Carteira: '+err.message)}};
   m.oninput=e=>{const t=e.target; if(t.id==='soq'){f.q=t.value; f.lim=100; clearTimeout(m._sq); m._sq=setTimeout(()=>{draw(); const i=$('#soq'); if(i){i.focus(); i.setSelectionRange(i.value.length,i.value.length)}},300)}
     if(t.id==='socfq'){CFQ=t.value; clearTimeout(m._sq); m._sq=setTimeout(()=>{draw(); const i=$('#socfq'); if(i){i.focus(); i.setSelectionRange(i.value.length,i.value.length)}},300)}};
   if(f.ab==='per') carregaPer()}

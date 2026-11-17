@@ -4,6 +4,13 @@
   {
    "id": "2026111705",
    "data": "2026-11-17",
+   "tipo": "correcao",
+   "titulo": "Carrinho zerado não volta mais",
+   "texto": "Depois de \"Fechar · zerar carrinho\", o orçamento às vezes voltava sozinho com os itens (quando a resposta da Sigma ou do cliente chegava depois). Agora o carrinho zerado fica zerado; o orçamento continua em Salvos."
+  },
+  {
+   "id": "2026111705",
+   "data": "2026-11-17",
    "tipo": "novo",
    "titulo": "Sell-out Sigma: PDF só com o que a Sigma tem em estoque",
    "texto": "Na aba ⛔ Em falta, com a fábrica SIGMA (ou Todas), marque \"Sigma: só os que a Sigma tem em estoque\" antes de gerar o PDF ou o WhatsApp. O Sistema consulta o estoque da Sigma na hora e tira do PDF os itens que a Sigma está sem estoque. Ao terminar, avisa quantos ficaram de fora."

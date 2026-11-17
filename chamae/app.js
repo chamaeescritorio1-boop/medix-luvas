@@ -259,7 +259,10 @@ const MOVEL=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.ma
 const waDesk=()=>{try{return !!(navigator.canShare&&navigator.canShare({files:[new File(['%PDF'],'a.pdf',{type:'application/pdf'})]}))}catch(e){return false}};
 const Q=()=>L('quotes')||{}; const setQ=q=>{LS('quotes',q); badge()};
 const curQ=rep=>{const q=Q(); return q[rep]||(q[rep]={rep,itens:[],tabela:null,cli:null,prazo:'',obs:'',id:String(Date.now())})};
-function saveQ(o){const q=Q(); q[o.rep]=o; setQ(q)}
+/* carrinho zerado não volta (bug relatado pelo Victor 17/11/2026): respostas que chegam depois (envio à Sigma, cliente carregando…) gravavam o orçamento antigo de novo no carrinho.
+   Guarda os ids zerados; só grava um deles se ele for o carrinho atual daquela representada (ex.: reaberto pelos Salvos). */
+const ZER=()=>L('qZerados')||[]; const marcaZerado=id=>{if(!id) return; const z=ZER().filter(x=>x!==id); z.push(id); LS('qZerados',z.slice(-60))};
+function saveQ(o){const q=Q(); if(o&&o.id&&ZER().includes(o.id)&&!(q[o.rep]&&q[o.rep].id===o.id)) return; q[o.rep]=o; setQ(q)}
 function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); const b=$('#qn'); if(!b) return; b.hidden=!n; b.textContent=n}
 
 /* ---------- navegação ---------- */
@@ -824,7 +827,7 @@ async function orc0(){const m=$('#main'); m.onclick=null; m.onchange=null; m.oni
 async function orcNovo(){const p=$('#opane'); const R=(await reps()).filter(r=>r.ativa); const q=Q(); if(!p.isConnected) return;
   p.innerHTML=`<div class="card grid"><b>1. Escolha a representada</b><p class="hint" style="margin:0">Cada representada tem o seu orçamento (Marluvas e Medix nunca se misturam).</p><div class="reps">${R.map(r=>`<button class="rep" style="--c:${esc(r.cor||'#2a3157')};min-height:90px" data-nr="${esc(r.id)}"><span class="row" style="gap:8px;flex-wrap:nowrap">${repIcon(r,30)}<b>${esc(r.nome)}</b></span><small>${q[r.id]&&q[r.id].itens.length?q[r.id].itens.length+' itens em andamento':r.n?r.n+' produtos':'catálogo a cadastrar'}</small></button>`).join('')}</div></div>`;
   p.onclick=e=>{const b=e.target.closest('[data-nr]'); if(!b) return; const rep=b.dataset.nr; const qq=Q(); if(qq[rep]&&qq[rep].itens.length&&!confirm(`Já existe um orçamento ${repName(rep)} em andamento. Começar outro do zero? (o atual continua nos Salvos se você salvou)`)){ctx.ot='cont'; ctx.rep=rep; return orc()}
-    delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o); if(L('orcCat')&&!(ORC_PASSOS&&!L('orcTudo2'))) return go('rep',{rep}); ctx.ot='cont'; ctx.rep=rep; orc()}}
+    if(qq[rep]) marcaZerado(qq[rep].id); delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o); if(L('orcCat')&&!(ORC_PASSOS&&!L('orcTudo2'))) return go('rep',{rep}); ctx.ot='cont'; ctx.rep=rep; orc()}}
 
 /* orçamentos feitos dentro dos apps Marluvas/Medix (só linhas cod/qt/pu) viram orçamento do sistema para abrir e editar */
 const legado=o=>{const d=(o&&o.dados)||{}; return !!EXTERNAL[o.app]&&!(d.rep&&Array.isArray(d.itens)&&d.itens[0]&&d.itens[0].pid!=null)&&Array.isArray(d.linhas)&&d.linhas.length>0};
@@ -838,7 +841,7 @@ async function doLegado(o){const d=o.dados||{}, rep=o.app; const C=await catalog
   if(falta.length) alert(`Estes itens não estão no catálogo do sistema e ficaram de fora: ${falta.join(', ')}. Confira antes de salvar.`);
   return x}
 async function abrirLegado(o){const q0=Q()[o.app]; if(q0&&q0.itens.length&&q0.sid!==o.id&&!confirm(`Substituir o orçamento ${repName(o.app)} em andamento por este?`)) return false;
-  const x=await doLegado(o); if(!x) return false; const qq=Q(); qq[x.rep]=x; setQ(qq); ctx.ot='cont'; ctx.rep=x.rep; if(route==='orc') orc(); else go('orc',{rep:x.rep,ot:'cont'}); return true}
+  const x=await doLegado(o); if(!x) return false; const qq=Q(); if(qq[x.rep]&&qq[x.rep].id!==x.id) marcaZerado(qq[x.rep].id); qq[x.rep]=x; setQ(qq); ctx.ot='cont'; ctx.rep=x.rep; if(route==='orc') orc(); else go('orc',{rep:x.rep,ot:'cont'}); return true}
 
 /* duplicar orçamento para outro(s) cliente(s) — pedido do Victor 17/11/2026 ("como fazíamos no Reprio"): mesmos itens e quantidades,
    escolhe o(s) cliente(s), a tabela e o prazo; os preços saem da tabela escolhida (preço negociado à mão só fica se marcar).
@@ -892,7 +895,7 @@ async function orcSalvos(){const p=$('#opane'); p.innerHTML='<p class="hint">Car
   p.innerHTML=`<input id="sq" type="search" placeholder="Buscar por nº, cliente, CNPJ, Sigma/fábrica, OC ou produto (todo o histórico)" style="width:100%"><div id="slist" style="margin-top:10px"></div>`; draw('');
   $('#sq').oninput=e=>{const w=e.target.value; draw(w); clearTimeout(p._bt); if(w.trim().length>=2) p._bt=setTimeout(async()=>{const R=await buscaOrcsTudo(w,150); const sq=$('#sq'); if(!sq||sq.value!==w) return; R.forEach(r=>{if(!O.some(x=>x.id===r.id)) O.push(r)}); draw(w)},400)};
   p.onclick=e=>{const du=e.target.closest('[data-dup]'); if(du) return duplicarOrc(O.find(x=>x.id===du.dataset.dup)); const b=e.target.closest('[data-abrir]'); if(!b) return; const o=O.find(x=>x.id===b.dataset.abrir); const d=o.dados||{}; if(EXTERNAL[o.app]&&!CONV_PASTA) return abrirApp(o.app,o.id); if(legado(o)) return abrirLegado(o); if(!d.rep||!Array.isArray(d.itens)) return detOrc(o.id,o);
-    const qq=Q(); if(qq[d.rep]&&qq[d.rep].itens.length&&qq[d.rep].sid!==o.id&&!confirm(`Substituir o orçamento ${repName(d.rep)} em andamento por este?`)) return; const x={...d,sid:o.id,status:o.status||d.status}; delete x.linhas; qq[d.rep]=x; setQ(qq); ctx.ot='cont'; ctx.rep=d.rep; orc()}}
+    const qq=Q(); if(qq[d.rep]&&qq[d.rep].itens.length&&qq[d.rep].sid!==o.id&&!confirm(`Substituir o orçamento ${repName(d.rep)} em andamento por este?`)) return; const x={...d,sid:o.id,status:o.status||d.status}; delete x.linhas; if(qq[d.rep]&&qq[d.rep].id!==x.id) marcaZerado(qq[d.rep].id); qq[d.rep]=x; setQ(qq); ctx.ot='cont'; ctx.rep=d.rep; orc()}}
 
 /* orçamento em passos (Modelo B, pedido do Victor em 02/11/2026): Cliente › Produtos › Pagamento e entrega › Conferir e enviar.
    ORC_PASSOS=false volta à página única de antes; cada aparelho também pode escolher "Ver tudo numa página" (LS orcTudo). */
@@ -990,7 +993,7 @@ async function orcCont(ab){const p=$('#opane'); const rep=ctx.rep&&ab.includes(c
     const c=t.closest('[data-cli]'); if(c){const cn=c.dataset.cli;
       /* passo a passo: vai na hora para Produtos com o que já está carregado; prazo, tabela e contatos chegam logo depois */
       if(PS===1){const cl=(CLIS||[]).find(x=>x.cnpj===cn); if(cl){o.cli={cnpj:cl.cnpj,n:cl.n,fa:cl.fa||'',cid:cl.cid,em:cl.em||'',tel:cl.tel||'',ult:cl.reps[HIST_REP[rep]]||null,ct:[]}; o.pas=2; saveQ(o); window.scrollTo(0,0); orc();
-        const tmp=JSON.parse(JSON.stringify(curQ(rep))); escolherCliente(rep,tmp,cn,true).then(()=>{const f=curQ(rep); if(!f.cli||f.cli.cnpj!==cn||!tmp.cli) return; const mud=f.tabela!=tmp.tabela||(f.prazo||'')!==(tmp.prazo||''); f.cli=tmp.cli; f.sug=tmp.sug; f.prazo=tmp.prazo; f.tabela=tmp.tabela; saveQ(f); if(mud&&route==='orc') orc()}).catch(()=>{}); return}}
+        const tmp=JSON.parse(JSON.stringify(curQ(rep))); escolherCliente(rep,tmp,cn,true).then(()=>{if(!Q()[rep]) return; const f=curQ(rep); if(!f.cli||f.cli.cnpj!==cn||!tmp.cli) return; const mud=f.tabela!=tmp.tabela||(f.prazo||'')!==(tmp.prazo||''); f.cli=tmp.cli; f.sug=tmp.sug; f.prazo=tmp.prazo; f.tabela=tmp.tabela; saveQ(f); if(mud&&route==='orc') orc()}).catch(()=>{}); return}}
       await escolherCliente(rep,o,cn); if(PS===1) o.pas=2, saveQ(o); return orc()}
     if(t.id==='osug'){if(o.sug.prazo) o.prazo=o.sug.prazo; const tt2=T.find(x=>norm(x.nome).replace(/^TABELA\s+/,'')===norm(o.sug.tabela||'').replace(/^TABELA\s+/,'')); if(tt2) o.tabela=tt2.id; saveQ(o); toast('Prazo e tabela do último pedido aplicados'); return orc()}
     if(t.id==='trocaCli'){o.cli=null; if(PS) o.pas=1; saveQ(o); return orc()}
@@ -3162,7 +3165,7 @@ async function fichaCliente(cnpj,novo){const m=$('#main'); m.innerHTML='<p class
     if(t.id==='cexc'){if(await cexcPedir(cnpj,v('razao',base.n))) return ehGestor()?go('cli'):fichaCliente(cnpj); return}
     const cxb=t.closest('[data-cxd]'); if(cxb){const k=cxb.dataset.cxd; try{if(k==='a'){if(!confirm('Excluir este cliente? Ele some das listas do Sistema. Pedidos e relatórios continuam, e dá para restaurar depois.')) return; await cexcDecidir(cx.id,'aprovado'); toast('Cliente excluído'); return go('cli')} if(k==='r'){const resp=prompt('Por que não excluir? (opcional, o vendedor vai ver aqui na ficha)',''); if(resp===null) return; await cexcDecidir(cx.id,'recusado',resp.trim()); toast('Pedido recusado')} if(k==='v'){if(!confirm('Restaurar este cliente? Ele volta a aparecer nas listas.')) return; await cexcDecidir(cx.id,'restaurado'); toast('Cliente restaurado')} if(k==='c'){await api(`cliente_exclusao?id=eq.${cx.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'cancelado'})}); cexcRecarregar(); toast('Pedido cancelado')} return fichaCliente(cnpj)}catch(err){return toast('Erro: '+err.message)}} if(t.id==='ctar') return formTarefa({cnpj,cliente:v('razao',base.n)}); if(t.id==='creg') return painelCliente(cnpj); if(t.id==='cso') return go('sellout',{cnpj}); if(t.id==='clig') return ligIA({cnpj,n:v('razao',base.n),fa:v('fantasia',base.fa)});
     if(t.id==='corc'){const R=(await reps()).filter(r=>r.ativa); const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><b>Novo orçamento para ${esc(v('razao',base.n))}</b><div class="reps">${R.map(r=>`<button class="rep" style="--c:${esc(r.cor||'#2a3157')};min-height:80px" data-or="${r.id}">${repIcon(r)}<b>${esc(r.nome)}</b></button>`).join('')}</div><button class="btn ghost" data-x>Cancelar</button></div>`; document.body.appendChild(ov);
-      ov.onclick=async ev=>{if(ev.target.closest('[data-x]')||ev.target===ov) return ov.remove(); const b=ev.target.closest('[data-or]'); if(!b) return; const rep=b.dataset.or; const qq=Q(); if(qq[rep]&&qq[rep].itens.length&&!confirm(`Já existe um orçamento ${repName(rep)} em andamento. Substituir?`)) return; delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o);
+      ov.onclick=async ev=>{if(ev.target.closest('[data-x]')||ev.target===ov) return ov.remove(); const b=ev.target.closest('[data-or]'); if(!b) return; const rep=b.dataset.or; const qq=Q(); if(qq[rep]&&qq[rep].itens.length&&!confirm(`Já existe um orçamento ${repName(rep)} em andamento. Substituir?`)) return; if(qq[rep]) marcaZerado(qq[rep].id); delete qq[rep]; setQ(qq); const o=curQ(rep); o.vend=meuNome()||''; saveQ(o);
         if(cnpj&&C.find(c=>c.cnpj===cnpj)) await escolherCliente(rep,o,cnpj); else {o.cli={cnpj,n:v('razao',base.n),fa:v('fantasia'),cid:v('cidade')+(v('uf')?'/'+v('uf'):''),tel:v('telefone'),em:v('email'),ct:pes.filter(p=>p.no_pdf).map(ctPdf)}; saveQ(o)} ov.remove(); go('rep',{rep})}; return}
     const bz=t.closest('[data-busca]'); if(bz){bz.disabled=true; try{await (bz.dataset.busca==='cnpj'?buscaCnpj:buscaCep)(m,true)}finally{bz.disabled=false} return}
     if(t.id==='csave'){const body={}; m.querySelectorAll('[data-cf]').forEach(i=>body[i.dataset.cf]=i.value.trim()||null); body.cnpj=(body.cnpj||'').replace(/\D/g,'')||('novo-'+Date.now()); body.atualizado_em=new Date().toISOString(); if(!body.razao) return toast('Informe a razão social');
@@ -3192,7 +3195,7 @@ function meuNome(){const s=L('meuNome'); if(s) return s; const raw=String((perfi
 /* ================= limpar carrinho: guarda rascunho e esvazia ================= */
 async function limparCarrinho(rep,silent){const qq=Q(); const o=qq[rep]; if(!o) return;
   if(o.itens&&o.itens.length){try{const rows=await linhasDe(o); const sub=rows.reduce((s,r)=>s+r.tot,0), ipi=rows.reduce((s,r)=>s+r.ipiv,0); if(!o.status||o.status==='orcamento') o.status='orcamento'; await salvar(o,sub+ipi,o._env?'enviado':'rascunho',rows)}catch(e){}}
-  const q2=Q(); delete q2[rep]; setQ(q2); if(!silent) toast(o.itens&&o.itens.length?'Carrinho zerado · orçamento guardado em Salvos como rascunho':'Carrinho zerado')}
+  marcaZerado(o.id); const q2=Q(); delete q2[rep]; setQ(q2); if(!silent) toast(o.itens&&o.itens.length?'Carrinho zerado · orçamento guardado em Salvos como rascunho':'Carrinho zerado')}
 
 /* ================= Representadas: cadastro completo ================= */
 const REP_F=[['cnpj','CNPJ'],['razao','Razão social'],['fantasia','Nome fantasia'],['ie','Inscrição estadual'],['cep','CEP'],['endereco','Endereço (rua, número, complemento)'],['bairro','Bairro'],['cidade','Cidade'],['uf','UF'],['telefone','Telefone'],['email','E-mail geral'],['site','Site'],['portal','Portal / sistema da fábrica (link)']];

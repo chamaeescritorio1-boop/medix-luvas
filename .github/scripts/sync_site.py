@@ -29,7 +29,7 @@ for u in sorted(prods):
     img=og.group(1) if og else None
     if not img:
         m=re.search(r'https://medixbrasil\.s3[^"\' ]+/produtos/[^"\' ]+\.(?:png|jpe?g|webp)',h); img=m.group(0) if m else None
-    skus=set(re.findall(r'SKU:\s*([0-9]{3,6})',html.unescape(re.sub('<[^>]+>',' ',h))))
+    skus=set(re.findall(r'SKU:\s*([0-9]{2,6})',html.unescape(re.sub('<[^>]+>',' ',h))))
     if not img or not skus: log('sem img/sku',u,img,len(skus)); continue
     try:
         im=Image.open(io.BytesIO(get(img))).convert('RGBA'); bg=Image.new('RGB',im.size,(255,255,255)); bg.paste(im,mask=im.split()[3]); im=bg

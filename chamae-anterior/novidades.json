@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111806",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "🔍 Resultados da busca separados do orçamento",
+   "texto": "No passo Produtos, os resultados da busca aparecem em linhas curtas dentro de uma caixa com rolagem própria e o botão ✕ Fechar busca. Os itens já no orçamento ficam sempre logo abaixo, sem misturar. Tamanho já adicionado fica em verde com a quantidade."
+  },
+  {
    "id": "2026111805",
    "data": "2026-11-18",
    "tipo": "novo",

@@ -356,13 +356,13 @@ async function home(){const m=$('#main'); m.innerHTML='<p class="hint">Carregand
     <button class="kpi" data-go2="tar"><small>✔️ Tarefas para hoje</small><b id="kTar">…</b><span class="hint">retornos, visitas e ligações</span></button>
     <button class="kpi" data-kop><small>🤖 Oportunidades hoje</small><b id="kOp">…</b><span class="hint" id="kOpT">&nbsp;</span></button></div>
    <div class="faz ini-faz" id="faz"><button class="faz-b" data-go2="orc" data-orcnovo><span class="faz-i">＋</span><span><b>Novo orçamento</b></span></button><button class="faz-b" data-go2="cli" data-cm="cart"><span class="faz-i">📞</span><span><b>Bater carteira</b></span></button><button class="faz-b" data-go2="tar"><span class="faz-i">✔️</span><span><b>Tarefas <span class="badge" id="tnHome" hidden>0</span></b></span></button><button class="faz-b" data-go2="estr"><span class="faz-i">📧</span><span><b>E-mails do dia</b></span></button></div>
-   <div class="ini-av" id="iniAv"><div id="cexcHome"></div><div id="limHome"></div><div class="card grid" id="soSg" hidden style="border-left:5px solid #16a34a"></div><div id="dupHome"></div><div id="rebHome"></div></div>
+   <div class="ini-av" id="iniAv"><div id="cexcHome"></div><div id="limHome"></div><div class="card grid" id="soSg" hidden style="border-left:5px solid #16a34a"></div><div id="dupHome"></div><div id="rebHome"></div><div id="robHome"></div></div>
    <div id="agHoje"></div>
    <p class="hint ini-rel">📊 Minha semana${ehGestor()?', resumo da equipe':''} e painéis ficam em <a href="#" data-go2="rel" data-relr="semana">Relatórios ›</a></p>`;
   m.onclick=e=>{if(e.target.closest('[data-solar]')){location.href=SOLAR_URL; return} const b=e.target.closest('[data-rep]'); if(b){const id=b.dataset.rep; if(EXTERNAL[id]&&!CONV_PASTA) abrirApp(id); else go('rep',{rep:id}); return}
     if(e.target.closest('[data-kop]')){const a=$('#agHoje'); if(a) a.scrollIntoView({behavior:'smooth',block:'start'}); return}
     const a=e.target.closest('[data-go2]'); if(a){e.preventDefault(); if(a.dataset.relr){const s=L('relS')||{r:'painel',anos:2,rep:''}; s.r=a.dataset.relr; LS('relS',s)} go(a.dataset.go2,a.dataset.orcnovo!=null?{ot:'novo'}:a.dataset.cm?{cm:a.dataset.cm}:undefined)}};
-  contaTarefas().then(()=>{const t=$('#tnHome'), k=$('#kTar'); if(k) k.textContent=t&&!t.hidden?t.textContent:'0'}); preencherSolar(); soAvisoSigma($('#soSg')); rebAviso($('#rebHome')); if(ehGestor()) limAviso(); if(ehGestor()) dupAviso(); if(ehGestor()) cexcLista(true).then(()=>{const n=cexcPend().length, el=$('#cexcHome'); if(n&&el&&el.isConnected){el.innerHTML=`<button class="card" id="cexcGo" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid var(--bad)">🗑 <b>${n} pedido${n>1?'s':''} de exclusão de cliente</b> <span class="hint">· veja o motivo e decida se exclui ›</span></button>`; $('#cexcGo').onclick=e=>{e.stopPropagation(); cexcPainel()}}}); agHoje($('#agHoje')); iniMeta()}
+  contaTarefas().then(()=>{const t=$('#tnHome'), k=$('#kTar'); if(k) k.textContent=t&&!t.hidden?t.textContent:'0'}); preencherSolar(); soAvisoSigma($('#soSg')); rebAviso($('#rebHome')); robAviso(); if(ehGestor()) limAviso(); if(ehGestor()) dupAviso(); if(ehGestor()) cexcLista(true).then(()=>{const n=cexcPend().length, el=$('#cexcHome'); if(n&&el&&el.isConnected){el.innerHTML=`<button class="card" id="cexcGo" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid var(--bad)">🗑 <b>${n} pedido${n>1?'s':''} de exclusão de cliente</b> <span class="hint">· veja o motivo e decida se exclui ›</span></button>`; $('#cexcGo').onclick=e=>{e.stopPropagation(); cexcPainel()}}}); agHoje($('#agHoje')); iniMeta()}
 /* número da meta no topo do Início (mesma conta do "Ritmo da meta" dos agentes) */
 async function iniMeta(){const el=$('#kMeta'); if(!el) return; try{const hj=new Date(), ges=ehGestor(), so=!ges||L('agSo')!==false, eu=meuVend(), mine=v=>!so||!eu||norm(v||'').startsWith(eu);
   const [P,M]=await Promise.all([agPedidos(),metasDoMes(hj.getFullYear(),hj.getMonth()).then(m=>m||[])]); const MT=agMeta(M,P,mine,so,eu); if(!el.isConnected) return;
@@ -5688,7 +5688,7 @@ function mxTags(p){if(!MX_FILTROS) return ''; const a=mxA(p), f=mxFac(p), T=[];
 const mxVenda=p=>{if(!MX_FILTROS||passoQ(p)!==((p&&p.mult)||1)) return ''; const a=mxA(p); return a.frac?`<span class="tag" title="${esc(a.frac)}" style="border-style:dashed">✂ ${esc(mxFracCurto(a.frac))}</span>`:''};
 /*MXF-FIM*/
 function famUnid(list,M){const vis=new Set(), U=[]; list.forEach(p=>{const F=M.get(p.id); if(!F) return U.push(p); if(vis.has(F)) return; vis.add(F); U.push({fam:F})}); return U}
-const EST={}; async function estoqueMedix(){if(EST.d) return EST.d; try{EST.d=(await fetch('/medix-luvas/estoque.json?'+Date.now()).then(r=>r.json())).d||{}}catch(e){EST.d={}} return EST.d}
+const EST={}; async function estoqueMedix(){if(EST.d) return EST.d; try{const j=await fetch('/medix-luvas/estoque.json?'+Date.now()).then(r=>r.json()); EST.d=j.d||{}; EST.ts=j.ts||null}catch(e){EST.d={}} return EST.d}
 const estTxt=(rep,cod,E)=>rep==='medix'&&E[cod]?(E[cod][0]==='S'?'<span class="ok">em estoque</span>':`<span class="bad">sem estoque${E[cod][1]?' · previsão '+esc(E[cod][1]):''}</span>`):rep==='sigma'&&SGS[cod]&&SGS[cod].it?`${nBR(SGS[cod].it.disp)} disp.`:'';
 const fichaLink=p=>{const f=(FIC.d||{})[p.cod]; return p.ficha||(f&&f.ficha)||null}, siteLink=p=>(FIC.site||{})[p.cod]||((FIC.d||{})[p.cod]||{}).url||null;
 /*FICHAS-INICIO*/
@@ -5846,6 +5846,21 @@ async function caCard(ca,box){if(!box) return; box.innerHTML='<div class="card">
 const limCor=p=>p==null?'var(--muted)':p>=85?'var(--bad)':p>=70?'var(--warn)':'var(--ok)';
 const limQt=(v,u)=>v==null?'—':u==='bytes'?(v>=1e9?(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:2})+' GB':Math.round(v/1e6).toLocaleString('pt-BR')+' MB'):Math.round(v).toLocaleString('pt-BR')+' '+u;
 let LIMH=null;
+/*ROBOS-INICIO 18/11: aviso no Início se os robôs do servidor do escritório estão rodando (gestor vê sempre; vendedor só se o estoque atrasar) */
+async function robAviso(){const el=$('#robHome'); if(!el) return; try{
+  await estoqueMedix(); let car=null; try{car=await fabRel('medix','carteira')}catch(e){}
+  const agora=new Date(), hoje=agora.toLocaleDateString('sv-SE'), ontem=new Date(agora-864e5).toLocaleDateString('sv-SE');
+  const st=dt=>{if(!dt) return 2; const d=new Date(dt).toLocaleDateString('sv-SE'); return d===hoje?0:d===ontem?1:2};
+  const txt=(nm,dt,soData)=>{if(!dt) return `${nm}: sem dados`; const x=new Date(dt), d=x.toLocaleDateString('sv-SE'), hh=soData?'':' às '+x.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return `${nm}: ${d===hoje?'hoje'+hh:d===ontem?'ontem'+hh:'parado desde '+dbr(d)+hh}`};
+  const cDt=car?(car.recebido_em||car.data):null;
+  const R=[{nm:'Estoque Medix',dt:EST.ts,s:st(EST.ts)},{nm:'Carteira Medix',dt:cDt,s:st(cDt),soData:!car||!car.recebido_em}];
+  const g=ehGestor(), pior=Math.max(...R.map(r=>r.s)); if(!el.isConnected) return;
+  if(!g){const e=R[0]; if(e.s<2) return; el.innerHTML=`<div class="card" style="border-left:5px solid var(--bad);margin-top:10px">⚠️ <b>Estoque Medix desatualizado</b> <span class="hint">· última atualização ${e.dt?dbr(new Date(e.dt).toLocaleDateString('sv-SE')):'—'}. Confirme a disponibilidade no portal da Medix.</span></div>`; return}
+  const cor=['#16a34a','#d97706','var(--bad)'][pior], ic=['🟢','🟡','🔴'];
+  el.innerHTML=`<div class="card" style="border-left:5px solid ${cor};margin-top:10px">🤖 <b>Robôs do servidor</b>${pior===2?' <b style="color:var(--bad)">· algum parado, confira o PC do escritório</b>':pior===1?' <span class="hint">· atrasado 1 dia</span>':''}<div class="hint" style="margin-top:4px">${R.map(r=>ic[r.s]+' '+esc(txt(r.nm,r.dt,r.soData))).join(' &nbsp;·&nbsp; ')}</div></div>`
+}catch(e){}}
+/*ROBOS-FIM*/
 async function limAviso(){const el=$('#limHome'); if(!el) return; try{if(!LIMH){const r=await api('uso_limites?select=coletado_em,dados&order=coletado_em.desc&limit=1'); LIMH=(r&&r[0]&&r[0].dados&&r[0].dados.itens||[]).filter(i=>(i.pct||0)>=80)}
   if(LIMH.length&&el.isConnected){el.innerHTML=`<button class="card" data-go2="limites" style="display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-left:5px solid var(--bad);margin-top:10px">📊 <b>Limite grátis perto do fim</b> <span class="hint">· ${LIMH.map(i=>esc(i.fonte+': '+i.nome+' '+Math.round(i.pct)+'%')).join(' · ')} ›</span></button>`}}catch(e){}}
 async function limitesView(){const m=$('#main'); if(!ehGestor()){m.innerHTML='<div class="sec">Limites grátis</div><p class="hint">Somente gestores.</p>';return}

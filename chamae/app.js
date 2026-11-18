@@ -379,7 +379,9 @@ const GSTOP=new Set(['DE','DA','DO','COM','EM','PARA','KIT','JOGO','CONJUNTO','J
 const GW={}; const palavra=d=>{const ws=norm(d).replace(/[^A-Z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!/\d/.test(w)&&!GSTOP.has(w)); return ws[0]||''};
 function grupoDesc(rep,d){const C=CAT[rep]||[]; let g=GW[rep]; if(!g||g.src!==C){const cnt={}; C.forEach(p=>{const w=palavra(p.descricao); if(w) cnt[w]=(cnt[w]||0)+1}); g=GW[rep]={src:C,cnt}} const w=palavra(d); return w&&g.cnt[w]>=3?w.charAt(0)+w.slice(1).toLowerCase():'Outros'}
 const grupoAuto=(rep,d)=>{const n=norm(d).trim(); if(!GRUPOS[rep]) return grupoDesc(rep,d); for(const [g,r] of GRUPOS[rep]) if(r.test(n)) return g; return 'Outros'};
-const GMEMO=new WeakMap(); const grupoOf=(rep,p)=>{if(p.grupo) return p.grupo; let g=GMEMO.get(p); if(g===undefined){g=grupoAuto(rep,p.descricao); GMEMO.set(p,g)} return g};
+/* CHEM: linha Chemicals da Sigma (química de estética automotiva, códigos 01…) vira um grupo próprio — chip "Chemicals" na pasta Sigma e busca por "chemicals". CHEM_SIGMA=false volta ao que era. */
+const CHEM_SIGMA=true, ehChem=(rep,p)=>CHEM_SIGMA&&rep==='sigma'&&/^01\d{8}$/.test(String(p.cod||'').trim());
+const GMEMO=new WeakMap(); const grupoOf=(rep,p)=>{if(p.grupo) return p.grupo; if(ehChem(rep,p)) return 'Chemicals'; let g=GMEMO.get(p); if(g===undefined){g=grupoAuto(rep,p.descricao); GMEMO.set(p,g)} return g};
 
 /* ---------- cliente → tabela ---------- */
 async function tabelaDoCliente(rep,cli,T){if(!cli) return null; const k=rep+'|'+cli.cnpj;

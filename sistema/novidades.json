@@ -1,6 +1,13 @@
 {
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
+  {
+   "id": "2026111809",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "☰ Lista e ＋ Incluir todos no catálogo",
+   "texto": "No catálogo de cada representada dá para trocar entre ▦ Cards e ☰ Lista (uma linha por produto, cabem muitos mais na tela). O botão ＋ Incluir todos coloca de uma vez no orçamento todos os itens da linha, da busca ou dos filtros, com a quantidade mínima de cada um; depois é só ajustar."
+  },
   {"id": "2026111802", "data": "2026-11-18", "tipo": "correcao", "titulo": "🧾 ICMS só nos itens do PDF", "texto": "O PDF do orçamento/pedido não traz mais o texto de ICMS no final nem o ICMS no quadro do cliente, que mostravam um % único e às vezes errado. O ICMS aparece só em cada item: a alíquota da tabela da fábrica ou, sem ela, o ICMS por estado cadastrado na representada. Representada sem ICMS cadastrado não mostra ICMS.", "onde": "PDF do orçamento"},
   {"id": "2026111801", "data": "2026-11-18", "tipo": "correcao", "titulo": "🚚 Gurgelmix sem frete estimado", "texto": "A Gurgelmix tem frete CIF na Marcon, então os orçamentos dela não mostram o frete estimado (tela, PDF e WhatsApp).", "onde": "Orçamento › Marcon"},
   {"id": "2026111800", "data": "2026-11-18", "tipo": "novo", "titulo": "🚚 Frete estimado da Marcon (Alfa e Floresta)", "texto": "No orçamento da Marcon, no passo Pagamento e transporte, aparece o FRETE ESTIMADO da Alfa e da Floresta para a cidade do cliente, com o cálculo de cada uma. A transportadora que não atende a cidade sai da lista. O valor é só estimativa (o frete final vem no CT-e) e não entra no total; sai também no PDF e no WhatsApp com aviso em destaque.", "onde": "Orçamento › Marcon › Pagamento e transporte"},

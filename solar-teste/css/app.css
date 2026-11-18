@@ -407,3 +407,112 @@ body.com-barra .jarvis-bt { bottom: 96px; }
 .dia2-feitos summary { cursor: pointer; }
 .dia2-rodape { margin-top: 14px; text-align: center; opacity: .85; }
 @media (max-width: 600px) { .dia2-l { grid-template-columns: 22px minmax(0, 1fr); } .dia2-ac { grid-column: 2; } .dia2 > .entre .mini { display: none; } }
+
+/* ===== menu enxuto (nov/2026): 5 principais + Mais ===== */
+.nav-bt-mais { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; background: none; border: 0; color: var(--texto-3); font: 700 11px var(--f-texto); cursor: pointer; }
+.nav-bt-mais span { font-size: 19px; line-height: 1; }
+.nav-bt-mais.ativo { color: var(--sol); }
+.nav-mais { display: none; }
+.lateral.mais-aberto .nav-mais { display: grid; }
+.nav a.nav-novo span .ico { color: var(--sol); }
+@media (max-width: 899px) {
+  .nav { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: visible !important; }
+  .nav > a, .nav > button { flex: none !important; min-width: 0; }
+  .nav .nav-hoje { order: 1; } .nav .nav-cli { order: 2; } .nav .nav-novo { order: 3; } .nav .nav-us { order: 4; } .nav .nav-serv { order: 5; } .nav .nav-bt-mais { order: 6; }
+  .nav .nav-novo { color: var(--sol); }
+  .lateral.mais-aberto .nav-mais { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 8px); grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 10px; border-radius: 18px; background: var(--noite-2); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); }
+  .nav-mais a { flex: none !important; }
+}
+@media (min-width: 900px) {
+  .nav a.nav-novo { background: var(--grad-sol); color: #1a0c00; margin-bottom: 8px; }
+  .nav a.nav-novo span .ico { color: #1a0c00; }
+  .nav a.nav-novo.ativo { box-shadow: var(--brilho-laranja); }
+  .nav-bt-mais { flex-direction: row; gap: 12px; font-size: 14.5px; padding: 11px 12px; border-radius: 12px; color: var(--texto-2); text-align: left; }
+  .nav-bt-mais span { font-size: 16px; width: 22px; text-align: center; }
+  .nav-bt-mais:hover { background: var(--vidro); }
+  .lateral.mais-aberto .nav-mais { gap: 2px; padding-left: 10px; border-left: 1px solid var(--linha); margin-left: 12px; }
+  .nav-mais a { padding: 8px 10px !important; font-size: 13.5px !important; }
+}
+
+/* ===== etapas do cliente ===== */
+.pill-et { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; text-decoration: none; }
+.p-rasc { background: #a3afc824; color: #c9d2e6; } .p-pronta { background: #f8b81826; color: #ffd36b; } .p-env { background: #7a9dff2e; color: #b4c6ff; }
+.p-viu { background: #ff670033; color: #ffb27a; } .p-neg { background: #be78ff2e; color: #dcbcff; } .p-ganho { background: #5fd35a2e; color: #8fe58b; } .p-falta { background: #ff4d6d29; color: #ff9fb1; }
+
+/* ===== Clientes ===== */
+.abas-cli { display: flex; gap: 22px; border-bottom: 1px solid var(--linha); margin: 4px 0 14px; overflow-x: auto; }
+.aba-f { display: inline-flex; align-items: center; gap: 8px; padding: 10px 2px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--texto-2); font: 600 15px var(--f-texto); cursor: pointer; text-decoration: none; white-space: nowrap; }
+.aba-f.sel { color: #fff; border-bottom-color: var(--laranja); }
+.aba-f em, .aba-n { font-style: normal; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--vidro-2); color: var(--texto-2); }
+.aba-n { background: #ff4d6d29; color: #ff9fb1; }
+.cli-barra { display: grid; gap: 10px; }
+.cli-barra input[type=search] { width: 100%; }
+.cli-barra .chips small { opacity: .7; margin-left: 2px; }
+.tab-cli-box { padding: 4px 6px; overflow-x: auto; }
+.tab-cli { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tab-cli th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--texto-2); font-weight: 700; padding: 10px 12px; }
+.tab-cli td { padding: 13px 12px; border-top: 1px solid var(--linha); vertical-align: middle; }
+.tab-cli tr.quente td:first-child { box-shadow: inset 3px 0 0 var(--laranja); }
+.cli-nome { display: block; color: #fff; font: 700 15px var(--f-texto); text-decoration: none; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; margin-bottom: 3px; }
+.cli-nome:hover { color: var(--sol-2); }
+.cli-valor { font-family: var(--f-num); font-weight: 700; white-space: nowrap; }
+.cli-prox { display: block; }
+.cli-ac { white-space: nowrap; }
+.cli-ac .btn { margin-right: 4px; }
+@media (max-width: 760px) {
+  .tab-cli thead { display: none; }
+  .tab-cli, .tab-cli tbody, .tab-cli tr, .tab-cli td { display: block; width: 100%; }
+  .tab-cli tr { padding: 12px 8px; border-top: 1px solid var(--linha); }
+  .tab-cli tr:first-child { border-top: 0; }
+  .tab-cli td { border: 0; padding: 3px 4px; }
+  .tab-cli tr.quente { box-shadow: inset 3px 0 0 var(--laranja); }
+  .tab-cli tr.quente td:first-child { box-shadow: none; }
+  .tab-cli td.cli-valor { position: absolute; right: 8px; margin-top: -26px; width: auto; }
+  .tab-cli tr { position: relative; }
+  .tab-cli td.cli-ac { padding-top: 8px; }
+}
+
+/* ===== ficha do cliente ===== */
+.ficha-topo2 { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.ficha-bts { display: flex; flex-wrap: wrap; gap: 8px; }
+.trilha { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 16px; }
+.trilha > div { display: grid; gap: 6px; font-size: 12px; color: var(--texto-2); }
+.trilha i { display: block; height: 6px; border-radius: 9px; background: var(--linha-forte); }
+.trilha .feito i { background: var(--verde-claro); } .trilha .feito { color: var(--texto); }
+.trilha .atual i { background: var(--laranja); } .trilha .atual { color: #fff; font-weight: 700; }
+@media (max-width: 560px) { .trilha span { font-size: 10px; } }
+.proxima.quente { border-color: var(--laranja); box-shadow: var(--brilho-laranja); }
+.ficha-abas { display: flex; gap: 22px; border-bottom: 1px solid var(--linha); margin: 16px 0 12px; overflow-x: auto; scrollbar-width: none; }
+.aba-p[hidden] { display: none !important; }
+.ficha-rodape { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+
+/* ===== orçamento em 3 passos ===== */
+.etapas.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.etapas.tres .etapa .t { display: block; }
+.sub-passo { margin-bottom: 18px; }
+.sub-t { font-size: 18px; margin: 18px 0 10px; display: flex; align-items: baseline; gap: 10px; }
+.sub-t small { font: 500 12px var(--f-texto); color: var(--texto-2); }
+.sub-passo:first-child .sub-t { margin-top: 4px; }
+.estim { background: linear-gradient(170deg, color-mix(in srgb, var(--laranja) 16%, transparent), var(--vidro) 55%); }
+.estim-v { font: 800 28px var(--f-num); margin: 6px 0 8px; }
+.estim-l { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--linha); font-size: 14px; }
+.estim-l span { color: var(--texto-2); }
+.mais-det summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.mais-det summary::-webkit-details-marker { display: none; }
+.mais-det summary::before { content: '▸'; color: var(--sol); }
+.mais-det[open] summary::before { content: '▾'; }
+.obg { color: #ff9fb1; }
+.fechou-ct { margin-top: 12px; border: 1px solid var(--linha); border-radius: 12px; padding: 10px 12px; }
+.fechou-ct summary { cursor: pointer; }
+.nav em { font-style: normal; }
+.nav .lbl-c { display: none; }
+@media (max-width: 899px) {
+  .nav .lbl-l { display: none; } .nav .lbl-c { display: inline; }
+  .jarvis-bt { bottom: 92px; width: 50px; height: 50px; font-size: 22px; }
+  body.com-barra .jarvis-bt { bottom: 160px; }
+}
+@media (max-width: 560px) {
+  .trilha > div span { visibility: hidden; height: 0; }
+  .trilha > div.atual span { visibility: visible; height: auto; white-space: nowrap; }
+}
+input.lido-doc { border-color: var(--verde-claro) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--verde-claro) 50%, transparent); }

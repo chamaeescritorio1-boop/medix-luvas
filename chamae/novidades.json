@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111805",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "✖ Novo motivo de perda: “Só cotação”",
+   "texto": "Ao marcar um orçamento como perdido, agora existe o motivo “Só cotação (sem intenção de compra)”, para orçamentos frios em que o cliente só queria comparar preço. Ele aparece no relatório Motivos de perda, mas não conta como perda na conversão (Produtividade, Conversão e perdas, Resumo do gestor)."
+  },
+  {
    "id": "2026111804",
    "data": "2026-11-18",
    "tipo": "correcao",

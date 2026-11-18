@@ -5855,10 +5855,12 @@ async function robAviso(){const el=$('#robHome'); if(!el) return; try{
     return `${nm}: ${d===hoje?'hoje'+hh:d===ontem?'ontem'+hh:'parado desde '+dbr(d)+hh}`};
   const cDt=car?(car.recebido_em||car.data):null;
   const R=[{nm:'Estoque Medix',dt:EST.ts,s:st(EST.ts)},{nm:'Carteira Medix',dt:cDt,s:st(cDt),soData:!car||!car.recebido_em}];
-  const g=ehGestor(), pior=Math.max(...R.map(r=>r.s)); if(!el.isConnected) return;
+  const g=ehGestor(); if(g){let sg='sem resposta'; try{const v=await sigmaStk('0613010009',true); sg=v&&!v.err?'ok':(v&&v.err)||'sem resposta'}catch(e){sg=e.message||'sem resposta'}
+    R.push({nm:'Estoque Sigma',s:sg==='ok'?0:2,t:sg==='ok'?'Estoque Sigma: ao vivo (portal respondeu agora)':'Estoque Sigma: portal não respondeu ('+sg+')'})}
+  const pior=Math.max(...R.map(r=>r.s)); if(!el.isConnected) return;
   if(!g){const e=R[0]; if(e.s<2) return; el.innerHTML=`<div class="card" style="border-left:5px solid var(--bad);margin-top:10px">⚠️ <b>Estoque Medix desatualizado</b> <span class="hint">· última atualização ${e.dt?dbr(new Date(e.dt).toLocaleDateString('sv-SE')):'—'}. Confirme a disponibilidade no portal da Medix.</span></div>`; return}
   const cor=['#16a34a','#d97706','var(--bad)'][pior], ic=['🟢','🟡','🔴'];
-  el.innerHTML=`<div class="card" style="border-left:5px solid ${cor};margin-top:10px">🤖 <b>Robôs do servidor</b>${pior===2?' <b style="color:var(--bad)">· algum parado, confira o PC do escritório</b>':pior===1?' <span class="hint">· atrasado 1 dia</span>':''}<div class="hint" style="margin-top:4px">${R.map(r=>ic[r.s]+' '+esc(txt(r.nm,r.dt,r.soData))).join(' &nbsp;·&nbsp; ')}</div></div>`
+  el.innerHTML=`<div class="card" style="border-left:5px solid ${cor};margin-top:10px">🤖 <b>Robôs do servidor</b>${R.slice(0,2).some(r=>r.s===2)?' <b style="color:var(--bad)">· algum parado, confira o PC do escritório</b>':R[2]&&R[2].s===2?' <b style="color:var(--bad)">· portal da Sigma não respondeu</b>':pior===1?' <span class="hint">· atrasado 1 dia</span>':''}<div class="hint" style="margin-top:4px">${R.map(r=>ic[r.s]+' '+esc(r.t||txt(r.nm,r.dt,r.soData))).join(' &nbsp;·&nbsp; ')}</div></div>`
 }catch(e){}}
 /*ROBOS-FIM*/
 async function limAviso(){const el=$('#limHome'); if(!el) return; try{if(!LIMH){const r=await api('uso_limites?select=coletado_em,dados&order=coletado_em.desc&limit=1'); LIMH=(r&&r[0]&&r[0].dados&&r[0].dados.itens||[]).filter(i=>(i.pct||0)>=80)}

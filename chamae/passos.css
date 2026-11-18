@@ -35,6 +35,7 @@
  .opas-res{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
  .opas-p{padding:8px} .opas-p img{height:90px} .opas-pn{font-size:14.5px} .opas-pr{font-size:17px}
  .opas-p .row{flex-direction:column;align-items:stretch;gap:6px} .opas-p .btn{width:100%;justify-content:center;font-size:14px;padding:0 6px}
+ .opas-fam{grid-column:1/-1} .opas-fam img{height:70px} .opas-fam .row.tamr{flex-direction:row;align-items:center} .opas-fam .tamr .btn{width:auto;flex:none}
  .opas-sum>div{grid-template-columns:90px 1fr auto;font-size:15.5px;padding:10px 12px}
  .opas-nav{padding:10px} .opas-nav .btn{font-size:15px;padding:0 12px} .opas-tt b{font-size:17px}
 }

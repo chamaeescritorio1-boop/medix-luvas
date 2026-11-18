@@ -234,7 +234,7 @@ const frtCh=t=>{const s=norm(t?(t.nome||t.n||''):''); return /FLORESTA/.test(s)?
 const frtKgCad=rows=>{let k=0; for(const r of rows){const w=+((r.p&&r.p.attrs)||{}).peso; if(!w) return null; k+=w*(+r.i.qt||0)} return k?Math.round(k*10)/10:null};
 /* frete estimado de uma transportadora (só Marcon, só Alfa/Floresta): {ch,nm,at:true|false|null,v|null,pz,fil,col,det,msg} */
 function freteEst(rep,t,cli,nf,kg){
-  if(rep!=='marcon'||!t||/CIF/i.test(t.tipo||'')) return null; const ch=frtCh(t); if(!ch) return null; const R=FRT[ch];
+  if(rep!=='marcon'||!t||/CIF/i.test((t.tipo||'')+' '+(t.n||''))) return null; if(cli&&/GURGEL/.test(norm((cli.n||'')+' '+(cli.fa||'')))) return null; /* Gurgelmix: único cliente CIF na Marcon, sem frete estimado (Victor 18/11) */ const ch=frtCh(t); if(!ch) return null; const R=FRT[ch];
   const raw=cli?String(cli.cid||''):'', uf=(ufOf(raw)||(cli&&cli.uf)||'').toUpperCase(), ck=frtCid(raw), cn=raw.replace(/\s*[\/\-–]\s*[A-Za-z]{2}\s*$/,'').trim();
   const o={ch,nm:R.nm,col:R.col,vig:R.vig,at:null,v:null,pz:null,fil:'',det:[],msg:'',cid:cn?cn+(uf?'/'+uf:''):''};
   if(!ck){o.msg='Cliente sem cidade no cadastro: não dá para ver se atende nem estimar.'; return o}

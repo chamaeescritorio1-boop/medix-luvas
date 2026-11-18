@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111810",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "🧪 Filtro Chemicals na Sigma",
+   "texto": "Na pasta da Sigma tem o botão \"Chemicals\" com os 36 produtos químicos de estética automotiva (polidores, ceras, lava-autos, APC, pneu pretinho…). Também dá para digitar \"chemicals\" na busca, inclusive dentro do orçamento."
+  },
+  {
    "id": "2026111809",
    "data": "2026-11-18",
    "tipo": "novo",

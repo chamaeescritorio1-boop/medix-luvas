@@ -258,6 +258,19 @@ body.com-barra { padding-bottom: 150px; }
 .ga-tab .v { text-align: right; }
 .ga-tab input { padding: 5px 8px; text-align: right; max-width: 100%; }
 /* passo Placas: ranking das águas */
+.t3-mes { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: #ffffff0a; }
+.t3-mes summary { cursor: pointer; }
+.t3-barras { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 120px; margin-top: 8px; }
+.t3-col { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.t3-col small { font-size: 10px; opacity: .7; }
+.t3-par { position: relative; flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+.t3-b { width: 45%; max-width: 14px; border-radius: 3px 3px 0 0; background: var(--sol, #ffb000); }
+.t3-b2 { background: #6aa8ff; }
+.t3-cons { position: absolute; left: 0; right: 0; border-top: 2px dashed #ffffffaa; }
+.t3-mes-t { width: 100%; font-size: 11px; margin-top: 8px; border-collapse: collapse; display: block; overflow-x: auto; }
+.t3-mes-t th, .t3-mes-t td { padding: 2px 4px; text-align: right; white-space: nowrap; }
+.t3-mes-t td:first-child { text-align: left; }
+.t3-c2 td { color: #9cc4ff; }
 .t3-rank { display: grid; gap: 6px; margin: 8px 0; }
 .t3-rank-l { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 10px; background: #ffffff0a; }
 .t3-rank-l > i { width: 12px; height: 12px; border-radius: 50%; flex: none; }

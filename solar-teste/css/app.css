@@ -515,3 +515,4 @@ body.com-barra .jarvis-bt { bottom: 96px; }
   .trilha > div span { visibility: hidden; height: 0; }
   .trilha > div.atual span { visibility: visible; height: auto; white-space: nowrap; }
 }
+input.lido-doc { border-color: var(--verde-claro) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--verde-claro) 50%, transparent); }

@@ -1,6 +1,7 @@
 {
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
+  {"id": "2026111906", "data": "2026-11-19", "tipo": "novo", "titulo": "🧾 Pedidos e 📋 Orçamentos em aberto na ficha do cliente", "texto": "Ao abrir um cliente, duas abas novas: Pedidos (todos os pedidos fechados, por ano, com filtro por fábrica e os aprovados ainda a caminho) e Orçamentos em aberto (valor, há quantos dias e quem fez). Toque num item para abrir.", "onde": "Clientes › abrir um cliente"},
   {"id": "2026111905", "data": "2026-11-19", "tipo": "novo", "titulo": "📎 Anexos também nos pedidos faturados", "texto": "Ao abrir um pedido em Pedidos faturados agora aparecem os anexos dele, e dá para anexar novos. Os 349 anexos dos pedidos do Reprio (PDFs, fotos e planilhas de set/out) foram copiados para o Sistema."},
   {"id": "2026111904", "data": "2026-11-19", "tipo": "novo", "titulo": "🔒 Linha EVA Marluvas com preço fixo", "texto": "Os 7 itens da linha EVA (Fclean) saem sempre a R$ 58,90 por par, em qualquer tabela, prazo ou estado, sem encargo do prazo. O vendedor não altera o preço; só o gestor."},
   {

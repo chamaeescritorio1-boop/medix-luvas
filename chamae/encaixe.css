@@ -41,3 +41,14 @@ label.f>.row{min-width:0}
 .trmin span{font-size:12px;opacity:.7}
 .trfoto-m{display:none}
 @media (max-width:600px){.trcol{display:none}.trfoto-m{display:block;width:64px;height:64px;margin-bottom:4px}}
+/* ficha do cliente: abas Pedidos e Orçamentos em aberto (19/11) */
+.fclis{gap:8px}
+.fclis .kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fclis .kpi{padding:10px 12px;cursor:default}.fclis .kpi b{font-size:20px}
+.fcl{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;min-width:0}
+.fcl:hover{border-color:var(--accent)}
+.fcl-t{display:flex;gap:10px;align-items:center;min-width:0;flex:1}
+.fcl-t>span{min-width:0;overflow-wrap:anywhere}
+.fcl-v{display:grid;justify-items:end;gap:4px;flex-shrink:0;text-align:right}
+.fcl-v b{font-size:15px;white-space:nowrap}
+@media (max-width:600px){.fclis .kpis{gap:6px}.fclis .kpi{padding:8px}.fclis .kpi b{font-size:13px;white-space:nowrap}.fclis .kpi small{font-size:11px}.fcl{flex-wrap:wrap;padding:9px 10px;gap:6px}.fcl-v{width:100%;display:flex;justify-content:space-between;align-items:center;padding-left:32px}.fcl-v span{font-size:10px!important;padding:2px 6px!important}}

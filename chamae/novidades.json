@@ -2,6 +2,13 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {
+   "id": "2026111901",
+   "data": "2026-11-19",
+   "tipo": "correcao",
+   "titulo": "📄 PDF sem o código da tabela",
+   "texto": "O texto do final do PDF do orçamento não mostra mais o nome/código da tabela de preço (ex.: ECO12-1314). Agora sai: \"Preços sem IPI; IPI destacado conforme alíquota de cada item. Preços sujeitos a confirmação no pedido.\", uma vez só."
+  },
+  {
    "id": "2026111810",
    "data": "2026-11-18",
    "tipo": "novo",

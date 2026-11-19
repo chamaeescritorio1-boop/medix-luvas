@@ -2,37 +2,336 @@
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
   {"id": "2026111904", "data": "2026-11-19", "tipo": "novo", "titulo": "🔒 Linha EVA Marluvas com preço fixo", "texto": "Os 7 itens da linha EVA (Fclean) saem sempre a R$ 58,90 por par, em qualquer tabela, prazo ou estado, sem encargo do prazo. O vendedor não altera o preço; só o gestor."},
-  {"id": "2026111903", "data": "2026-11-19", "tipo": "novo", "titulo": "📏 Cano das luvas Medix", "texto": "Nas luvas Medix de cano (PVX, Nitriq+, Multiuso Plus, Silverix, NFlex, Grillpro, Limpeza Amarela) aparece o comprimento do cano em cm no card, no item do orçamento e no PDF. Dá para buscar por \"cano 35\" ou \"35cm\"."},
+  {
+   "id": "2026111903",
+   "data": "2026-11-19",
+   "tipo": "novo",
+   "titulo": "📏 Cano das luvas Medix",
+   "texto": "Nas luvas Medix de cano (PVX, Nitriq+, Multiuso Plus, Silverix, NFlex, Grillpro, Limpeza Amarela) aparece o comprimento do cano em cm no card, no item do orçamento e no PDF. Dá para buscar por \"cano 35\" ou \"35cm\" e filtrar em 🔎 Filtros da Medix → Cano."
+  },
+  {
+   "id": "2026111902",
+   "data": "2026-11-19",
+   "tipo": "novo",
+   "titulo": "🔢 Preços com 4 casas decimais",
+   "texto": "Para cliente que confere a nota centavo por centavo: marque \"Preços com 4 casas decimais\" no orçamento (abaixo da tabela de preço) ou na ficha do cliente, aba Tabela e prazo (aí vale para todos os orçamentos dele). O preço sai sem arredondar (ex.: Camper Geral −7% = R$ 10,3974) na tela, no PDF, no WhatsApp e no e-mail; o total de cada item continua em centavos.",
+   "onde": "Orçamento · Ficha do cliente"
+  },
+  {
+   "id": "2026111901",
+   "data": "2026-11-19",
+   "tipo": "correcao",
+   "titulo": "📄 PDF sem o código da tabela",
+   "texto": "O texto do final do PDF do orçamento não mostra mais o nome/código da tabela de preço (ex.: ECO12-1314). Agora sai: \"Preços sem IPI; IPI destacado conforme alíquota de cada item. Preços sujeitos a confirmação no pedido.\", uma vez só."
+  },
   {
    "id": "2026111810",
    "data": "2026-11-18",
    "tipo": "novo",
-   "titulo": "🔍 Busca nova no orçamento",
-   "texto": "A busca do passo Produtos do orçamento ficou igual à do catálogo: mostra todos os resultados com preço (não só 12), em linhas dentro de uma caixa com rolagem, com lead time, ℹ️ Detalhes, ▦ Cards / ☰ Lista e ＋ Incluir todos (cada item entra com o seu múltiplo)."
+   "titulo": "🧪 Filtro Chemicals na Sigma",
+   "texto": "Na pasta da Sigma tem o botão \"Chemicals\" com os 36 produtos químicos de estética automotiva (polidores, ceras, lava-autos, APC, pneu pretinho…). Também dá para digitar \"chemicals\" na busca, inclusive dentro do orçamento."
   },
-  {"id": "2026111811", "data": "2026-11-18", "tipo": "novo", "titulo": "🧪 Filtro Chemicals na Sigma", "texto": "Na pasta da Sigma tem o botão \"Chemicals\" com os 36 produtos químicos de estética automotiva (polidores, ceras, lava-autos, APC, pneu pretinho…). Também dá para digitar \"chemicals\" na busca, inclusive dentro do orçamento."},
   {
    "id": "2026111809",
    "data": "2026-11-18",
    "tipo": "novo",
-   "titulo": "☰ Lista e ＋ Incluir todos no catálogo",
-   "texto": "No catálogo de cada representada dá para trocar entre ▦ Cards e ☰ Lista (uma linha por produto, cabem muitos mais na tela). O botão ＋ Incluir todos coloca de uma vez no orçamento todos os itens da linha, da busca ou dos filtros, com a quantidade mínima de cada um; depois é só ajustar."
+   "titulo": "☰ Lista e ＋ Incluir todos nos produtos",
+   "texto": "No catálogo de cada representada e na busca do orçamento dá para trocar entre ▦ Cards e ☰ Lista (uma linha por produto, cabem muitos mais na tela). O botão ＋ Incluir todos coloca de uma vez no orçamento todos os itens do grupo ou da busca, com a quantidade mínima de cada um; depois é só ajustar."
   },
-  {"id": "2026111802", "data": "2026-11-18", "tipo": "correcao", "titulo": "🧾 ICMS só nos itens do PDF", "texto": "O PDF do orçamento/pedido não traz mais o texto de ICMS no final nem o ICMS no quadro do cliente, que mostravam um % único e às vezes errado. O ICMS aparece só em cada item: a alíquota da tabela da fábrica ou, sem ela, o ICMS por estado cadastrado na representada. Representada sem ICMS cadastrado não mostra ICMS.", "onde": "PDF do orçamento"},
-  {"id": "2026111801", "data": "2026-11-18", "tipo": "correcao", "titulo": "🚚 Gurgelmix sem frete estimado", "texto": "A Gurgelmix tem frete CIF na Marcon, então os orçamentos dela não mostram o frete estimado (tela, PDF e WhatsApp).", "onde": "Orçamento › Marcon"},
-  {"id": "2026111800", "data": "2026-11-18", "tipo": "novo", "titulo": "🚚 Frete estimado da Marcon (Alfa e Floresta)", "texto": "No orçamento da Marcon, no passo Pagamento e transporte, aparece o FRETE ESTIMADO da Alfa e da Floresta para a cidade do cliente, com o cálculo de cada uma. A transportadora que não atende a cidade sai da lista. O valor é só estimativa (o frete final vem no CT-e) e não entra no total; sai também no PDF e no WhatsApp com aviso em destaque.", "onde": "Orçamento › Marcon › Pagamento e transporte"},
-  {"id": "2026111707", "data": "2026-11-17", "tipo": "correcao", "titulo": "Carrinho zerado não volta mais", "texto": "Depois de \"Fechar · zerar carrinho\", o orçamento às vezes voltava sozinho com os itens (quando a resposta da Sigma ou do cliente chegava depois). Agora o carrinho zerado fica zerado; o orçamento continua em Salvos."},
-  {"id": "2026111706", "data": "2026-11-17", "tipo": "novo", "titulo": "Duplicar orçamento para outro cliente", "texto": "Botão ⧉ Duplicar em Orçamento › Salvos, no orçamento aberto e no detalhe do pedido: escolha um ou mais clientes, a tabela e o prazo. Os mesmos itens e quantidades vão para o novo orçamento com os preços da tabela escolhida."},
-  {"id": "2026111790", "data": "2026-11-17", "tipo": "novo", "titulo": "📈 Sell-out da Palácio no Sistema", "texto": "Estoque e vendas que a Palácio manda todo dia: ⛔ Em falta (o que acabou e o que vai acabar, com PDF e WhatsApp para o comprador), 🛒 Pré-pedido por fábrica com sugestão de compra (vira orçamento com um botão, PDF/WhatsApp), filtro de marca Marcon × Evald, modo Apresentação (sem os dados da Palácio), opção de tirar do PDF o que a Sigma está sem estoque e aviso no Início quando volta estoque na Sigma.", "onde": "Mais › Sell-out da Palácio · ficha da Palácio"},
-  {"id": "2026111701", "data": "2026-11-17", "tipo": "correcao", "titulo": "Robô não marca mais pedido sozinho", "texto": "O robô Fechar o ciclo não muda mais um orçamento para \"Pedido transmitido\" sozinho. Quando acha um pedido parecido do mesmo cliente, só deixa um aviso no detalhe do orçamento com os botões ✓ É este pedido / Não foi."},
-  {"id": "2026111601", "data": "2026-11-16", "tipo": "correcao", "titulo": "PDF Marluvas separa MTS e MTO de novo", "texto": "No PDF do orçamento Marluvas, quando tem MTS e MTO juntos, os itens voltam a sair como no conversor: Pedido 1 · MTS e Pedido 2 · MTO, com o subtotal de cada pedido (e quanto falta para o mínimo). No fim, antes do TOTAL, aparece o valor de cada pedido separado."},
-  {"id": "2026111203", "data": "2026-11-12", "tipo": "novo", "titulo": "Aviso de pedidos para transmitir", "texto": "Quem transmite os pedidos (Igor) vê uma faixa no topo de todas as telas quando há pedido \"Aprovado para transmissão\", com o número de pedidos e o botão Ver e transmitir. O número também aparece no atalho Transmitir e na aba do navegador, e chega um aviso quando entra pedido novo.", "onde": "Topo da tela · Transmitir", "gestor": true},
+  {
+   "id": "2026111808",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "ℹ️ Detalhes e lead time na busca do orçamento",
+   "texto": "Cada resultado da busca mostra o prazo de entrega (Marluvas com MTS/MTO e dias) e tem um \"ℹ️ Detalhes\" pequeno com grupo, embalagem, múltiplo, CA, IPI, ICMS, NCM, EAN, garantia e os códigos de cada tamanho."
+  },
+  {
+   "id": "2026111807",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "🖼 Fotos maiores na busca do orçamento",
+   "texto": "Fotos e nomes maiores nos resultados da busca (toque na foto para ampliar). Ao chegar no fim da lista, a página continua descendo sozinha até os itens do orçamento, e o botão \"Fim da lista\" leva direto para eles."
+  },
+  {
+   "id": "2026111806",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "🔍 Resultados da busca separados do orçamento",
+   "texto": "No passo Produtos, os resultados da busca aparecem em linhas curtas dentro de uma caixa com rolagem própria e o botão ✕ Fechar busca. Os itens já no orçamento ficam sempre logo abaixo, sem misturar. Tamanho já adicionado fica em verde com a quantidade."
+  },
+  {
+   "id": "2026111805",
+   "data": "2026-11-18",
+   "tipo": "novo",
+   "titulo": "✖ Novo motivo de perda: “Só cotação”",
+   "texto": "Ao marcar um orçamento como perdido, agora existe o motivo “Só cotação (sem intenção de compra)”, para orçamentos frios em que o cliente só queria comparar preço. Ele aparece no relatório Motivos de perda, mas não conta como perda na conversão (Produtividade, Conversão e perdas, Resumo do gestor)."
+  },
+  {
+   "id": "2026111804",
+   "data": "2026-11-18",
+   "tipo": "correcao",
+   "titulo": "🔍 Busca de produtos no orçamento igual à do catálogo",
+   "texto": "No passo Produtos do orçamento a busca agora mostra o mesmo que o Catálogo completo, em todas as fábricas: todos os resultados (antes parava em 12, ex.: Marcon MJH), só os itens com preço na tabela do cliente e, na Medix, os tamanhos do mesmo produto num card só (ex.: luva de nitrilo)."
+  },
+  {
+   "id": "2026111803",
+   "data": "2026-11-18",
+   "tipo": "correcao",
+   "titulo": "📎 WhatsApp com PDF no computador",
+   "texto": "Se o compartilhar do Windows fechar sem enviar (WhatsApp fora da lista, app fechado ou sem login), a janela não some mais: mostra o aviso e deixa tentar de novo ou baixar o PDF e abrir o WhatsApp para arrastar o arquivo."
+  },
+  {
+   "id": "2026111802",
+   "data": "2026-11-18",
+   "tipo": "correcao",
+   "titulo": "🧾 ICMS só nos itens do PDF",
+   "texto": "O PDF do orçamento/pedido não traz mais o texto de ICMS no final nem o ICMS no quadro do cliente, que mostravam um % único e às vezes errado. O ICMS aparece só em cada item: a alíquota da tabela da fábrica ou, sem ela, o ICMS por estado cadastrado na representada. Representada sem ICMS cadastrado não mostra ICMS.",
+   "onde": "PDF do orçamento"
+  },
+  {
+   "id": "2026111801",
+   "data": "2026-11-18",
+   "tipo": "correcao",
+   "titulo": "🚚 Gurgelmix sem frete estimado",
+   "texto": "A Gurgelmix tem frete CIF na Marcon, então os orçamentos dela não mostram o frete estimado (tela, PDF e WhatsApp).",
+   "onde": "Orçamento › Marcon"
+  },
+  {
+   "id": "2026111707",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "🚚 Frete estimado da Marcon (Alfa e Floresta)",
+   "texto": "No orçamento da Marcon, no passo Pagamento e transporte, aparece o FRETE ESTIMADO da Alfa e da Floresta para a cidade do cliente, com o cálculo de cada uma. A transportadora que não atende a cidade sai da lista. O valor é só estimativa (o frete final vem no CT-e) e não entra no total; sai também no PDF e no WhatsApp com aviso em destaque.",
+   "onde": "Orçamento › Marcon › Pagamento e transporte"
+  },
+  {
+   "id": "2026111706",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "🎯 Rebate da Palácio na Marcon",
+   "texto": "Em Mais › 🎯 Rebate (ou na ficha da Palácio) você acompanha o rebate da Marcon: quanto a Palácio comprou em cada trimestre, quanto falta para as faixas A, B e C, o rebate previsto e os pagamentos (pago, boleto emitido). As compras saem dos pedidos do Sistema pela data do pedido, o mesmo critério da Marcon. Dá para subir o relatório Excel da Marcon e o Sistema mostra os pedidos que não batem. No Início aparece um aviso quando o trimestre está acabando abaixo da faixa."
+  },
+  {
+   "id": "2026111705",
+   "data": "2026-11-17",
+   "tipo": "correcao",
+   "titulo": "Carrinho zerado não volta mais",
+   "texto": "Depois de \"Fechar · zerar carrinho\", o orçamento às vezes voltava sozinho com os itens (quando a resposta da Sigma ou do cliente chegava depois). Agora o carrinho zerado fica zerado; o orçamento continua em Salvos."
+  },
+  {
+   "id": "2026111705",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "Sell-out Sigma: PDF só com o que a Sigma tem em estoque",
+   "texto": "Na aba ⛔ Em falta, com a fábrica SIGMA (ou Todas), marque \"Sigma: só os que a Sigma tem em estoque\" antes de gerar o PDF ou o WhatsApp. O Sistema consulta o estoque da Sigma na hora e tira do PDF os itens que a Sigma está sem estoque. Ao terminar, avisa quantos ficaram de fora."
+  },
+  {
+   "id": "2026111704",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "Sell-out: conferir a carteira antes de gravar",
+   "texto": "Ao subir a carteira da fábrica abre uma janela com tudo o que foi lido do arquivo (loja, pedidos, cada item com a quantidade pendente). Você confere e grava; depois mostra o que entrou. Em ⚙️ Configurar aparece quem subiu."
+  },
+  {
+   "id": "2026111703",
+   "data": "2026-11-17",
+   "tipo": "correcao",
+   "titulo": "Sell-out: carteira da Marcon lê o relatório de Pedidos",
+   "texto": "O relatório \"Pedidos\" que sai da Marcon (só a aba 2-Pedidos) agora é lido: pego a coluna Qt.Pendente, só as linhas da Palácio, e a loja vem da coluna Loja. Pode subir pelo botão ⬆ Subir relatório ou em ⚙️ Configurar › Subir carteira."
+  },
+  {
+   "id": "2026111702",
+   "data": "2026-11-17",
+   "tipo": "correcao",
+   "titulo": "Nenhum orçamento some mais",
+   "texto": "Busca por nº do orçamento (ex.: 755), nº na Sigma/fábrica, OC, cliente, CNPJ ou produto em todo o histórico (Pedidos › Orçamentos, Salvos e Buscar). Trocar o cliente de um orçamento já salvo cria um orçamento novo; o original continua salvo. Botão 🕘 Histórico no orçamento e 🗑 Lixeira (gestor) para restaurar excluídos. O Reprio foi desligado."
+  },
+  {
+   "id": "2026111701",
+   "data": "2026-11-17",
+   "tipo": "novo",
+   "titulo": "Duplicar orçamento para outro cliente",
+   "texto": "Botão ⧉ Duplicar em Orçamento › Salvos, no orçamento aberto e no detalhe do pedido: escolha um ou mais clientes, a tabela e o prazo. Os mesmos itens e quantidades vão para o novo orçamento com os preços da tabela escolhida."
+  },
+  {
+   "id": "2026111611",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Comissão: ajustar a positivação",
+   "texto": "O gestor pode corrigir a positivação de uma representada no ✎ (fica marcada \"Sistema: N\" ao lado e com * no PDF). Vazio volta a usar a conta do Sistema.",
+   "gestor": true
+  },
+  {
+   "id": "2026111610",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Relatórios › 💰 Comissão",
+   "texto": "A comissão do mês por representada, igual à planilha: meta × realizado de positivação e de vendas, % da meta, R$ por cliente, % sobre as vendas e o ganho total. Gestor escolhe o vendedor e manda o PDF pelo WhatsApp; cada vendedor vê a própria comissão do mês andando."
+  },
+  {
+   "id": "2026111609",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Painel do mês: escolher vendedor e representada",
+   "texto": "No topo do Painel do mês agora tem as listas Vendedor (Todos ou cada um) e Representada (Todas ou cada uma). Tocar nas barras continua funcionando."
+  },
+  {
+   "id": "2026111608",
+   "data": "2026-11-16",
+   "tipo": "correcao",
+   "titulo": "Sell-out: código EV… conta como Evald",
+   "texto": "No filtro de marca da Marcon, todo código que começa com EV conta como Evald, mesmo se o cliente cadastrou como Marcon. E o título do PDF diz as marcas que estão nele (ex.: \"produtos Marcon e Evald\" quando a marca está em Todas)."
+  },
+  {
+   "id": "2026111607",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF do pré-pedido e marca Marcon × Evald",
+   "texto": "No Pré-pedido do Sell-out entraram os botões 📄 PDF e 💬 WhatsApp: a sugestão de compra com foto, motivo de cada item e quanto comprar. Na Marcon dá para escolher a marca (Marcon ou Evald). Com \"Apresentação\" marcada, o PDF sai sem o nome, os códigos e os preços do cliente, para mostrar a outro cliente."
+  },
+  {
+   "id": "2026111606",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: filtro de marca (Marcon × Evald)",
+   "texto": "No Sell-out, ao escolher a fábrica Marcon, aparece a linha \"Marca\" para ver só Marcon ou só Evald. Vale nas abas Resumo, Itens e Em falta, e no PDF (o título passa a ser da marca escolhida)."
+  },
+  {
+   "id": "2026111609",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Produtividade: dia a dia, prospecção e contato automático",
+   "texto": "Ao tocar em WhatsApp, Ligar, E-mail ou enviar o PDF do orçamento, o Sistema já anota o contato e, quando você volta, pergunta \"Como foi?\" (1 toque). Em Relatórios › Produtividade: atendimentos por dia de cada vendedor com a meta, cada cliente separado em Base ativa, Reativação ou Prospecção, cobertura da carteira, clientes conquistados e reativados. O PDF para a fábrica também mostra isso."
+  },
+  {
+   "id": "2026111608",
+   "data": "2026-11-16",
+   "tipo": "correcao",
+   "titulo": "Pedido transmitido pelo assistente fica com o vendedor certo",
+   "texto": "Quando o Igor (assistente) transmite um pedido na fábrica, a venda continua no nome do vendedor do orçamento (ou de quem fez o orçamento). O nome do Igor aparece só como \"transmitido por\". Na lista de Pedidos a coluna Vendedor mostra o vendedor escolhido no orçamento, não quem digitou, e o Igor deixa de aparecer como vendedor no Resumo da semana."
+  },
+  {
+   "id": "2026111607",
+   "data": "2026-11-16",
+   "tipo": "correcao",
+   "titulo": "PDF Marluvas separa MTS e MTO de novo",
+   "texto": "No PDF do orçamento Marluvas, quando tem MTS e MTO juntos, os itens voltam a sair como no conversor: Pedido 1 · MTS e Pedido 2 · MTO, com o subtotal de cada pedido (e quanto falta para o mínimo). No fim, antes do TOTAL, aparece o valor de cada pedido separado."
+  },
+  {
+   "id": "2026111606",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Relatórios mais enxutos + Produtividade",
+   "texto": "Relatórios agora tem 8 opções em 3 grupos (Acompanhar, Analisar, Buscar). Vendas mensais, Por representada e Por vendedor viraram o Histórico de vendas; as duas Curvas ABC viraram uma; Conversão e Motivos de perda ficaram juntos. Novo: Produtividade, com contatos, clientes atendidos, orçamentos e pedidos do mês por vendedor e por fábrica, e PDF para mandar à fábrica. O Painel do mês abre na hora e confere o Reprio por trás. O Exportar funciona em todos."
+  },
+  {
+   "id": "2026111605",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF com a fábrica no título e modo apresentação",
+   "texto": "O PDF da aba Em falta agora diz de qual fábrica está falando no título. E tem a opção \"Apresentação (sem os dados do cliente)\": esconde o nome, os códigos e os valores de cada item do cliente e mostra \"Como funciona\", para apresentar a outro cliente."
+  },
+  {
+   "id": "2026111604",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF só com o que ainda não tem pedido",
+   "texto": "Na aba Em falta, marque \"Só os que ainda não têm pedido\" ao lado do botão do PDF: saem do PDF os itens que já estão na carteira da fábrica e os que já tiveram pedido nosso depois de acabar. A escolha fica salva."
+  },
+  {
+   "id": "2026111603",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: PDF do estoque com a nossa cara",
+   "texto": "O PDF da aba Em falta (botões 📄 PDF e 💬 WhatsApp) ficou pronto para mandar ao comprador ou ao dono da loja: logo e cores da Chamae, capa com o resumo (quantos acabaram, quantos vão acabar, quanto está deixando de vender por dia e quanto repor), por fábrica, como ler, e um cartão por produto com foto, selo colorido e o balão \"Repor\"."
+  },
+  {
+   "id": "2026111602",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Sell-out: relatório do que acabou e do que vai acabar",
+   "texto": "Na aba Em falta do Sell-out, os botões 📄 PDF e 💬 WhatsApp geram um PDF com foto, o que já acabou e o que vai acabar, com a sugestão de compra, para mandar ao comprador da Palácio. E todo dia, quando chega o relatório da Palácio, sai um e-mail automático com essas listas e a planilha em anexo (quem recebe: Sell-out › ⚙️ Configurar)."
+  },
+  {
+   "id": "2026111601",
+   "data": "2026-11-16",
+   "tipo": "novo",
+   "titulo": "Marluvas: Refinar características na própria tela",
+   "texto": "Na pasta Marluvas, o botão Refinar características abre o painel ali mesmo, logo abaixo do Converter CA: tipo, biqueira, solado, material, cano, fechamento, cor e recursos, com quantos produtos tem em cada opção, filtrando o catálogo na hora. Digite um CA do concorrente (ou uma descrição) e toque em Refinar: o Sistema lê o CA e já marca as características que têm Marluvas equivalente."
+  },
+  {
+   "id": "2026111207",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Fotos e anexos na tela Transmitir",
+   "texto": "Na tela Transmitir cada item aparece com a foto do produto (toque para ampliar) e os anexos do pedido (ordem de compra, fotos, PDFs) ficam abertos logo no começo. Na lista, cada pedido mostra as miniaturas dos produtos e quantos anexos tem."
+  },
+  {
+   "id": "2026111206",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Cooperativas fora do Bater carteira",
+   "texto": "Coopercitrus, Copercana e Coplana saíram do Bater carteira, do Plano do dia e das listas da Base ativa. Em Clientes, o novo botão 🏢 Cooperativas mostra as lojas de cada cooperativa (última compra por fábrica) e a aba 📦 Itens que já compram, com o que já está cadastrado lá para oferecer às lojas."
+  },
+  {
+   "id": "2026111205",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Medix: carteira do portal no Bater carteira",
+   "texto": "Na Base ativa, a Medix mostra as faixas do portal da Medix (ativos, oportunidade, atenção, inativos), lidas todo dia pelo robô. Toque na Medix e abra a aba 📋 Pela Medix para ver quem está em Atenção e Oportunidade e ligar primeiro."
+  },
+  {
+   "id": "2026111205",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Início mais enxuto",
+   "texto": "O Início ficou mais limpo: Fábricas no topo, depois 3 números do dia (meta do mês, tarefas para hoje e oportunidades), os botões principais (agora com E-mails do dia) e o Hoje para você. Minha semana e o Resumo da equipe passaram para Relatórios."
+  },
+  {
+   "id": "2026111204",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Base ativa por fábrica e Prêmio Marluvas no Bater carteira",
+   "texto": "No topo do Bater carteira aparece a Base ativa de cada fábrica (clientes que compraram no prazo × meta da fábrica, ex.: Camper 25). Toque na fábrica para ver 3 listas: Manter (vencem em 30 dias), Recuperar (pararam) e Conquistar (compram outra fábrica e nunca esta). O Plano do dia agora traz primeiro quem vai sair da base. Para gestores, o 🏆 Prêmio Marluvas mostra os 6 indicadores do relatório diário da Marluvas (chega sozinho pelo e-mail), quanto falta e quem chamar em cada um."
+  },
+  {
+   "id": "2026111202",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "gestor": true,
+   "titulo": "A receber: importar a nota de serviço (NFS-e) da comissão",
+   "texto": "O botão ⬆ Importar XML / NF-e do A receber agora aceita o XML da NFS-e que a Chamaê emite para a fábrica. Ele reconhece a fábrica pelo CNPJ, mostra valor e vencimento para conferir e lança no A receber. Se já existir a comissão do mês dessa fábrica lançada à mão, oferece atualizar em vez de duplicar. Mandar a mesma nota de novo não duplica."
+  },
+  {
+   "id": "2026111203",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "titulo": "Aviso de pedidos para transmitir",
+   "texto": "Quem transmite os pedidos (Igor) vê uma faixa no topo de todas as telas quando há pedido \"Aprovado para transmissão\", com o número de pedidos e o botão Ver e transmitir. O número também aparece no atalho Transmitir e na aba do navegador, e chega um aviso quando entra pedido novo.",
+   "onde": "Topo da tela · Transmitir",
+   "gestor": true
+  },
   {
    "id": "2026111202",
    "data": "2026-11-12",
    "tipo": "correcao",
    "titulo": "Busca de clientes mais esperta",
    "texto": "Agora dá para achar o cliente digitando só o começo ou as iniciais, com ou sem espaço e ponto: R X M, RXM ou R.X.M acham a R X M COMERCIO; IGT acha Irmãos Gonçalves Teixeira. Procura no nome e na fantasia ao mesmo tempo e mostra primeiro o que mais parece. Vale no orçamento, na lista de Clientes, no Bater carteira, no Buscar e na Agenda."
+  },
+  {
+   "id": "2026111201",
+   "data": "2026-11-12",
+   "tipo": "novo",
+   "gestor": true,
+   "titulo": "Financeiro: importar XML da NF-e no A receber",
+   "texto": "No A receber agora tem o botão ⬆ Importar XML / NF-e (também dá para arrastar os arquivos para a tela). Ele lê a nota igual à aba Comissões / NF-e e já lança as parcelas da comissão no A receber, uma por duplicata. Se tiver NF-e nova do e-mail, aparece o botão 📧 para importar ali mesmo."
+  },
+  {
+   "id": "2026111110",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Sell-out: carteira da Marcon, datas e estoque da Sigma",
+   "texto": "O pré-pedido não sugere mais item que já está na carteira da fábrica. A carteira da Marcon pode ser subida no formato novo (aba 2-Pedidos), um arquivo por loja e vários de uma vez. O topo mostra quando chegou o último sell-out e quando subiu a última carteira de cada fábrica. No pré-pedido da Sigma aparece o estoque de cada item na Sigma, e o Início avisa quando um item que a Palácio precisa volta a ter estoque."
   },
   {
    "id": "2026111111",
@@ -42,18 +341,65 @@
    "texto": "Na janela 🛒 Itens que já comprou, a Sigma mostra o estoque disponível de cada item na hora e a Medix mostra o estoque do robô diário. Itens antigos da Sigma que apareciam como \"fora do catálogo atual\" (código sem o zero na frente) agora são reconhecidos, com foto e botão Incluir."
   },
   {
-   "id": "2026111104",
+   "id": "2026111110",
    "data": "2026-11-11",
    "tipo": "correcao",
    "titulo": "Importar O.C usa a versão verde (VD) da Copercana",
    "texto": "Ao importar a O.C de um cliente cuja tabela tem preço para a versão VD (verde, feita para a Copercana), o item entra como VD. Ex.: 740 vira 740 VD."
   },
   {
-   "id": "2026111103",
+   "id": "2026111109",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Sell-out: aba Em falta e vendas mais fáceis de ler",
+   "texto": "Nova aba ⛔ Em falta no Sell-out da Palácio: itens que vendiam e estão com estoque zero, quando esgotaram, há quantos dias, se já foi feita a recompra e quanto deixaram de vender em R$. Esses itens agora entram certo no pré-pedido. As vendas da semana, do mês e dos 2 meses e as vendas por mês aparecem com nome em cada número e em barrinhas."
+  },
+  {
+   "id": "2026111108",
    "data": "2026-11-11",
    "tipo": "correcao",
    "titulo": "Importar O.C em PDF lê todos os itens",
    "texto": "O.Cs como a da Copercana, em que o total de cada item já vem com IPI e frete, agora são lidas linha a linha: todos os itens entram com a quantidade e o preço certos. Códigos em duas partes, como 340 VD, também são reconhecidos."
+  },
+  {
+   "id": "2026111107",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Sell-out: fotos e pré-pedido com a tabela da Palácio",
+   "texto": "O Sell-out agora mostra a foto de cada produto e os itens em cartões. Cada cartão diz em uma frase quanto tempo o estoque dura e quanto tempo a fábrica leva para entregar. O pré-pedido já mostra o preço da tabela da Palácio no prazo que ela costuma comprar, e o orçamento abre com essa tabela e esse prazo. A lista em tabela continua no botão ☰ Tabela.",
+   "onde": "Mais › 📈 Sell-out da Palácio"
+  },
+  {
+   "id": "2026111106",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "📝 Observação e código da fábrica dentro do pedido",
+   "texto": "Em Pedidos, ao abrir um orçamento ou pedido, agora dá para escrever a observação do pedido e o código do pedido na fábrica (ATG). Salva junto com o botão Salvar status.",
+   "onde": "Pedidos › abrir um orçamento"
+  },
+  {
+   "id": "2026111105",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "📈 Sell-out da Palácio dentro do Sistema",
+   "texto": "O painel de sell-out que era uma planilha com macro agora está no Sistema. O relatório que a Palácio manda todo dia por e-mail entra sozinho e mostra risco de ruptura, itens parados, curva ABC, cobertura do estoque por filial, carteira pendente na fábrica e a sugestão de compra. No Pré-pedido você ajusta as quantidades e cria o orçamento da fábrica com um botão.",
+   "onde": "Mais › 📈 Sell-out da Palácio (ou o botão 📈 Sell-out na ficha da Palácio)"
+  },
+  {
+   "id": "2026111104",
+   "data": "2026-11-11",
+   "tipo": "novo",
+   "titulo": "Itens que já comprou: botão “Incluir tudo”",
+   "texto": "Na janela 🛒 Itens que já comprou do orçamento agora tem o botão “＋ Incluir tudo”: coloca de uma vez todos os itens da lista. Se você filtrar (ex.: “caixa”), inclui só os que aparecem no filtro. Itens que já estão no orçamento ou fora do catálogo ficam de fora.",
+   "onde": "Orçamento › Produtos › 🛒 Itens que já comprou"
+  },
+  {
+   "id": "2026111103",
+   "data": "2026-11-11",
+   "tipo": "correcao",
+   "titulo": "Medix: busca entende “com” e “sem” (c/ e s/)",
+   "texto": "Na Medix a busca agora entende c/ = com e s/ = sem: “colete com 1 bolso”, “colete sem bolso” e “4 bolsos laranja” acham os coletes certos. Número + palavra (ex.: “1 bolso”) mostra só os que têm isso escrito.",
+   "onde": "Pasta Medix · Orçamento"
   },
   {
    "id": "2026111102",
@@ -72,20 +418,35 @@
    "onde": "Orçamento Marcon"
   },
   {
-   "id": "2026111011",
+   "id": "2026111009",
    "data": "2026-11-10",
    "tipo": "novo",
-   "titulo": "Marluvas: código raiz + numeração (700302-43)",
-   "texto": "Os pedidos da Marluvas vinham com um item por número (700302-43, 700302-44…). Agora o Sistema junta tudo no código raiz com a grade (43: 10 · 44: 5). Digitar 700302-43 na busca acha a botina e já abre a grade com o 43 marcado. Ao importar a O.C do cliente, cada linha 700302-43 vira o número certo na grade. O último preço pago e os itens que o cliente já comprou passam a aparecer na Marluvas.",
-   "onde": "Orçamento Marluvas (busca e 📄 Importar OC), Pedidos, ficha do cliente"
+   "titulo": "Medix: “com pó” e “sem pó” por extenso na pesquisa",
+   "texto": "Na pasta Medix os produtos aparecem com “com pó” / “sem pó” escrito por extenso em vez de c/ pó e s/ pó. No orçamento e no PDF o nome continua o da Medix.",
+   "onde": "Pasta Medix"
   },
   {
-   "id": "2026111010",
+   "id": "2026111008",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Card “Pedido transmitido” igual ao Painel do mês",
+   "texto": "Os cards de situação em Pedidos e o quadro agora somam sem IPI, como o Painel do mês. Orçamentos que o robô ligou a outro pedido saem do card “Pedido transmitido” e vão para um card próprio, que não soma. O robô “Fechar o ciclo” não marca mais sozinho: ele mostra no detalhe “Parece que virou o pedido X” com os botões “É este pedido” e “Não foi”."
+  },
+  {
+   "id": "2026111007",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Fichas técnicas da Medix",
+   "texto": "As luvas de procedimento, cirúrgicas, Profissional e várias Safety ganharam o PDF da ficha técnica (70 códigos que não vinham). Produto sem PDF na Medix mostra “📄 Ficha (site)”, que abre a página do produto no site da Medix com a ficha técnica.",
+   "onde": "Pasta Medix · Orçamento"
+  },
+  {
+   "id": "2026111006",
    "data": "2026-11-10",
    "tipo": "novo",
-   "titulo": "Marluvas: grade mínima em todos os números",
-   "texto": "Na grade de numeração cada número mostra a quantidade mínima (mín. 5, mín. 10…) e o botão ＋ Grade mínima preenche todos os números com o mínimo de uma vez. Depois é só ajustar.",
-   "onde": "Grade de numeração da Marluvas (catálogo e orçamento)"
+   "titulo": "Achar produtos da Medix ficou mais fácil",
+   "texto": "Na pasta Medix abra “🔎 Filtros da Medix” e filtre por selo ANVISA/INMETRO, CA, tipo (procedimento, cirúrgica, uso geral), material, pó, cor e tamanho. A busca entende nitrílica = nitrilo, s/pó = sem pó etc. Cada card mostra a categoria e o selo da planilha da Medix e a regra de fracionar (ex.: pode misturar tamanhos até fechar a caixa).",
+   "onde": "Pasta Medix"
   },
   {
    "id": "2026111005",
@@ -96,12 +457,81 @@
    "onde": "Orçamento › Tabela e prazo · Ficha do cliente › Tabela e prazo · Representadas › Unidades"
   },
   {
+   "id": "2026111004",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Assinatura nova aparece na hora",
+   "texto": "Ao subir uma imagem nova da assinatura, o Sistema mostra e usa a nova na hora (antes podia continuar mostrando a antiga).",
+   "onde": "Mais › Ajustes › Assinatura do e-mail"
+  },
+  {
+   "id": "2026111003",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Texto embaixo da assinatura",
+   "texto": "Suba só o cartão da sua assinatura. O significado do nome CHAMAE e o aviso de confidencialidade entram sozinhos embaixo dele, em texto, nos E-mails do dia e nos orçamentos por e-mail.",
+   "onde": "Mais › Ajustes › Assinatura do e-mail"
+  },
+  {
+   "id": "2026111003",
+   "data": "2026-11-10",
+   "tipo": "correcao",
+   "titulo": "Pedido fechado conclui o retorno do orçamento",
+   "texto": "Quando o orçamento vira pedido (Aprovado para transmissão, Aguardando ATG ou Transmitido), a tarefa de retorno dele na Agenda é concluída sozinha, como já acontecia ao cancelar. Antes isso só acontecia no Transmitido."
+  },
+  {
+   "id": "2026111002",
+   "data": "2026-11-10",
+   "tipo": "novo",
+   "titulo": "Quem já comprou um produto (por região)",
+   "texto": "Em Mais › Quem já comprou (ou Relatórios, ou na ficha do produto): digite o código ou o nome do modelo (ex.: PVX) e veja todos os clientes que já compraram, de todas as representadas, com data, quantidade, preço, cidade, distância e telefone. Dá para filtrar até 50/100/200 km da sua cidade, por período e por um produto só (ex.: cano longo G)."
+  },
+  {
+   "id": "2026110924",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Um só retorno por orçamento + “E agora?” ao concluir",
+   "texto": "Cada orçamento agora tem uma única tarefa de retorno na Agenda. Ao registrar o contato depois de salvar, o retorno que já existia muda para a data escolhida, sem criar outra tarefa. Ao concluir a tarefa, escolha o que fazer: Fechou pedido (abre o Transmitir), Perdeu (pergunta o motivo), Sem próximo passo ou Retornar de novo (amanhã, 3 dias, 7 dias ou dia e hora)."
+  },
+  {
    "id": "2026110923",
    "data": "2026-11-09",
    "tipo": "correcao",
    "titulo": "Fechar o orçamento volta para a tarefa",
    "texto": "Na Agenda, ao abrir uma tarefa e tocar em Abrir orçamento ou Registrar contato, a janela abre por cima da tarefa. Ao tocar em Fechar ou ✕ você volta para a tarefa, pronto para registrar e concluir. Se for para outra tela (Ficha do cliente, editar orçamento), aparece embaixo o botão ↩ Voltar à tarefa.",
    "onde": "Tarefas e agenda › tocar na tarefa"
+  },
+  {
+   "id": "2026110922",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Assinatura do e-mail",
+   "texto": "Suba a imagem da assinatura que você já usa no Outlook. Ela vai no fim dos E-mails do dia e dos orçamentos enviados por e-mail. O gestor pode subir a de cada vendedor.",
+   "onde": "Mais › Ajustes › ⬆ Subir imagem da assinatura"
+  },
+  {
+   "id": "2026110920",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Mais produtos nos E-mails do dia",
+   "texto": "No e-mail de cada cliente, toque em 🛍 Produtos para buscar e incluir produtos (até 15), tirar os que não quer e escolher quantos mais vendidos o agente sugere (até 12). Dá para usar os mesmos produtos em todos os e-mails de hoje.",
+   "onde": "E-mails do dia › 🛍 Produtos"
+  },
+  {
+   "id": "2026110913",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Marluvas: código raiz + numeração (700302-43)",
+   "texto": "Os pedidos da Marluvas vinham com um item por número (700302-43, 700302-44…). Agora o Sistema junta tudo no código raiz com a grade (43: 10 · 44: 5). Digitar 700302-43 na busca acha a botina e já abre a grade com o 43 marcado. Ao importar a O.C do cliente, cada linha 700302-43 vira o número certo na grade. O último preço pago e os itens que o cliente já comprou passam a aparecer na Marluvas.",
+   "onde": "Orçamento Marluvas (busca e 📄 Importar OC), Pedidos, ficha do cliente"
+  },
+  {
+   "id": "2026110912",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "Marluvas: grade mínima em todos os números",
+   "texto": "Na grade de numeração cada número mostra a quantidade mínima (mín. 5, mín. 10…) e o botão ＋ Grade mínima preenche todos os números com o mínimo de uma vez. Depois é só ajustar.",
+   "onde": "Grade de numeração da Marluvas (catálogo e orçamento)"
   },
   {
    "id": "2026110911",
@@ -111,12 +541,20 @@
    "texto": "No PDF do orçamento, o quadro da representada agora tem a mesma cor do balão do preço e o topo azul ganhou um filete dourado embaixo, igual ao do encarte. No PDF promoção do encarte dá para marcar \"🖨 Fundo branco para impressão\": só o topo fica azul e gasta bem menos tinta."
   },
   {
-   "id": "2026110906",
+   "id": "2026110910",
    "data": "2026-11-09",
-   "tipo": "correcao",
-   "titulo": "Pedido transmitido conta nas vendas",
-   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
-   "onde": "Pedidos › Transmitir"
+   "tipo": "novo",
+   "titulo": "Ver o endereço e a fachada do cliente no Maps",
+   "texto": "Toque no 📍 ao lado do cliente (Lista e filtros e Bater carteira) ou em 📍 Endereço e mapa na ficha: abre o endereço com 🗺️ Abrir no Maps (no celular abre o aplicativo), 🏠 Ver fachada (a foto da rua, o Street View, na frente do cliente) e Mapa aqui (o mapa dentro do Sistema). Fechado, não ocupa espaço.",
+   "onde": "Clientes (Lista e filtros e Bater carteira) e ficha do cliente"
+  },
+  {
+   "id": "2026110908",
+   "data": "2026-11-09",
+   "tipo": "novo",
+   "titulo": "De qual representada você falou",
+   "texto": "Ao registrar um contato, marque de qual(is) fábrica(s) falou com o cliente (pode marcar mais de uma). Já vem marcada quando você está numa pasta. Na ligação enviada 🎙️, a IA marca sozinha e você confere. Em 📝 Conversas cada registro mostra a etiqueta da fábrica.",
+   "onde": "Bater carteira, ficha do cliente, Orçamento salvo e 🎙️ Enviar ligação"
   },
   {
    "id": "2026110907",
@@ -126,6 +564,14 @@
    "titulo": "Aviso de pedido em dobro",
    "texto": "Se um pedido transmitido pelo Sistema também for finalizado no Reprio, aparece um aviso no Início e no Painel do mês para deixar só um contando.",
    "onde": "Início e Relatórios › Painel do mês"
+  },
+  {
+   "id": "2026110906",
+   "data": "2026-11-09",
+   "tipo": "correcao",
+   "titulo": "Pedido transmitido conta nas vendas",
+   "texto": "Ao marcar como transmitido na fábrica, o pedido entra nas vendas do mês (Painel, metas e relatórios). A caixa \"Lançar nas vendas\" agora vem marcada.",
+   "onde": "Pedidos › Transmitir"
   },
   {
    "id": "2026110904",

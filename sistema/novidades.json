@@ -1,6 +1,7 @@
 {
  "_como_usar": "Mais nova primeiro. id = AAAAMMDD + nn (maior = mais novo). tipo: novo | correcao. gestor:true = só gestor vê. Toda mudança publicada no Sistema ganha uma linha aqui.",
  "itens": [
+  {"id": "2026111904", "data": "2026-11-19", "tipo": "novo", "titulo": "🔒 Linha EVA Marluvas com preço fixo", "texto": "Os 7 itens da linha EVA (Fclean) saem sempre a R$ 58,90 por par, em qualquer tabela, prazo ou estado, sem encargo do prazo. O vendedor não altera o preço; só o gestor."},
   {"id": "2026111903", "data": "2026-11-19", "tipo": "novo", "titulo": "📏 Cano das luvas Medix", "texto": "Nas luvas Medix de cano (PVX, Nitriq+, Multiuso Plus, Silverix, NFlex, Grillpro, Limpeza Amarela) aparece o comprimento do cano em cm no card, no item do orçamento e no PDF. Dá para buscar por \"cano 35\" ou \"35cm\"."},
   {
    "id": "2026111810",

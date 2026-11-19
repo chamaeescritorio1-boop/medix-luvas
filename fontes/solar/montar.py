@@ -12,7 +12,7 @@ embaralhadas com a chave guardada no cofre do Supabase (segredo sol_cred_app).
 as páginas do cliente viram um arquivo compacto cada, e as fontes são guardadas de novo.
 Precisa de: pip install cryptography; esbuild (variável ESBUILD ou no PATH).
 """
-import base64, gzip, io, os, re, shutil, subprocess, sys, tarfile, time
+import base64, gzip, io, json, os, re, shutil, subprocess, sys, tarfile, time
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -46,6 +46,21 @@ def partes(html):
     fim = re.search(r'<script>Banco\.pronto\.then\(function \(\) \{ var s = document\.createElement\("script"\); s\.src = "(js/[^"?]+)[^"]*";[^<]*</script>', html)
     assert lista and fim, 'página fora do padrão'
     return lista, fim.group(1)
+
+
+ROBO_ARQS = ('cotador.mjs', 'cotador-sistema.js', 'robo.mjs', 'package.json', 'LEIAME.md', 'atualizar.mjs')
+
+
+def pacote_robo(src):
+    """código do robô do escritório em robo.bin (embaralhado como a central; só baixado quando o banco não tem a versão):
+    a central publica a versão em sol_robo_versoes e o robô se atualiza sozinho (robo/atualizar.mjs, desde 2026-11-18a)."""
+    pasta = os.path.join(src, 'robo')
+    if not os.path.exists(os.path.join(pasta, 'atualizar.mjs')): return ''
+    arqs = {f: open(os.path.join(pasta, f), encoding='utf-8').read() for f in ROBO_ARQS if os.path.exists(os.path.join(pasta, f))}
+    m = re.search(r"const VERSAO = '([^']+)'", arqs.get('cotador.mjs', ''))
+    if not m: return ''
+    notas = re.search(r'## Versão ' + re.escape(m.group(1)) + r'[^\n]*\n(.*?)(?=\n## |\Z)', arqs.get('LEIAME.md', ''), re.S)
+    return json.dumps({'versao': m.group(1), 'arquivos': arqs, 'notas': notas.group(1).strip()[:1800] if notas else ''}, ensure_ascii=False)
 
 
 def juntar(src, html):
@@ -89,6 +104,8 @@ def montar(src, out):
         html = open(os.path.join(src, f), encoding='utf-8').read()
         if f == CENTRAL:
             open(os.path.join(out, 'central.bin'), 'wb').write(embaralhar(gzip.compress(juntar(src, html).encode(), 9, mtime=0)))  # compacta antes: embaralhado não comprime
+            robo = pacote_robo(src)
+            if robo: open(os.path.join(out, 'robo.bin'), 'wb').write(embaralhar(gzip.compress(robo.encode(), 9, mtime=0)))  # compacta antes: embaralhado não comprime
             entrada = open(os.path.join(src, 'js/entrada.js'), encoding='utf-8').read().replace('__VERSAO__', v)
             open(os.path.join(out, 'js/entrada.js'), 'w', encoding='utf-8').write(compactar(entrada))
             html = trocar_scripts(html, '<script src="js/entrada.js?v=%s"></script>' % v)

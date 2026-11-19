@@ -169,6 +169,41 @@
 :root[data-theme=dark] .frt-av{background:#3a2610;color:#ffd7a6}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .frt-av{background:#3a2610;color:#ffd7a6}}
 
+/* busca do passo Produtos: linhas curtas numa caixa com rolagem própria (18/11) */
+.opas-res.opl-box{display:block;border:2px solid var(--line);border-radius:14px;background:var(--surface2,#f6f7fb);padding:0;overflow:hidden}
+.opl-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--surface)}
+.opl-lst{max-height:min(70vh,720px);overflow-y:auto;overscroll-behavior:auto;display:grid;gap:6px;padding:8px}
+.opl{display:grid;grid-template-columns:112px minmax(0,1fr) auto auto;gap:6px 14px;align-items:center;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:8px 10px}
+.opl.in{border-color:var(--ok,#1f9d5c)}
+.opl img{width:112px;height:112px;object-fit:contain;border-radius:10px;background:#fff;cursor:zoom-in}
+.opl-n{font-weight:700;font-size:17px;line-height:1.25;overflow-wrap:anywhere}
+.opl-h{font-size:14px;line-height:1.3;margin-top:2px}
+.opl .oult{font-size:12px}
+.opl-pr{font-size:19px;white-space:nowrap;text-align:right}
+.opl-a{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.opl-a .btn,.opl-tam .btn{min-height:40px;white-space:nowrap;flex:none}
+.opl-ok{font-size:12px;font-weight:700}
+.opl-q input{width:56px}
+.opl-tams{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:4px 10px;border-top:1px dashed var(--line);padding-top:6px}
+.opl-tam{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 4px;border-radius:8px}
+.opl-tam.in{background:color-mix(in srgb,var(--ok,#1f9d5c) 12%,transparent)}
+.opl-tam>span{min-width:0;line-height:1.2}
+.opl-est{display:block;font-size:11.5px}
+@media(max-width:760px){
+ .opl{grid-template-columns:84px minmax(0,1fr) auto;gap:6px 10px;padding:8px}
+ .opl img{width:84px;height:84px}
+ .opl-n{font-size:15.5px} .opl-pr{font-size:17px}
+ .opl-a{grid-column:1/-1}
+ .opl-a .btn{flex:1}
+ .opl-tams{grid-template-columns:1fr}
+}
+.opl-det{grid-column:1/-1;font-size:13px;border-top:1px dashed var(--line);padding-top:4px}
+.opl-det>summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px;padding:2px 0;list-style-position:inside}
+.opl-dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 10px;margin-top:4px}
+.opl-dg span{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.opl-dg small{color:var(--muted);font-size:11.5px}
+.opl-dg b{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.opl .tags .tag{font-size:12.5px}
 /* INCL-TODOS / VISTA (18/11): "＋ Incluir todos" e ▦ Cards / ☰ Lista no catálogo e na busca do orçamento */
 .cat-bar{justify-content:space-between;align-items:center;gap:8px;margin:0 0 8px}
 .vista-sw{display:inline-flex;gap:0}
@@ -204,43 +239,6 @@
  .cl-a>.btn{width:100%}
  .cl-tams{grid-column:1/-1;grid-template-columns:1fr}
 }
-@media(max-width:760px){.cl-row .qty button,.cl-row .btn{min-height:36px!important;height:36px;padding-top:0;padding-bottom:0}.cl-row .qty input{min-height:36px!important;height:36px;width:52px}}
-
-/* busca do orçamento em linhas (BUSCA-IGUAL, oficial 18/11) */
-.opas-res.opl-box{display:block;border:2px solid var(--line);border-radius:14px;background:var(--surface2,#f6f7fb);padding:0;overflow:hidden}
-.opl-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--surface)}
-.opl-lst{max-height:min(70vh,720px);overflow-y:auto;overscroll-behavior:auto;display:grid;gap:6px;padding:8px}
-.opl{display:grid;grid-template-columns:112px minmax(0,1fr) auto auto;gap:6px 14px;align-items:center;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:8px 10px}
-.opl.in{border-color:var(--ok,#1f9d5c)}
-.opl img{width:112px;height:112px;object-fit:contain;border-radius:10px;background:#fff;cursor:zoom-in}
-.opl-n{font-weight:700;font-size:17px;line-height:1.25;overflow-wrap:anywhere}
-.opl-h{font-size:14px;line-height:1.3;margin-top:2px}
-.opl .oult{font-size:12px}
-.opl-pr{font-size:19px;white-space:nowrap;text-align:right}
-.opl-a{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-.opl-a .btn,.opl-tam .btn{min-height:40px;white-space:nowrap;flex:none}
-.opl-ok{font-size:12px;font-weight:700}
-.opl-q input{width:56px}
-.opl-tams{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:4px 10px;border-top:1px dashed var(--line);padding-top:6px}
-.opl-tam{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 4px;border-radius:8px}
-.opl-tam.in{background:color-mix(in srgb,var(--ok,#1f9d5c) 12%,transparent)}
-.opl-tam>span{min-width:0;line-height:1.2}
-.opl-est{display:block;font-size:11.5px}
-@media(max-width:760px){
- .opl{grid-template-columns:84px minmax(0,1fr) auto;gap:6px 10px;padding:8px}
- .opl img{width:84px;height:84px}
- .opl-n{font-size:15.5px} .opl-pr{font-size:17px}
- .opl-a{grid-column:1/-1}
- .opl-a .btn{flex:1}
- .opl-tams{grid-template-columns:1fr}
-}
-.opl-det{grid-column:1/-1;font-size:13px;border-top:1px dashed var(--line);padding-top:4px}
-.opl-det>summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px;padding:2px 0;list-style-position:inside}
-.opl-dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 10px;margin-top:4px}
-.opl-dg span{display:flex;flex-direction:column;line-height:1.2;min-width:0}
-.opl-dg small{color:var(--muted);font-size:11.5px}
-.opl-dg b{font-size:13px;font-weight:600;overflow-wrap:anywhere}
-.opl .tags .tag{font-size:12.5px}
 /* busca do orçamento em lista compacta */
 .opl-ops{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
 .opl-cmp .opl-lst{gap:3px;padding:6px}

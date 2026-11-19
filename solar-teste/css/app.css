@@ -518,3 +518,9 @@ body.com-barra .jarvis-bt { bottom: 96px; }
 input.lido-doc { border-color: var(--verde-claro) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--verde-claro) 50%, transparent); }
 .etapas.cinco { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 759px) { .etapas.cinco .etapa.atual .t { display: block; white-space: nowrap; } }
+
+/* botão de cotar some quando as duas opções já têm kit (o .btn mostrava mesmo com hidden) */
+#a-cotar[hidden] { display: none !important; }
+/* preço na hora: o valor não quebra; no celular um embaixo do outro */
+#nahora .preco { white-space: nowrap; }
+@media (max-width: 600px) { #nahora .grade { grid-template-columns: 1fr; } }

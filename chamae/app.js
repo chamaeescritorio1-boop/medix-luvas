@@ -4471,7 +4471,7 @@ async function prospView(){const m=$('#main');
   m.innerHTML=`<div class="sec">🎯 Prospecção</div><p class="hint" style="margin-top:-6px">Empresas da nossa região que ainda não compram de nós, nos mesmos ramos (CNAE) dos clientes que já compram. Dados da Receita Federal, atualizados 1x por mês.</p><div id="prTop"><p class="hint">Carregando…</p></div><div id="prRes" style="margin-top:12px"></div>`;
   let R=PR_RAMOS, carga=null; try{[R,carga]=await Promise.all([api(`rpc/prospect_ramos`,{method:'POST',body:JSON.stringify({km_max:9999})}),api('prospect_cargas?select=em,mes,empresas,clientes_cnae,raio_km&order=em.desc&limit=1').then(r=>r[0]).catch(()=>null)]); PR_RAMOS=R}catch(e){R=null}
   if(!m.isConnected) return;
-  if(!R||!R.length||!carga){$('#prTop').innerHTML=`<div class="card"><b>A base ainda está sendo montada.</b><p class="hint">O robô baixa os dados da Receita (leva cerca de 1 hora) e grava aqui. Volte mais tarde.</p></div>`; return}
+  if(!R||!R.length||!carga){$('#prTop').innerHTML=`<div class="card"><b>A base ainda está sendo montada.</b><p class="hint">O robô baixa os dados da Receita todo dia 25 (leva algumas horas) e grava aqui. Se continuar assim, avise.</p></div>`; return}
   const RM={}; R.forEach(r=>RM[r.cnae]=r);
   const mes=String(carga.mes||'').split('-').reverse().join('/');
   const parecidas=R.filter(r=>r.compradores>=2&&r.empresas>0).slice(0,12).map(r=>r.cnae);
@@ -4492,12 +4492,12 @@ async function prospView(){const m=$('#main');
     if(f.cid.trim()) q.push(`cidade=ilike.*${encodeURIComponent(norm(f.cid.trim()).replace(/[AEIOU]/g,'_'))}*`);
     const t=f.q.trim(); if(t){const d=t.replace(/\D/g,''); q.push(d.length>=8?`cnpj=like.${d}*`:`or=(razao.ilike.*${encodeURIComponent(t)}*,fantasia.ilike.*${encodeURIComponent(t)}*,bairro.ilike.*${encodeURIComponent(t)}*)`)}
     let E=[], A=[];
-    try{[E,A]=await Promise.all([api(`prospect_empresas?${q.join('&')}&limit=3000`),api('prospect_acoes?select=*&limit=10000')])}catch(e){if(me===seq) r.innerHTML=`<p class="warn">${esc(e.message)}</p>`; return}
+    try{[E,A]=await Promise.all([api(`prospect_empresas?select=cnpj,razao,fantasia,cnae,cnae_sec,uf,cidade,bairro,endereco,cep,telefone,telefone2,email,abertura,porte,km&${q.slice(1).join('&')}&limit=1000`),api('prospect_acoes?select=*&limit=10000')])}catch(e){if(me===seq) r.innerHTML=`<p class="warn">${esc(e.message)}</p>`; return}
     if(me!==seq) return; ACO={}; (A||[]).forEach(a=>ACO[a.cnpj]=a);
     const C=await clientes(); const raiz={}; C.forEach(c=>{const d=String(c.cnpj||'').replace(/\D/g,''); if(d.length===14) raiz[d.slice(0,8)]=c});
     const eu=norm(meuNome()); let L2=E.filter(e=>{const a=ACO[e.cnpj]||{}, st=a.status||'novo'; if(f.meus&&norm(a.vendedor||'')!==eu) return false;
       if(f.st==='abertas') return !['sem_interesse','cliente'].includes(st); if(f.st==='todas') return true; return st===f.st});
-    const muitos=E.length>=3000; const tot=L2.length, pp=50, pg=Math.min(f.pg||0,Math.max(0,Math.ceil(tot/pp)-1)); const P=L2.slice(pg*pp,pg*pp+pp);
+    const muitos=E.length>=1000; const tot=L2.length, pp=50, pg=Math.min(f.pg||0,Math.max(0,Math.ceil(tot/pp)-1)); const P=L2.slice(pg*pp,pg*pp+pp);
     X=[['Razão social','Nome fantasia','CNPJ','Ramo (CNAE)','Descrição do ramo','Cidade','UF','Bairro','Endereço','CEP','Distância de Ribeirão (km)','Telefone','Telefone 2','E-mail','Porte','Abertura','Situação','Vendedor']];
     L2.forEach(e=>{const a=ACO[e.cnpj]||{}; X.push([e.razao,e.fantasia||'',fmtCnpj(e.cnpj),prCnae(e.cnae),(RM[e.cnae]||{}).descricao||'',e.cidade,e.uf,e.bairro||'',e.endereco||'',e.cep||'',e.km??'',e.telefone||'',e.telefone2||'',e.email||'',e.porte||'',e.abertura?fmtDt(e.abertura):'',PR_ST[a.status||'novo'][0],a.vendedor||''])});
     const card=e=>{const a=ACO[e.cnpj]||{}, st=a.status||'novo', fil=raiz[e.cnpj.slice(0,8)], anos=e.abertura?Math.floor((Date.now()-new Date(e.abertura))/31557e6):null, ph=prTel(e.telefone);
@@ -4511,7 +4511,7 @@ async function prospView(){const m=$('#main');
         <a class="chip" target="_blank" rel="noopener" href="${mapsUrl(end)}">🗺 Mapa</a></div>
        <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" data-pcli>✚ Virar cliente</button><button class="chip" data-pag>📅 Agendar ligação</button><button class="chip" data-pst2="liguei">📞 Já falei</button><button class="chip" data-pst2="sem_interesse">🚫 Sem interesse</button>${st!=='novo'?'<button class="chip" data-pst2="novo">↺ Voltar p/ nova</button>':''}${ehGestor()?`<button class="chip" data-pven>👤 ${a.vendedor?esc(a.vendedor):'Passar p/ vendedor'}</button>`:a.vendedor?`<span class="hint">👤 ${esc(a.vendedor)}</span>`:''}</div>
        ${a.obs?`<div class="hint" style="font-size:12px;margin-top:4px">📝 ${esc(a.obs)}</div>`:''}</div>`};
-    r.innerHTML=`<div class="row" style="justify-content:space-between;gap:8px;margin-bottom:8px"><b>${tot.toLocaleString('pt-BR')} empresa${tot===1?'':'s'}${muitos?' (mostrando as 3.000 mais perto; filtre mais)':''}</b><button class="chip" data-pxls>⬇️ Baixar planilha</button></div>
+    r.innerHTML=`<div class="row" style="justify-content:space-between;gap:8px;margin-bottom:8px"><b>${tot.toLocaleString('pt-BR')} empresa${tot===1?'':'s'}${muitos?' (mostrando as 1.000 mais perto; filtre por cidade ou ramo)':''}</b><button class="chip" data-pxls>⬇️ Baixar planilha</button></div>
       ${P.map(card).join('')||'<p class="hint">Nenhuma empresa com esses filtros.</p>'}
       ${tot>pp?`<div class="row" style="justify-content:center;gap:8px;margin-top:8px">${pg>0?'<button class="chip" data-ppg="-1">‹ Anteriores</button>':''}<span class="hint">${pg*pp+1}–${Math.min(tot,pg*pp+pp)} de ${tot}</span>${pg*pp+pp<tot?'<button class="chip" data-ppg="1">Próximas ›</button>':''}</div>`:''}`;
     r._E=Object.fromEntries(E.map(e=>[e.cnpj,e]))};

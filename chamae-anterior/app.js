@@ -301,7 +301,7 @@ function badge(){const n=Object.values(Q()).reduce((s,o)=>s+o.itens.length,0); c
 
 /* ---------- navegação ---------- */
 let route='home', ctx={};
-function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView,ajuda:ajudaView,limites:limitesView,quem:quemComprouView,sellout:selloutView,rebate:rebateView}[r]||home)()}
+function go(r,c){if(r!==route) limparFiltros(route); route=r; ctx=c||{}; LS('route',r==='rep'?'home':r); navMarca(); window.scrollTo(0,0); const mm=$('#main'); mm.onclick=mm.onchange=mm.oninput=null; ({home,rep:repView,orc,admin,ped,rel,aj:ajustes,busca,cli:clientesView,reps:admReps,prod:prodView,tar:tarefasView,mais,equipe:equipeView,trans:paraTransmitir,metas:metasView,fin:finView,tec:tecView,estr:estrategiaView,ajuda:ajudaView,limites:limitesView,quem:quemComprouView,prosp:prospView,sellout:selloutView,rebate:rebateView}[r]||home)()}
 $('#homeLnk').onclick=e=>{e.preventDefault(); go('home')}; {const ab=$('#ajudaBtn'); if(ab) ab.onclick=ajudaDaTela} $('#homeBtn').onclick=()=>go('home'); $('#srchBtn').onclick=()=>go('busca');
 $('#nav').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go)};
 
@@ -318,6 +318,7 @@ const NAVOPC=[['estr','E-mails','<rect x="3" y="5" width="18" height="14" rx="2"
   ['metas','Metas','<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'],
   ['reps','Representadas','<path d="M3 21V10l6 3V8l6 3V4h6v17z"/>'],
   ['busca','Buscar','<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6"/>'],
+  ['prosp','Prospecção','<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>'],
   ['quem','Quem comprou','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15 5h6M15 9h6M17 13h4"/>'],
   ['tec','Busca técnica','<rect x="4" y="3" width="12" height="16" rx="2"/><path d="M7 8h6M7 12h4"/><circle cx="16.5" cy="16.5" r="3.5"/><path d="M19 19l2.5 2.5"/>']];
 const NAVPAD=['cli','tar','orc','ped','prod'], NAVMAX=6;
@@ -4449,12 +4450,97 @@ function cartContinuarHtml(JA,L2,est){const M=JA.meus; if(!M.length) return ''; 
     <details><summary class="hint" style="cursor:pointer">📜 Histórico das últimas batidas</summary><div class="hint" style="font-size:13px;line-height:1.7">${hist}</div></details></div>`}
 
 /* ================= Mais ================= */
-function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (reativação de clientes)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['quem','👥','Quem já comprou um produto (por região)'],['sellout','📈','Sell-out da Palácio (estoque e sugestão de compra)'],['rebate','🎯','Rebate (Palácio × Marcon: metas e pagamentos)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
+function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (reativação de clientes)'],['tec','🔎','Busca técnica (colar pedido do cliente)'],['prosp','🎯','Prospecção (empresas que ainda não são clientes)'],['quem','👥','Quem já comprou um produto (por região)'],['sellout','📈','Sell-out da Palácio (estoque e sugestão de compra)'],['rebate','🎯','Rebate (Palácio × Marcon: metas e pagamentos)'],['trans','🚚','Para transmitir na fábrica'],['rel','📊','Relatórios e painel do mês'],['metas','🏁','Metas do mês'],['ajuda','❓','Ajuda e tutoriais'],['aj','⚙️','Meus dados e ajustes']];
   const adm=[['reps','🏭','Representadas'],...(FIN_ON()?[['fin','💰','Financeiro']]:[]),...(ehGestor()?[['admin','📥','Tabelas de preço e produtos'],['equipe','👥','Equipe e acessos'],['limites','📊','Limites grátis (Supabase e GitHub)']]:[])];
   const grade=it=>`<div class="reps" style="margin-top:10px">${it.map(([r,i,l])=>`<button class="rep" data-gm="${r}" style="min-height:90px"><b style="font-size:26px">${i}</b><small style="color:var(--ink);font-size:14px">${l}</small></button>`).join('')}</div>`;
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Mais</div><button class="chip" data-navedit>✏️ Escolher atalhos da barra</button></div>
    <div class="sec" style="font-size:17px;margin-top:14px">Dia a dia</div>${grade(dia)}<div class="sec" style="font-size:17px;margin-top:22px">Cadastros e administração</div>${grade(adm)}`;
   m.onclick=e=>{if(e.target.closest('[data-navedit]')) return navEditar(); const b=e.target.closest('[data-gm]'); if(b) go(b.dataset.gm)}}
+
+/* ================= PROSPECCAO-INICIO — Prospecção (pedido do Victor em 19/11/2026: "prospectar clientes através de segmento, CNAEs de clientes que já compram, por região, cidade, ramo")
+   Base: dados abertos do CNPJ da Receita Federal, carregados 1x por mês pelo robô chamae-sistema/scripts/prospeccao_receita.py:
+   prospect_empresas (empresas ativas da região nos ramos de quem já compra, km = distância de Ribeirão Preto), clientes.cnae, cnaes (descrições),
+   prospect_acoes (status por empresa: novo / agendado / liguei / sem_interesse / cliente, vendedor responsável), rpc prospect_ramos (ramos × clientes × empresas). */
+const PR_ST={novo:['Nova','🆕'],agendado:['Agendada','📅'],liguei:['Já falei','📞'],sem_interesse:['Sem interesse','🚫'],cliente:['Virou cliente','✅']};
+const prCnae=c=>{c=String(c||'').replace(/\D/g,''); return c.length===7?`${c.slice(0,4)}-${c[4]}/${c.slice(5)}`:c};
+const prTel=t=>String(t||'').replace(/\D/g,'');
+let PR_RAMOS=null;
+async function prospView(){const m=$('#main');
+  const f=Object.assign({km:100,cn:[],cid:'',q:'',st:'abertas',meus:0,semMei:1,porte:'',pg:0},L('prospF')||{}); if(!Array.isArray(f.cn)) f.cn=[];
+  const sv=()=>LS('prospF',f);
+  m.innerHTML=`<div class="sec">🎯 Prospecção</div><p class="hint" style="margin-top:-6px">Empresas da nossa região que ainda não compram de nós, nos mesmos ramos (CNAE) dos clientes que já compram. Dados da Receita Federal, atualizados 1x por mês.</p><div id="prTop"><p class="hint">Carregando…</p></div><div id="prRes" style="margin-top:12px"></div>`;
+  let R=PR_RAMOS, carga=null; try{[R,carga]=await Promise.all([api(`rpc/prospect_ramos`,{method:'POST',body:JSON.stringify({km_max:9999})}),api('prospect_cargas?select=em,mes,empresas,clientes_cnae,raio_km&order=em.desc&limit=1').then(r=>r[0]).catch(()=>null)]); PR_RAMOS=R}catch(e){R=null}
+  if(!m.isConnected) return;
+  if(!R||!R.length||!carga){$('#prTop').innerHTML=`<div class="card"><b>A base ainda está sendo montada.</b><p class="hint">O robô baixa os dados da Receita (leva cerca de 1 hora) e grava aqui. Volte mais tarde.</p></div>`; return}
+  const RM={}; R.forEach(r=>RM[r.cnae]=r);
+  const mes=String(carga.mes||'').split('-').reverse().join('/');
+  const parecidas=R.filter(r=>r.compradores>=2&&r.empresas>0).slice(0,12).map(r=>r.cnae);
+  const ramoLbl=r=>`${esc(String(r.descricao||prCnae(r.cnae)).replace(/^Comércio (varejista|atacadista) de /i,(a,b)=>b==='varejista'?'Varejo: ':'Atacado: '))}`;
+  const top=()=>{const lista=R.filter(r=>r.empresas>0).slice(0,40);
+    $('#prTop').innerHTML=`<div class="card grid">
+     <div class="row" style="gap:6px;flex-wrap:wrap">${[[30,'Até 30 km'],[60,'Até 60 km'],[100,'Até 100 km'],[150,'Até 150 km'],[250,'Até 250 km']].map(([v,l])=>`<button class="chip${+f.km===v?' on':''}" data-pkm="${v}">${l}</button>`).join('')}<span class="hint">de Ribeirão Preto</span></div>
+     <div class="r2"><label class="f">Cidade (opcional)<input id="pcid" type="search" placeholder="Ex.: Franca" value="${esc(f.cid)}"></label><label class="f">Nome, bairro ou CNPJ<input id="pq" type="search" placeholder="Ex.: ferragens, Centro" value="${esc(f.q)}"></label></div>
+     <div><div class="row" style="justify-content:space-between;gap:6px"><b>Ramo (CNAE)</b><span class="row" style="gap:6px"><button class="chip${f.cn.length&&f.cn.join()===parecidas.join()?' on':''}" data-ppar>⭐ Parecidas com meus clientes</button><button class="chip${!f.cn.length?' on':''}" data-pcn0>Todos</button></span></div>
+      <div class="tags" style="margin-top:6px;max-height:210px;overflow:auto">${lista.map(r=>`<button class="chip${f.cn.includes(r.cnae)?' on':''}" data-pcn="${esc(r.cnae)}" style="text-align:left;white-space:normal" title="CNAE ${prCnae(r.cnae)}">${ramoLbl(r)} <span class="hint">· ${r.compradores?`${r.compradores} cliente${r.compradores>1?'s':''} compra${r.compradores>1?'m':''} · `:''}${r.empresas} empresa${r.empresas>1?'s':''}</span></button>`).join('')}</div></div>
+     <div class="row" style="gap:6px;flex-wrap:wrap">${[['abertas','Para trabalhar'],['novo','Só novas'],['agendado','📅 Agendadas'],['liguei','📞 Já falei'],['sem_interesse','🚫 Sem interesse'],['todas','Todas']].map(([v,l])=>`<button class="chip${f.st===v?' on':''}" data-pst="${v}">${l}</button>`).join('')}</div>
+     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip${f.meus?' on':''}" data-pmeus>👤 Só as minhas</button><button class="chip${f.semMei?' on':''}" data-pmei>Sem MEI</button>${[['','Qualquer porte'],['ME','Microempresa'],['EPP','Pequena (EPP)'],['Demais','Média/grande']].map(([v,l])=>`<button class="chip${f.porte===v?' on':''}" data-ppo="${v}">${l}</button>`).join('')}</div>
+     <p class="hint" style="margin:0">Base de ${mes||'—'} · ${(+carga.empresas||0).toLocaleString('pt-BR')} empresas até ${+carga.raio_km||0} km · ${+carga.clientes_cnae||0} clientes nossos com ramo preenchido. Telefone e e-mail são os da Receita (às vezes são do contador).</p></div>`};
+  top();
+  let seq=0, X=[], ACO={};
+  const busca=async()=>{const me=++seq, r=$('#prRes'); r.innerHTML='<p class="hint">Procurando…</p>';
+    const q=[`select=*`,`km=lte.${+f.km||9999}`,`order=km.asc,razao.asc`]; if(f.cn.length) q.push(`cnae=in.(${f.cn.join(',')})`); if(f.semMei) q.push('mei=is.false'); if(f.porte) q.push(`porte=eq.${f.porte}`);
+    if(f.cid.trim()) q.push(`cidade=ilike.*${encodeURIComponent(norm(f.cid.trim()).replace(/[AEIOU]/g,'_'))}*`);
+    const t=f.q.trim(); if(t){const d=t.replace(/\D/g,''); q.push(d.length>=8?`cnpj=like.${d}*`:`or=(razao.ilike.*${encodeURIComponent(t)}*,fantasia.ilike.*${encodeURIComponent(t)}*,bairro.ilike.*${encodeURIComponent(t)}*)`)}
+    let E=[], A=[];
+    try{[E,A]=await Promise.all([api(`prospect_empresas?${q.join('&')}&limit=3000`),api('prospect_acoes?select=*&limit=10000')])}catch(e){if(me===seq) r.innerHTML=`<p class="warn">${esc(e.message)}</p>`; return}
+    if(me!==seq) return; ACO={}; (A||[]).forEach(a=>ACO[a.cnpj]=a);
+    const C=await clientes(); const raiz={}; C.forEach(c=>{const d=String(c.cnpj||'').replace(/\D/g,''); if(d.length===14) raiz[d.slice(0,8)]=c});
+    const eu=norm(meuNome()); let L2=E.filter(e=>{const a=ACO[e.cnpj]||{}, st=a.status||'novo'; if(f.meus&&norm(a.vendedor||'')!==eu) return false;
+      if(f.st==='abertas') return !['sem_interesse','cliente'].includes(st); if(f.st==='todas') return true; return st===f.st});
+    const muitos=E.length>=3000; const tot=L2.length, pp=50, pg=Math.min(f.pg||0,Math.max(0,Math.ceil(tot/pp)-1)); const P=L2.slice(pg*pp,pg*pp+pp);
+    X=[['Razão social','Nome fantasia','CNPJ','Ramo (CNAE)','Descrição do ramo','Cidade','UF','Bairro','Endereço','CEP','Distância de Ribeirão (km)','Telefone','Telefone 2','E-mail','Porte','Abertura','Situação','Vendedor']];
+    L2.forEach(e=>{const a=ACO[e.cnpj]||{}; X.push([e.razao,e.fantasia||'',fmtCnpj(e.cnpj),prCnae(e.cnae),(RM[e.cnae]||{}).descricao||'',e.cidade,e.uf,e.bairro||'',e.endereco||'',e.cep||'',e.km??'',e.telefone||'',e.telefone2||'',e.email||'',e.porte||'',e.abertura?fmtDt(e.abertura):'',PR_ST[a.status||'novo'][0],a.vendedor||''])});
+    const card=e=>{const a=ACO[e.cnpj]||{}, st=a.status||'novo', fil=raiz[e.cnpj.slice(0,8)], anos=e.abertura?Math.floor((Date.now()-new Date(e.abertura))/31557e6):null, ph=prTel(e.telefone);
+      const end=[e.endereco,e.bairro,e.cidade+'/'+e.uf].filter(Boolean).join(', ');
+      return `<div class="card" style="margin:0 0 8px" data-pe="${esc(e.cnpj)}"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px"><div style="min-width:0"><b>${esc(e.fantasia||e.razao)}</b>${e.fantasia?`<div class="hint" style="font-size:12px">${esc(e.razao)}</div>`:''}
+        <div class="hint" style="font-size:13px">${esc(e.cidade)}/${esc(e.uf)}${e.bairro?' · '+esc(e.bairro):''} · <b>${e.km??'?'} km</b>${e.porte?' · '+esc(e.porte):''}${anos!=null?` · ${anos<1?'aberta este ano':anos+' ano'+(anos>1?'s':'')}`:''}</div>
+        <div class="hint" style="font-size:12px">${esc((RM[e.cnae]||{}).descricao||'')} <span style="opacity:.7">(${prCnae(e.cnae)})</span></div>
+        ${fil?`<div class="warn" style="font-size:12px;margin-top:4px">⚠️ Mesma empresa (outra filial) de <b>${esc(fil.fa||fil.n)}</b>, que já é cliente</div>`:''}</div>
+        <span class="chip${st==='novo'?'':' on'}" style="white-space:nowrap">${PR_ST[st][1]} ${PR_ST[st][0]}</span></div>
+       <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${ph?`<a class="chip" href="tel:${ph}">📞 ${esc(e.telefone)}</a>${ph.length===11?`<a class="chip" target="_blank" rel="noopener" href="https://wa.me/55${ph}">💬 WhatsApp</a>`:''}`:''}${e.telefone2&&prTel(e.telefone2)!==ph?`<a class="chip" href="tel:${prTel(e.telefone2)}">📞 ${esc(e.telefone2)}</a>`:''}${e.email?`<a class="chip" href="mailto:${esc(e.email)}">✉️ ${esc(e.email)}</a>`:''}
+        <a class="chip" target="_blank" rel="noopener" href="${mapsUrl(end)}">🗺 Mapa</a></div>
+       <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" data-pcli>✚ Virar cliente</button><button class="chip" data-pag>📅 Agendar ligação</button><button class="chip" data-pst2="liguei">📞 Já falei</button><button class="chip" data-pst2="sem_interesse">🚫 Sem interesse</button>${st!=='novo'?'<button class="chip" data-pst2="novo">↺ Voltar p/ nova</button>':''}${ehGestor()?`<button class="chip" data-pven>👤 ${a.vendedor?esc(a.vendedor):'Passar p/ vendedor'}</button>`:a.vendedor?`<span class="hint">👤 ${esc(a.vendedor)}</span>`:''}</div>
+       ${a.obs?`<div class="hint" style="font-size:12px;margin-top:4px">📝 ${esc(a.obs)}</div>`:''}</div>`};
+    r.innerHTML=`<div class="row" style="justify-content:space-between;gap:8px;margin-bottom:8px"><b>${tot.toLocaleString('pt-BR')} empresa${tot===1?'':'s'}${muitos?' (mostrando as 3.000 mais perto; filtre mais)':''}</b><button class="chip" data-pxls>⬇️ Baixar planilha</button></div>
+      ${P.map(card).join('')||'<p class="hint">Nenhuma empresa com esses filtros.</p>'}
+      ${tot>pp?`<div class="row" style="justify-content:center;gap:8px;margin-top:8px">${pg>0?'<button class="chip" data-ppg="-1">‹ Anteriores</button>':''}<span class="hint">${pg*pp+1}–${Math.min(tot,pg*pp+pp)} de ${tot}</span>${pg*pp+pp<tot?'<button class="chip" data-ppg="1">Próximas ›</button>':''}</div>`:''}`;
+    r._E=Object.fromEntries(E.map(e=>[e.cnpj,e]))};
+  const marca=async(cnpj,o)=>{const a=Object.assign({cnpj,status:'novo'},ACO[cnpj]||{},o,{atualizado_em:new Date().toISOString(),por:sess.uid});
+    await api('prospect_acoes?on_conflict=cnpj',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(a)}); ACO[cnpj]=a};
+  busca();
+  let tt; m.oninput=e=>{if(e.target.id==='pcid'||e.target.id==='pq'){clearTimeout(tt); tt=setTimeout(()=>{f[e.target.id==='pcid'?'cid':'q']=e.target.value; f.pg=0; sv(); busca()},400)}};
+  m.onclick=async e=>{const t=e.target, b=s=>t.closest(s), re=()=>{f.pg=0; sv(); top(); busca()};
+    if(b('[data-pkm]')){f.km=+b('[data-pkm]').dataset.pkm; return re()}
+    if(b('[data-ppar]')){f.cn=parecidas.slice(); return re()} if(b('[data-pcn0]')){f.cn=[]; return re()}
+    const cn=b('[data-pcn]'); if(cn){const k=cn.dataset.pcn; f.cn=f.cn.includes(k)?f.cn.filter(x=>x!==k):[...f.cn,k]; return re()}
+    if(b('[data-pst]')){f.st=b('[data-pst]').dataset.pst; return re()} if(b('[data-pmeus]')){f.meus=f.meus?0:1; return re()} if(b('[data-pmei]')){f.semMei=f.semMei?0:1; return re()}
+    if(b('[data-ppo]')){f.porte=b('[data-ppo]').dataset.ppo; return re()}
+    if(b('[data-ppg]')){f.pg=Math.max(0,(f.pg||0)+ +b('[data-ppg]').dataset.ppg); sv(); await busca(); return $('#prRes').scrollIntoView({behavior:'smooth'})}
+    if(b('[data-pxls]')){await loadXLSX(); const ws=XLSX.utils.aoa_to_sheet(X); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Prospecção'); return XLSX.writeFile(wb,`Prospeccao_${new Date().toISOString().slice(0,10)}.xlsx`)}
+    const box=b('[data-pe]'); if(!box) return; const cnpj=box.dataset.pe, E=($('#prRes')._E||{})[cnpj]; if(!E) return; const nome=E.fantasia||E.razao;
+    try{
+      const s2=b('[data-pst2]'); if(s2){const st=s2.dataset.pst2; let obs=(ACO[cnpj]||{}).obs||''; if(st==='sem_interesse'||st==='liguei'){const o=prompt(st==='liguei'?'Como foi a conversa? (opcional)':'Motivo (opcional)',obs); if(o===null) return; obs=o}
+        await marca(cnpj,{status:st,obs,vendedor:(ACO[cnpj]||{}).vendedor||(st!=='novo'?meuNome():null)}); toast(PR_ST[st][1]+' '+PR_ST[st][0]); return busca()}
+      if(b('[data-pven]')){const Eq=await equipeLista(); const nomes=Eq.map(p=>p.n).filter(Boolean); const v=prompt(`Passar para qual vendedor?\n${nomes.join(', ')}\n(deixe vazio para tirar)`,(ACO[cnpj]||{}).vendedor||''); if(v===null) return;
+        const ok=nomes.find(n=>norm(n)===norm(v.trim()))||nomes.find(n=>norm(n).startsWith(norm(v.trim())))||v.trim(); await marca(cnpj,{vendedor:ok||null}); toast(ok?'Passada para '+ok:'Sem vendedor'); return busca()}
+      if(b('[data-pag]')){await formTarefa({titulo:`Prospecção: ligar para ${nome}`,tipo:'ligacao',obs:[E.telefone,E.telefone2,E.email,`${E.cidade}/${E.uf}`,'CNPJ '+fmtCnpj(cnpj),(RM[E.cnae]||{}).descricao].filter(Boolean).join(' · ')});
+        await marca(cnpj,{status:'agendado',vendedor:(ACO[cnpj]||{}).vendedor||meuNome()}); return busca()}
+      if(b('[data-pcli]')){if(!confirm(`Cadastrar ${nome} como cliente?\nOs dados da Receita vão para a ficha e você completa o resto lá.`)) return;
+        const C=await clientes(); if(!C.some(c=>c.cnpj===cnpj)){
+          await api('clientes',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify({cnpj,razao:E.razao,fantasia:E.fantasia||null,endereco:E.endereco||null,bairro:E.bairro||null,cidade:E.cidade,uf:E.uf,cep:E.cep||null,telefone:E.telefone||null,email:E.email||null,cnae:E.cnae,cnae_sec:E.cnae_sec||null,segmento:(RM[E.cnae]||{}).descricao||null,vendedor:(ACO[cnpj]||{}).vendedor||meuNome(),tags:['prospecção']})})}
+        await marca(cnpj,{status:'cliente',vendedor:(ACO[cnpj]||{}).vendedor||meuNome()}); await clientes(true).catch(()=>{}); toast('✅ Cliente cadastrado'); return go('cli',{cnpj})}
+    }catch(er){toast(er.message||String(er))}}}
+/* ================= PROSPECCAO-FIM */
 
 /* ================= Quem já comprou (pedido do Victor em 10/11/2026: "relatório para saber quem já comprou um modelo de produto e quando… ver quem tem na região")
    Busca o produto (código ou nome do modelo, ex.: PVX) em todas as representadas: pedidos (Reprio, sistema antigo e Sistema) + orçamentos transmitidos que ainda não viraram pedido.

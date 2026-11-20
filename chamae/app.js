@@ -4464,15 +4464,22 @@ function mais(){const m=$('#main'); const dia=[['estr','📧','E-mails do dia (r
 const PR_ST={novo:['Nova','🆕'],agendado:['Agendada','📅'],liguei:['Já falei','📞'],sem_interesse:['Sem interesse','🚫'],cliente:['Virou cliente','✅']};
 const prCnae=c=>{c=String(c||'').replace(/\D/g,''); return c.length===7?`${c.slice(0,4)}-${c[4]}/${c.slice(5)}`:c};
 const prTel=t=>String(t||'').replace(/\D/g,'');
-let PR_RAMOS=null;
+let PR_RAMOS=null, SEG_EPI_N=null;
+/* 20/11 (Victor: "quero por segmento, eu sou de EPI"): segmentos = grupos de CNAE. EPI também pega CNAE secundário de EPI e nome com EPI/segurança do trabalho/uniforme */
+const PR_EPI_RX='(^|[^A-Z])EPI([^A-Z]|$)|EPIS|SEGURANCA DO TRABALHO|SEG. DO TRABALHO|EQUIPAMENTOS DE PROTECAO|EQUIP. DE PROTECAO|UNIFORME';
+const PR_SEG=[['epi','🦺 EPI e segurança',['4642702','3292202']],['ferr','🔧 Ferragens e ferramentas',['4744001','4672900']],['cons','🧱 Materiais de construção',['4744099','4744005','4744003','4679699','4741500','4674500']],
+  ['ele','⚡ Material elétrico',['4742300','4673700']],['agro','🌾 Agro',['4661300','4683400','4692300','4623199','3314711','4771704']],['auto','🚗 Autopeças',['4530703','4530701']],
+  ['ind','🏭 Máquinas e indústria',['4663000','4669999','4689399','4684299']],['limp','🧴 Limpeza',['4789005']],['out','🛒 Outros varejos',['4789099']]];
 async function prospView(){const m=$('#main');
-  const f=Object.assign({km:100,cn:[],cid:'',q:'',st:'abertas',meus:0,semMei:1,porte:'',pg:0},L('prospF')||{}); if(!Array.isArray(f.cn)) f.cn=[];
+  const f=Object.assign({km:100,cn:[],seg:'',cid:'',q:'',st:'abertas',meus:0,semMei:1,porte:'',pg:0},L('prospF')||{}); if(!Array.isArray(f.cn)) f.cn=[];
   const sv=()=>LS('prospF',f);
   m.innerHTML=`<div class="sec">🎯 Prospecção</div><p class="hint" style="margin-top:-6px">Empresas da nossa região que ainda não compram de nós, nos mesmos ramos (CNAE) dos clientes que já compram. Dados da Receita Federal, atualizados 1x por mês.</p><div id="prTop"><p class="hint">Carregando…</p></div><div id="prRes" style="margin-top:12px"></div>`;
   let R=PR_RAMOS, carga=null; try{[R,carga]=await Promise.all([api(`rpc/prospect_ramos`,{method:'POST',body:JSON.stringify({km_max:9999})}),api('prospect_cargas?select=em,mes,empresas,clientes_cnae,raio_km&order=em.desc&limit=1').then(r=>r[0]).catch(()=>null)]); PR_RAMOS=R}catch(e){R=null}
   if(!m.isConnected) return;
   if(!R||!R.length||!carga){$('#prTop').innerHTML=`<div class="card"><b>A base ainda está sendo montada.</b><p class="hint">O robô baixa os dados da Receita todo dia 25 (leva algumas horas) e grava aqui. Se continuar assim, avise.</p></div>`; return}
   const RM={}; R.forEach(r=>RM[r.cnae]=r);
+  const epiOr=()=>`or=(cnae.in.(4642702,3292202),cnae_sec.like.*4642702*,cnae_sec.like.*3292202*,razao.imatch.${encodeURIComponent('"'+PR_EPI_RX+'"')},fantasia.imatch.${encodeURIComponent('"'+PR_EPI_RX+'"')})`;
+  if(SEG_EPI_N==null) api(`prospect_empresas?select=cnpj&${epiOr()}&limit=1`,{headers:{Prefer:'count=exact'},cab:h=>{const m=String(h.get('content-range')||'').match(/\/(\d+)/); if(m){SEG_EPI_N=+m[1]; if(m.isConnected&&$('#prTop')) top()}}}).catch(()=>{});
   const mes=String(carga.mes||'').split('-').reverse().join('/');
   const parecidas=R.filter(r=>r.compradores>=2&&r.empresas>0).slice(0,12).map(r=>r.cnae);
   const ramoLbl=r=>`${esc(String(r.descricao||prCnae(r.cnae)).replace(/^Comércio (varejista|atacadista) de /i,(a,b)=>b==='varejista'?'Varejo: ':'Atacado: '))}`;
@@ -4480,17 +4487,19 @@ async function prospView(){const m=$('#main');
     $('#prTop').innerHTML=`<div class="card grid">
      <div class="row" style="gap:6px;flex-wrap:wrap">${[[30,'Até 30 km'],[60,'Até 60 km'],[100,'Até 100 km'],[150,'Até 150 km'],[250,'Até 250 km']].map(([v,l])=>`<button class="chip${+f.km===v?' on':''}" data-pkm="${v}">${l}</button>`).join('')}<span class="hint">de Ribeirão Preto</span></div>
      <div class="r2"><label class="f">Cidade (opcional)<input id="pcid" type="search" placeholder="Ex.: Franca" value="${esc(f.cid)}"></label><label class="f">Nome, bairro ou CNPJ<input id="pq" type="search" placeholder="Ex.: ferragens, Centro" value="${esc(f.q)}"></label></div>
-     <div><div class="row" style="justify-content:space-between;gap:6px"><b>Ramo (CNAE)</b><span class="row" style="gap:6px"><button class="chip${f.cn.length&&f.cn.join()===parecidas.join()?' on':''}" data-ppar>⭐ Parecidas com meus clientes</button><button class="chip${!f.cn.length?' on':''}" data-pcn0>Todos</button></span></div>
-      <div class="tags" style="margin-top:6px;max-height:210px;overflow:auto">${lista.map(r=>`<button class="chip${f.cn.includes(r.cnae)?' on':''}" data-pcn="${esc(r.cnae)}" style="text-align:left;white-space:normal" title="CNAE ${prCnae(r.cnae)}">${ramoLbl(r)} <span class="hint">· ${r.compradores?`${r.compradores} cliente${r.compradores>1?'s':''} compra${r.compradores>1?'m':''} · `:''}${r.empresas} empresa${r.empresas>1?'s':''}</span></button>`).join('')}</div></div>
+     <div><b>Segmento</b><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="chip${!f.seg?' on':''}" data-pseg="">Todos</button>${PR_SEG.map(([k,l,c])=>{const n=k==='epi'?(SEG_EPI_N??''):c.reduce((a,x)=>a+((RM[x]||{}).empresas||0),0); return `<button class="chip${f.seg===k?' on':''}" data-pseg="${k}">${l}${n!==''?` <span class="hint">· ${(+n).toLocaleString('pt-BR')}</span>`:''}</button>`}).join('')}</div>${f.seg==='epi'?'<p class="hint" style="margin:6px 0 0">EPI: atacado de roupas/acessórios de segurança do trabalho e fabricantes de EPI (ramo principal ou secundário) + empresas com EPI, segurança do trabalho ou uniforme no nome.</p>':''}</div>
+     <details${f.cn.length&&!f.seg?' open':''}><summary style="cursor:pointer"><b>Ramo (CNAE) detalhado</b> <span class="hint">· opcional</span></summary><div style="margin-top:6px"><div class="row" style="justify-content:space-between;gap:6px"><span></span><span class="row" style="gap:6px"><button class="chip${f.cn.length&&f.cn.join()===parecidas.join()?' on':''}" data-ppar>⭐ Parecidas com meus clientes</button><button class="chip${!f.cn.length?' on':''}" data-pcn0>Todos</button></span></div>
+      <div class="tags" style="margin-top:6px;max-height:210px;overflow:auto">${lista.map(r=>`<button class="chip${f.cn.includes(r.cnae)?' on':''}" data-pcn="${esc(r.cnae)}" style="text-align:left;white-space:normal" title="CNAE ${prCnae(r.cnae)}">${ramoLbl(r)} <span class="hint">· ${r.compradores?`${r.compradores} cliente${r.compradores>1?'s':''} compra${r.compradores>1?'m':''} · `:''}${r.empresas} empresa${r.empresas>1?'s':''}</span></button>`).join('')}</div></div></details>
      <div class="row" style="gap:6px;flex-wrap:wrap">${[['abertas','Para trabalhar'],['novo','Só novas'],['agendado','📅 Agendadas'],['liguei','📞 Já falei'],['sem_interesse','🚫 Sem interesse'],['todas','Todas']].map(([v,l])=>`<button class="chip${f.st===v?' on':''}" data-pst="${v}">${l}</button>`).join('')}</div>
      <div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip${f.meus?' on':''}" data-pmeus>👤 Só as minhas</button><button class="chip${f.semMei?' on':''}" data-pmei>Sem MEI</button>${[['','Qualquer porte'],['ME','Microempresa'],['EPP','Pequena (EPP)'],['Demais','Média/grande']].map(([v,l])=>`<button class="chip${f.porte===v?' on':''}" data-ppo="${v}">${l}</button>`).join('')}</div>
      <p class="hint" style="margin:0">Base de ${mes||'—'} · ${(+carga.empresas||0).toLocaleString('pt-BR')} empresas até ${+carga.raio_km||0} km · ${+carga.clientes_cnae||0} clientes nossos com ramo preenchido. Telefone e e-mail são os da Receita (às vezes são do contador).</p></div>`};
   top();
   let seq=0, X=[], ACO={};
   const busca=async()=>{const me=++seq, r=$('#prRes'); r.innerHTML='<p class="hint">Procurando…</p>';
-    const q=[`select=*`,`km=lte.${+f.km||9999}`,`order=km.asc,razao.asc`]; if(f.cn.length) q.push(`cnae=in.(${f.cn.join(',')})`); if(f.semMei) q.push('mei=is.false'); if(f.porte) q.push(`porte=eq.${f.porte}`);
+    const q=[`select=*`,`km=lte.${+f.km||9999}`,`order=km.asc,razao.asc`]; const ors=[]; if(f.seg==='epi') ors.push('or'+epiOr().slice(3)); else if(f.cn.length) q.push(`cnae=in.(${f.cn.join(',')})`); if(f.semMei) q.push('mei=is.false'); if(f.porte) q.push(`porte=eq.${f.porte}`);
     if(f.cid.trim()) q.push(`cidade=ilike.*${encodeURIComponent(norm(f.cid.trim()).replace(/[AEIOU]/g,'_'))}*`);
-    const t=f.q.trim(); if(t){const d=t.replace(/\D/g,''); q.push(d.length>=8?`cnpj=like.${d}*`:`or=(razao.ilike.*${encodeURIComponent(t)}*,fantasia.ilike.*${encodeURIComponent(t)}*,bairro.ilike.*${encodeURIComponent(t)}*)`)}
+    const t=f.q.trim(); if(t){const d=t.replace(/\D/g,''); if(d.length>=8) q.push(`cnpj=like.${d}*`); else ors.push(`or(razao.ilike.*${encodeURIComponent(t)}*,fantasia.ilike.*${encodeURIComponent(t)}*,bairro.ilike.*${encodeURIComponent(t)}*)`)}
+    if(ors.length===1) q.push('or='+ors[0].slice(2)); else if(ors.length>1) q.push(`and=(${ors.join(',')})`);
     let E=[], A=[];
     try{[E,A]=await Promise.all([api(`prospect_empresas?select=cnpj,razao,fantasia,cnae,cnae_sec,uf,cidade,bairro,endereco,cep,telefone,telefone2,email,abertura,porte,km&${q.slice(1).join('&')}&limit=1000`),api('prospect_acoes?select=*&limit=10000')])}catch(e){if(me===seq) r.innerHTML=`<p class="warn">${esc(e.message)}</p>`; return}
     if(me!==seq) return; ACO={}; (A||[]).forEach(a=>ACO[a.cnpj]=a);
@@ -4521,8 +4530,9 @@ async function prospView(){const m=$('#main');
   let tt; m.oninput=e=>{if(e.target.id==='pcid'||e.target.id==='pq'){clearTimeout(tt); tt=setTimeout(()=>{f[e.target.id==='pcid'?'cid':'q']=e.target.value; f.pg=0; sv(); busca()},400)}};
   m.onclick=async e=>{const t=e.target, b=s=>t.closest(s), re=()=>{f.pg=0; sv(); top(); busca()};
     if(b('[data-pkm]')){f.km=+b('[data-pkm]').dataset.pkm; return re()}
-    if(b('[data-ppar]')){f.cn=parecidas.slice(); return re()} if(b('[data-pcn0]')){f.cn=[]; return re()}
-    const cn=b('[data-pcn]'); if(cn){const k=cn.dataset.pcn; f.cn=f.cn.includes(k)?f.cn.filter(x=>x!==k):[...f.cn,k]; return re()}
+    const sg=b('[data-pseg]'); if(sg){const k=sg.dataset.pseg; f.seg=k; f.cn=k&&k!=='epi'?(PR_SEG.find(x=>x[0]===k)||[,,[]])[2].slice():[]; return re()}
+    if(b('[data-ppar]')){f.seg=''; f.cn=parecidas.slice(); return re()} if(b('[data-pcn0]')){f.seg=''; f.cn=[]; return re()}
+    const cn=b('[data-pcn]'); if(cn){f.seg=''; const k=cn.dataset.pcn; f.cn=f.cn.includes(k)?f.cn.filter(x=>x!==k):[...f.cn,k]; return re()}
     if(b('[data-pst]')){f.st=b('[data-pst]').dataset.pst; return re()} if(b('[data-pmeus]')){f.meus=f.meus?0:1; return re()} if(b('[data-pmei]')){f.semMei=f.semMei?0:1; return re()}
     if(b('[data-ppo]')){f.porte=b('[data-ppo]').dataset.ppo; return re()}
     if(b('[data-ppg]')){f.pg=Math.max(0,(f.pg||0)+ +b('[data-ppg]').dataset.ppg); sv(); await busca(); return $('#prRes').scrollIntoView({behavior:'smooth'})}

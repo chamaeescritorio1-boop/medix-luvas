@@ -726,17 +726,17 @@ const eqT=s=>' '+norm(s).replace(/[^A-Z0-9\/ ]+/g,' ').replace(/\s+/g,' ')+' ';
 const eqHas=(t,re)=>re.test(t);
 const EQ_CORES=[['PRETO',/PRET/],['BRANCO',/BRANC/],['MARROM',/MARROM|CAFE|CASTANH|CASTOR|PINHAO|CHOCOLATE|TABACO|HAVANA|CONHAQUE/],['AZUL',/AZUL/],['VERDE',/VERDE/],['AMARELO',/AMAREL/],['CINZA',/CINZA|GRAFITE|MESCL|CHUMBO/],['LARANJA',/LARANJ/],['VERMELHO',/VERMELH/],['BEGE',/BEGE|NATURAL|CREME|AREIA|CRU\b/],['ROSA',/ROSA/],['ROXO',/ROXO|VIOLETA|LILAS/]];
 const eqCores=s=>{const t=norm(s); return EQ_CORES.filter(([,r])=>r.test(t)).map(([k])=>k)};
-const EQ_CALC=new Set(['BOTINA','BOTA','BOTA PVC','COTURNO','SAPATO']), EQ_LUVA=new Set(['LUVA','MANGOTE']);
+const EQ_CALC=new Set(['BOTINA','BOTA','BOTA PVC','COTURNO','SAPATO','TENIS']), EQ_LUVA=new Set(['LUVA','MANGOTE']);
 const eqGrupo=tp=>EQ_CALC.has(tp)?'C':EQ_LUVA.has(tp)?'L':'';
 /* solto=true: texto livre do cliente — só marca o que está escrito (sem valores presumidos) */
 function eqLer(txt,cor,solto){const t=eqT(txt); const a={}; const i=t.indexOf(' APROVADO PARA'); const ap=i>=0?t.slice(i):'', d=i>=0?t.slice(0,i)+' ':t;
-  if(/ LUVA/.test(t)) a.tipo='LUVA'; else if(/ MANGOTE| MANGA DE/.test(t)) a.tipo='MANGOTE'; else if(/COTURNO/.test(t)) a.tipo='COTURNO'; else if(/ BOTINA/.test(t)) a.tipo='BOTINA'; else if(/ BOTA\b/.test(t)) a.tipo='BOTA'; else if(/SAPATO|TENIS|SAPATENIS/.test(t)) a.tipo='SAPATO'; else if(/ TIPO B /.test(t)) a.tipo='BOTINA'; else if(/ TIPO A /.test(t)&&/CALCADO/.test(t)) a.tipo='SAPATO';
+  if(/ LUVA/.test(t)) a.tipo='LUVA'; else if(/ MANGOTE| MANGA DE/.test(t)) a.tipo='MANGOTE'; else if(/COTURNO/.test(t)) a.tipo='COTURNO'; else if(/ BOTINA/.test(t)) a.tipo='BOTINA'; else if(/ BOTA\b/.test(t)) a.tipo='BOTA'; else if(/ TENIS/.test(t)) a.tipo='TENIS'; else if(/SAPATO|SAPATENIS|CALCADO BAIXO/.test(t)) a.tipo='SAPATO'; else if(/ TIPO B /.test(t)) a.tipo='BOTINA'; else if(/ TIPO A /.test(t)&&/CALCADO/.test(t)) a.tipo='SAPATO';
   if(eqGrupo(a.tipo)==='C'||(solto&&/NOBUCK|NUBUCK|BIQUEIRA|SOLADO|CADARCO|ELASTICO/.test(t))){
-    const m=[]; if(/ PVC | POLICLORETO|VINIL/.test(d)) m.push('PVC'); if(/MICROFIBRA/.test(d)) m.push('MICROFIBRA'); if(/ COURO| VAQUETA| NOBUCK| NUBUCK| RASPA| VELUR| CAMURC/.test(d)) m.push('COURO');
+    const m=[]; if(/ PVC | POLICLORETO|VINIL/.test(d.replace(/(BIQUEIRA|BICO|CONTRAFORTE|PALMILHA|COURACA)[^,;]{0,40}/g,' '))) m.push('PVC'); /* biqueira/contraforte de PVC não é bota de PVC */ if(/MICROFIBRA/.test(d)) m.push('MICROFIBRA'); if(/ COURO| VAQUETA| NOBUCK| NUBUCK| RASPA| VELUR| CAMURC/.test(d)) m.push('COURO');
     if(!m.length&&/ BORRACHA /.test(d)&&!/SOLADO (DE |EM )?BORRACHA/.test(d)) m.push('BORRACHA'); if(!m.length&&/TEXTIL|TECIDO|LONA|MESH|NYLON/.test(d)) m.push('TEXTIL'); if(m.length) a.mat=m;
     if(/NOBUCK|NUBUCK|LATEGO|CAMURC|VELUR/.test(t)) a.acabc='NOBUCK'; else if(solto&&/COURO LISO|LISO/.test(t)) a.acabc='LISO';
     if(/ELASTICO/.test(d)) a.fech='ELASTICO'; else if(/ATACADOR|CADARCO|AMARRAR|ILHOS/.test(d)) a.fech='CADARCO'; else if(/VELCRO|FECHAMENTO EM CONTATO/.test(d)) a.fech='VELCRO'; else if(/ ZIPER/.test(d)) a.fech='ZIPER';
-    if(a.tipo==='BOTA'&&m.includes('PVC')&&!m.includes('COURO')){a.tipo='BOTA PVC'; if(!a.fech) a.fech='SEM'; a.imp=1}
+    if(a.tipo==='BOTA'&&m.includes('PVC')&&!m.includes('COURO')){a.tipo='BOTA PVC'; a.fech='SEM'; a.imp=1}
     const ocup=/CALCADO (DE )?OCUPACIONAL/.test(t)&&!/IMPACTO|COMPRESSAO/.test(ap);
     if(ocup||/BIQUEIRA [A-Z ]{0,25}CONFORMACAO/.test(t)) a.bico='SEM';
     else if(/BIQUEIRA (DE |EM )?ACO|BICO DE ACO|BIQUEIRA METALICA|BICO ACO/.test(t)) a.bico='ACO';
@@ -748,26 +748,28 @@ function eqLer(txt,cor,solto){const t=eqT(txt); const a={}; const i=t.indexOf(' 
     if(/BIDENSIDADE|DUPLA DENSIDADE/.test(d)) a.sol='PU BID'; else if(/POLIURETANO.{0,40}BORRACHA|PU.{0,5}BORRACHA/.test(d)) a.sol='PU/BOR'; else if(/SOLADO[^.]{0,40}BORRACHA/.test(d)) a.sol='BOR'; else if(/SOLADO[^.]{0,40}POLIURETANO|SOLADO[^.]{0,30} PU /.test(d)) a.sol='PU MONO'; else if(a.tipo==='BOTA PVC') a.sol='PVC';
     if(/NAPOLITANO|CANO BAIXO/.test(t)&&a.tipo!=='BOTA PVC') a.napol=1;
   } else if(eqGrupo(a.tipo)==='L'){
-    const m=[]; [['NITRILICA',/NITRIL/],['LATEX',/LATEX|BORRACHA NATURAL/],['NEOPRENE',/NEOPRENE|POLICLOROPRENO/],['PVC',/ PVC |PLASTISSOL|VINIL|POLICLORETO/],['PU',/POLIURETANO| PU /],['VAQUETA',/VAQUETA|COURO/],['RASPA',/ RASPA/],['ALGODAO',/ALGODAO|FIBRAS NATURAIS/],['ARAMIDA',/ARAMID|KEVLAR/],['HPPE',/POLIETILENO DE ALTA|HPPE|ANTICORTE|RESISTENTE A CORTE|FIBRA DE VIDRO|ACO INOX/],['NYLON',/NYLON|POLIAMIDA|POLIESTER|FIBRAS SINTETICAS|SPANDEX/],['TPE',/ TPE |TERMOPLAST/]].forEach(([k,r])=>{if(r.test(d)) m.push(k)}); if(m.length) a.mat=m;
-    const sup=/SUPORTE TEXTIL|TRICOTAD|MALHA|TECIDO|JERSEY|FIBRAS|FIOS/.test(d); if(!solto||sup) a.sup=sup?'TEXTIL':/VAQUETA|RASPA|COURO/.test(d)?'COURO':'POLIMERO';
-    if(/PIGMENT/.test(d)) a.banho='PIGMENTO'; else if(/TOTALMENTE REVESTID|BANHO TOTAL|REVESTIMENTO TOTAL|PALMA,? FACE PALMAR,? (E )?DORSO|PALMA E DORSO|PALMA, DORSO|INTEIRAMENTE/.test(d)) a.banho='TOTAL'; else if(/3\/4|TRES QUARTOS|DORSO DOS DEDOS|DORSO PARCIAL/.test(d)) a.banho='3/4'; else if(/PALMA|FACE PALMAR/.test(d)&&sup&&/BANH|REVEST|IMPREGN|RECOBERT/.test(d)) a.banho='PALMA'; else if(sup&&!/BANH|REVEST/.test(d)&&!solto) a.banho='SEM';
+    const m=[]; [['NITRILICA',/NITRIL/],['LATEX',/LATEX|BORRACHA NATURAL|POLI.?ISOPRENO|POLISOPRENO/],['NEOPRENE',/NEOPRENE|POLICLOROPRENO/],['PVC',/ PVC |PLASTISSOL|VINIL|POLICLORETO/],['PU',/POLIURETANO| PU /],['VAQUETA',/VAQUETA|COURO/],['RASPA',/ RASPA/],['ALGODAO',/ALGODAO|FIBRAS NATURAIS/],['ARAMIDA',/ARAMID|KEVLAR/],['HPPE',/POLIETILENO DE ALTA|HPPE|ANTICORTE|RESISTENTE A CORTE|FIBRA DE VIDRO|ACO INOX/],['NYLON',/NYLON|NAILON|POLIAMIDA|POLIESTER|FIBRAS SINTETICAS|FIOS SINTETICOS|SPANDEX|ELASTANO/],['TPE',/ TPE |TERMOPLAST/]].forEach(([k,r])=>{if(r.test(d)) m.push(k)}); if(m.length) a.mat=m;
+    const iT=d.search(/SUPORTE TEXTIL|TRICOTAD|MALHA|TECIDO|JERSEY|FIBRAS|FIOS|INTERLOCK/), iC=d.search(/VAQUETA|RASPA|COURO/); const sup=iT>=0&&(iC<0||iT<iC); if(!solto||sup||iC>=0) a.sup=sup?'TEXTIL':iC>=0?'COURO':'POLIMERO'; /* couro citado antes do tecido = luva de couro (tecido é forro/punho) */
+    const pig=/PIGMENT|PONTOS (DE|EM) PVC|PONTILHAD/.test(d), coat=/BANH|REVESTID|REVESTIMENTO (NITRIL|DE BORRACHA|EM BORRACHA|DE LATEX|EM LATEX|DE PU|EM PU|DE POLIURETANO|EM POLIURETANO)/.test(d);
+    if(pig&&!coat) a.banho='PIGMENTO'; else if(/TOTALMENTE REVESTID|BANHO TOTAL|REVESTIMENTO TOTAL|PALMA,? FACE PALMAR,? (E )?DORSO|PALMA E DORSO|PALMA, DORSO|INTEIRAMENTE/.test(d)) a.banho='TOTAL'; else if(/3\/4|TRES QUARTOS|DORSO DOS DEDOS|DORSO PARCIAL/.test(d)) a.banho='3/4'; else if(/PALMA|FACE PALMAR/.test(d)&&sup&&/BANH|REVEST|IMPREGN|RECOBERT/.test(d)) a.banho='PALMA'; else if(sup&&!/BANH|REVEST/.test(d)&&!solto) a.banho='SEM';
     if(/FLOCAD|FLOCOS/.test(d)) a.forro='FLOCADO'; else if(/SEM FORRO|SEM REVESTIMENTO INTERNO|INTERIOR LISO|LISA INTERNAMENTE/.test(d)) a.forro='SEM'; else if(/FORRAD|FORRO|SUPORTE TEXTIL|REVESTIMENTO INTERNO/.test(d)) a.forro='SIM';
-    if(/IMPACTO| TPR /.test(d)) a.impac=1; if(/CORTE NIVEL|RESISTENTE A CORTE|ANTICORTE|ALTA DENSIDADE|HPPE|ACO INOX|FIBRA DE VIDRO|ANEIS DE ACO/.test(t)) a.corte=1;
+    if(/IMPACTO| TPR |BUMPER/.test(d)) a.impac=1; if(/CORTE NIVEL|RESISTENTES? A CORTE|RESISTENCIA AO? CORTE|ANTICORTE|ALTA DENSIDADE|HPPE|ACO INOX|FIBRA DE VIDRO|ANEIS DE ACO/.test(t)) a.corte=1;
     if(/NAO.CIRURG|PROCEDIMENTO/.test(t)) a.uso='PROCED'; else if(/CIRURGIC/.test(t)) a.uso='CIRURG';
-    if(!solto||/DESCARTAV|REUTILIZ/.test(t)) a.desc=/DESCARTAV|USO UNICO|PROCEDIMENTO|CIRURGIC| \d+ ?UN |C\/100|POLYBAG|USO GERAL/.test(t)&&!/FORRAD|FLOCAD|SUPORTE|TRICOT|MALHA|VAQUETA|RASPA|REUTILIZ/.test(d)?'DESC':'REUT';
+    if(!solto||/DESCARTAV|REUTILIZ/.test(t)) a.desc=(/DESCARTAV|USO UNICO|PROCEDIMENTO|CIRURGIC| \d+ ?UN |C\/100|POLYBAG|USO GERAL|NAO ESTERIL/.test(t)||(/SEM PO|COM PO|S\/ ?PO /.test(t)&&/AMBIDESTR|BAINHA|VIROLA/.test(t)))&&!/FORRAD|FLOCAD|SUPORTE|TRICOT|MALHA|VAQUETA|RASPA|REUTILIZ/.test(d)?'DESC':'REUT';
     if(/ COM PO | C\/ ?PO |AMIDO/.test(t)&&!/SEM AMIDO|SEM PO|ISENTA/.test(t)) a.po='COM'; else if(/SEM PO|S\/ ?PO |SEM AMIDO|ISENTA DE PO/.test(t)) a.po='SEM';
     const cm=[...t.matchAll(/(\d{2})\s*CM/g)].map(x=>+x[1]); if(cm.length) a.comp=Math.max(...cm); else if(/CANO LONGO|LONGA/.test(t)) a.comp=45;
     const rs=[]; [['MEC',/ABRASIV|ESCORIANT|CORTANT|PERFURANT|MECANIC/],['QUIM',/QUIMIC/],['BIO',/BIOLOGIC/],['CALOR',/CALOR|CHAMA/],['FRIO',/ FRIO/],['ELET',/ELETRIC/]].forEach(([k,r])=>{if(r.test(ap||(solto?t:''))) rs.push(k)}); if(rs.length) a.risco=rs;
     if(/ANTIDERRAP|ASPER|RUGOS|CORRUGAD|TEXTURIZ|RANHUR|ONDULAD|RELEVO|PIGMENT/.test(d)) a.acab='ASPERO'; else if(/ LISA /.test(d)&&!/LISA INTERNAMENTE/.test(d)) a.acab='LISO';
   }
-  const cbr=String(cor||''); const semSol=norm(cbr).replace(/SOLAD[OA]S?\s*(NA COR |NAS CORES |EM |DE COR |NA |COR )?[A-Z]+/g,' ').replace(/\([^)]*\)/g,' ');
-  const cs=cor?(eqCores(semSol).length?eqCores(semSol):eqCores(cbr)):eqCores(solto?t:''); if(cs.length) a.cor=cs.slice(0,4);
+  const cbr=String(cor||''); const cn=norm(cbr), cab=cn.match(/CABEDAL[^;.]*?(PRET|BRANC|MARROM|CAFE|AZUL|VERDE|AMAREL|CINZA|BEGE|VERMELH|LARANJ|ROSA)/);
+  const semSol=cn.replace(/(ENTRE)?SOLAD[OA]S?\s*(NA COR |NAS CORES |EM |DE COR |NA |COR )?[A-Z]+/g,' ').replace(/\([^)]*\)/g,' ');
+  const cs=cor?(cab&&!/;/.test(cn)?eqCores(cab[1]):eqCores(semSol).length?eqCores(semSol):eqCores(cbr)):eqCores(solto?t:''); if(cs.length) a.cor=cs.slice(0,4);
   return a}
 /* ficha padronizada do nosso produto: catálogo (attrs) > descrição > CA do produto; attrs.eqf = correção manual (vale sobre tudo) */
 function eqFicha(p,base){const desc=eqT(p.descricao), at=p.attrs||{}; const x=base&&p.ca?base.get(String(p.ca).replace(/\D/g,'').replace(/^0+/,'')):null;
   let a=eqLer(p.descricao+(x?' · '+x.n+' · '+x.d:''),p.rep==='marluvas'?(at.cor||''):((x&&x.cor)||p.descricao));
   if(p.rep==='marluvas'){const tp=at.tipo||(/ PVC /.test(desc)?'PVC':/BOTINA/.test(desc)?'BOTINA':/COTURNO/.test(desc)?'COTURNO':/SAPATO/.test(desc)?'SAPATO':/TENIS/.test(desc)?'TENIS':/ BOTA/.test(desc)?'BOTA':null);
-    if(tp) a.tipo={TENIS:'SAPATO',PVC:'BOTA PVC',SANDALIA:'SANDALIA'}[tp]||tp;
+    if(tp) a.tipo={PVC:'BOTA PVC'}[tp]||tp;
     const bc=at.bico||(/COMPOSITE/.test(desc)?'COMP':/ ACO /.test(desc)?'ACO':/PLASTIC/.test(desc)?'PLAS':/SEM BICO/.test(desc)?'SEM':null); if(bc) a.bico=bc==='PLAS'?'SEM':bc; /* biqueira plástica Marluvas = conformação (calçado ocupacional) */
     const fc=at.fech||(/ELASTICO/.test(desc)?'ELASTICO':/CADARCO/.test(desc)?'CADARCO':/VELCRO/.test(desc)?'VELCRO':null); if(fc) a.fech=fc; else if(a.tipo==='BOTA PVC') a.fech='SEM';
     const mt=/NUBUCK|NOBUCK/.test(desc)?'COURO':at.mat||(/MICROFIBRA/.test(desc)?'MICRO':/COURO|VAQUETA/.test(desc)?'COURO':/ PVC /.test(desc)?'PVC':null); if(mt) a.mat=[{MICRO:'MICROFIBRA'}[mt]||mt];
@@ -790,11 +792,12 @@ function eqCmp(q,a){let s=0,mx=0; const lin=[];
     if(['elet','meta','perf','imp','corte','impac'].includes(k)){if(!v) continue; mx+=w; st=b?'ok':'dif'; s+=b?w:0}
     else if(Array.isArray(v)){mx+=w; const B=Array.isArray(b)?b:(b?[b]:[]); if(!B.length){s+=k==='mat'?0:w*.3; st='?'} else {const h=v.filter(x=>B.includes(x)).length, u=new Set([...v,...B]).size; let j=h/u; if(k==='cor'&&h) j=1; if(k==='risco') j=h/v.length; s+=w*j; st=j>.99?'ok':h?'parcial':'dif'}}
     else if(k==='comp'){mx+=w; if(b==null){s+=w*.3; st='?'} else {const dd=Math.abs(v-b), x=dd<=5?1:dd<=12?.5:0; s+=w*x; st=x===1?'ok':x?'parcial':'dif'}}
-    else {mx+=w; if(b==null){s+=w*.3; st='?'} else {const x=b===v?1:(k==='bico'&&v==='SIM'&&b!=='SEM')?1:(k==='bico'&&v==='SEM')?.6:(k==='sol'&&v==='PU MONO'&&(b==='PU BID'||b==='PU/BOR'))?.6:(k==='forro'&&v!=='SEM'&&b!=='SEM')?.6:(k==='bico')?.5:0; s+=w*x; st=x===1?'ok':x?'parcial':'dif'}}
+    else {mx+=w; if(b==null){s+=w*.3; st='?'} else {const x=b===v?1:(k==='bico'&&v==='SIM'&&b!=='SEM')?1:(k==='bico'&&v==='SEM')?.6:(k==='sol'&&v==='PU MONO'&&(b==='PU BID'||b==='PU/BOR'))?.6:(k==='forro'&&v!=='SEM'&&b!=='SEM')?.6:(k==='tipo'&&[v,b].every(x=>x==='SAPATO'||x==='TENIS'))?.6:(k==='tipo'&&[v,b].every(x=>x==='BOTA'||x==='COTURNO'))?.7:(k==='bico')?.5:0; s+=w*x; st=x===1?'ok':x?'parcial':'dif'}}
     let trava=false; if(EQ_TRAVA[k]&&st==='dif') trava=true; if(k==='bico'&&v!=='SEM'&&b==='SEM') trava=true; if(k==='bico'&&v==='SEM'&&b&&b!=='SEM') st='mais';
     if(k==='risco'&&Array.isArray(b)){const f=v.filter(x=>EQ_RISCO_TRAVA.includes(x)&&!b.includes(x)); if(f.length){trava=true; st='dif'}}
+    if(k==='risco'&&!Array.isArray(b)&&v.some(x=>['CALOR','FRIO','ELET'].includes(x))) trava=true; /* isolante/térmica: sem informação no nosso = não atende */
     lin.push({k,v,b,st,trava})}
-  for(const [k,w] of [['perf',3],['elet',2],['napol',2],['meta',8],['esp',10],['chama',5],['term',4]]) if(a[k]&&!q[k]){mx+=w; lin.push({k,v:0,b:1,st:'mais'})}
+  for(const [k,w] of [['perf',3],['elet',2],['napol',2],['meta',8],['esp',10],['chama',5],['term',4],['corte',8]]) if(a[k]&&!q[k]){mx+=w; lin.push({k,v:0,b:1,st:'mais'})}
   const tr=lin.filter(l=>l.trava); const pts=(mx?s/mx:0)*(tr.length?.85:1);
   const selo=tr.length?'nao':pts>=.9&&!lin.some(l=>l.st==='dif')?'eq':pts>=.75?'sem':'prox';
   return {pts,lin,trava:tr,selo}}
@@ -870,6 +873,7 @@ async function eqAbrir(rep,o,q0){const st={q:String(q0||'').replace(/^CA\s*/i,''
       const P=o.tabela?await prices(o.tabela).catch(()=>({})):{};
       const perg=[]; const g=eqGrupo(q.tipo);
       if(g==='C'&&(q.mat||[]).includes('COURO')&&!q.acabc&&!st.resp._acabc) perg.push(['acabc','O couro é liso ou nobuck/camurça?',['LISO','NOBUCK']]);
+      if(g==='C'&&!q.fech&&q.tipo!=='BOTA PVC'&&!st.resp._fech) perg.push(['fech','Qual o fechamento?',['CADARCO','ELASTICO','VELCRO']]);
       if((q.cor||[]).length>1&&!st.resp.cor&&!st.resp._cor) perg.push(['cor','Qual cor o cliente usa?',q.cor.map(c=>[c])]);
       if(g==='L'&&!q.comp&&!st.resp.comp&&!st.resp._comp&&(q.desc==='REUT')) perg.push(['comp','Comprimento (cano) da luva?',[[25],[35],[45],[60]]]);
       const sit=x?caSit(x):null; const fca=x?eqFotoCA(F,ca):'';

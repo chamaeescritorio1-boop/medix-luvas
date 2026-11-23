@@ -1,5 +1,3 @@
-287 páginas de produto
+286 páginas de produto
 sem img/sku https://medixbrasil.com.br/produto/luva-de-palpacao-1785244623 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/luva-de-palpacao-mockup-1785244624.jpg 0
-sem img/sku https://medixbrasil.com.br/produto/luva-para-procedimento-nao-cirurgico-latex-ambidestra https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/luva-para-proced-1789396810.jpg 0
-sem img/sku https://medixbrasil.com.br/produto/q-latexpro-lisa-1746710066 https://medixbrasil.s3.us-west-2.amazonaws.com/produtos/qlatexprolisa-1747233882.jpg 0
-1045 SKUs com foto
+1049 SKUs com foto

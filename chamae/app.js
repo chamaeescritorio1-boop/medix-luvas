@@ -714,7 +714,208 @@ function caSoBusca(fr){const ap=()=>{try{const d=fr.contentDocument; if(!d||!d.h
   fr.addEventListener('load',ap); let ref=!!fr.dataset.refinar, t0=Date.now(); const iv=setInterval(()=>{if(!fr.isConnected) return clearInterval(iv); ap();
     if(ref){try{const d=fr.contentDocument; const b=[...d.querySelectorAll('button,summary,[role=button]')].find(x=>/refinar/i.test(x.textContent||'')&&x.offsetParent); const f=d.querySelector('.filters');
       if(b){b.click(); ref=false; setTimeout(()=>{try{(d.querySelector('.filters')||b).scrollIntoView({block:'start'})}catch(_){}},150)} else if(f&&f.offsetParent&&d.querySelector('#fgrid *')&&Date.now()-t0>2500){f.scrollIntoView({block:'start'}); ref=false}}catch(_){}}},300)}
-async function abrirCA(rep,o,q,refinar){await garantirTp(); const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
+/*EQV-INICIO*/
+/* 23/11/2026 (Victor: o conversor "traz alguns, mas nunca O MAIS PRÓXIMO"): motor de semelhança próprio do Sistema para Converter CA de Marluvas e Medix.
+   Lê o texto oficial do CA do concorrente (+ o que o cliente escreveu) e compara com a ficha do nosso produto; travas de proteção; selo; 3 modelos;
+   perguntas quando falta o que decide; equivalências indicadas pelos vendedores (tabela equivalencias) entram em 1º. EQV_ON=false volta ao conversor antigo. */
+const EQV_ON=true;
+/*EQV-MOTOR-INICIO*/
+/* motor de semelhança: lê o texto oficial do CA (e o que o cliente escreveu) e compara característica por característica com a ficha do nosso produto.
+   Funções puras (só usam norm): o teste fontes/teste_equivalencia.js roda este trecho no Node com o gabarito. */
+const eqT=s=>' '+norm(s).replace(/[^A-Z0-9\/ ]+/g,' ').replace(/\s+/g,' ')+' ';
+const eqHas=(t,re)=>re.test(t);
+const EQ_CORES=[['PRETO',/PRET/],['BRANCO',/BRANC/],['MARROM',/MARROM|CAFE|CASTANH|CASTOR|PINHAO|CHOCOLATE|TABACO|HAVANA|CONHAQUE/],['AZUL',/AZUL/],['VERDE',/VERDE/],['AMARELO',/AMAREL/],['CINZA',/CINZA|GRAFITE|MESCL|CHUMBO/],['LARANJA',/LARANJ/],['VERMELHO',/VERMELH/],['BEGE',/BEGE|NATURAL|CREME|AREIA|CRU\b/],['ROSA',/ROSA/],['ROXO',/ROXO|VIOLETA|LILAS/]];
+const eqCores=s=>{const t=norm(s); return EQ_CORES.filter(([,r])=>r.test(t)).map(([k])=>k)};
+const EQ_CALC=new Set(['BOTINA','BOTA','BOTA PVC','COTURNO','SAPATO']), EQ_LUVA=new Set(['LUVA','MANGOTE']);
+const eqGrupo=tp=>EQ_CALC.has(tp)?'C':EQ_LUVA.has(tp)?'L':'';
+/* solto=true: texto livre do cliente — só marca o que está escrito (sem valores presumidos) */
+function eqLer(txt,cor,solto){const t=eqT(txt); const a={}; const i=t.indexOf(' APROVADO PARA'); const ap=i>=0?t.slice(i):'', d=i>=0?t.slice(0,i)+' ':t;
+  if(/ LUVA/.test(t)) a.tipo='LUVA'; else if(/ MANGOTE| MANGA DE/.test(t)) a.tipo='MANGOTE'; else if(/COTURNO/.test(t)) a.tipo='COTURNO'; else if(/ BOTINA/.test(t)) a.tipo='BOTINA'; else if(/ BOTA\b/.test(t)) a.tipo='BOTA'; else if(/SAPATO|TENIS|SAPATENIS/.test(t)) a.tipo='SAPATO'; else if(/ TIPO B /.test(t)) a.tipo='BOTINA'; else if(/ TIPO A /.test(t)&&/CALCADO/.test(t)) a.tipo='SAPATO';
+  if(eqGrupo(a.tipo)==='C'||(solto&&/NOBUCK|NUBUCK|BIQUEIRA|SOLADO|CADARCO|ELASTICO/.test(t))){
+    const m=[]; if(/ PVC | POLICLORETO|VINIL/.test(d)) m.push('PVC'); if(/MICROFIBRA/.test(d)) m.push('MICROFIBRA'); if(/ COURO| VAQUETA| NOBUCK| NUBUCK| RASPA| VELUR| CAMURC/.test(d)) m.push('COURO');
+    if(!m.length&&/ BORRACHA /.test(d)&&!/SOLADO (DE |EM )?BORRACHA/.test(d)) m.push('BORRACHA'); if(!m.length&&/TEXTIL|TECIDO|LONA|MESH|NYLON/.test(d)) m.push('TEXTIL'); if(m.length) a.mat=m;
+    if(/NOBUCK|NUBUCK|LATEGO|CAMURC|VELUR/.test(t)) a.acabc='NOBUCK'; else if(solto&&/COURO LISO|LISO/.test(t)) a.acabc='LISO';
+    if(/ELASTICO/.test(d)) a.fech='ELASTICO'; else if(/ATACADOR|CADARCO|AMARRAR|ILHOS/.test(d)) a.fech='CADARCO'; else if(/VELCRO|FECHAMENTO EM CONTATO/.test(d)) a.fech='VELCRO'; else if(/ ZIPER/.test(d)) a.fech='ZIPER';
+    if(a.tipo==='BOTA'&&m.includes('PVC')&&!m.includes('COURO')){a.tipo='BOTA PVC'; if(!a.fech) a.fech='SEM'; a.imp=1}
+    const ocup=/CALCADO (DE )?OCUPACIONAL/.test(t)&&!/IMPACTO|COMPRESSAO/.test(ap);
+    if(ocup||/BIQUEIRA [A-Z ]{0,25}CONFORMACAO/.test(t)) a.bico='SEM';
+    else if(/BIQUEIRA (DE |EM )?ACO|BICO DE ACO|BIQUEIRA METALICA|BICO ACO/.test(t)) a.bico='ACO';
+    else if(/BIQUEIRA (DE |EM )?(MATERIAL |POLI|PLAST|TERMO|COMPOS|NAO METAL|FIBRA)|COMPOSITE|BIQUEIRA COMPOSTA|BICO COMPOS/.test(t)) a.bico='COMP';
+    else if(/BIQUEIRA|IMPACTO/.test(t)) a.bico='SIM'; else if(!solto) a.bico='SEM';
+    if(/ISOLANTE ELETRIC|ELETRICISTA|RISCOS? ELETRIC|DIELETRIC/.test(t)) a.elet=1; if(/METATARS/.test(t)) a.meta=1; if(/ANTIPERFURA|PERFURACAO|PERFURANTE|PALMILHA (DE |EM )?ACO/.test(t)) a.perf=1;
+    if(/IMPERMEAV/.test(t)) a.imp=1; if(/MOTOSS|FRIGOR|ESCARFAD|BOMBEIR|SOLDADOR|FUNDIC/.test(t)) a.esp=1; if(/CHAMA/.test(t)) a.chama=1;
+    if(a.tipo==='BOTA PVC') a.cano=/CANO CURTO/.test(t)?'CURTO':/CANO (LONGO|ALTO)/.test(t)?'LONGO':'MEDIO';
+    if(/BIDENSIDADE|DUPLA DENSIDADE/.test(d)) a.sol='PU BID'; else if(/POLIURETANO.{0,40}BORRACHA|PU.{0,5}BORRACHA/.test(d)) a.sol='PU/BOR'; else if(/SOLADO[^.]{0,40}BORRACHA/.test(d)) a.sol='BOR'; else if(/SOLADO[^.]{0,40}POLIURETANO|SOLADO[^.]{0,30} PU /.test(d)) a.sol='PU MONO'; else if(a.tipo==='BOTA PVC') a.sol='PVC';
+    if(/NAPOLITANO|CANO BAIXO/.test(t)&&a.tipo!=='BOTA PVC') a.napol=1;
+  } else if(eqGrupo(a.tipo)==='L'){
+    const m=[]; [['NITRILICA',/NITRIL/],['LATEX',/LATEX|BORRACHA NATURAL/],['NEOPRENE',/NEOPRENE|POLICLOROPRENO/],['PVC',/ PVC |PLASTISSOL|VINIL|POLICLORETO/],['PU',/POLIURETANO| PU /],['VAQUETA',/VAQUETA|COURO/],['RASPA',/ RASPA/],['ALGODAO',/ALGODAO|FIBRAS NATURAIS/],['ARAMIDA',/ARAMID|KEVLAR/],['HPPE',/POLIETILENO DE ALTA|HPPE|ANTICORTE|RESISTENTE A CORTE|FIBRA DE VIDRO|ACO INOX/],['NYLON',/NYLON|POLIAMIDA|POLIESTER|FIBRAS SINTETICAS|SPANDEX/],['TPE',/ TPE |TERMOPLAST/]].forEach(([k,r])=>{if(r.test(d)) m.push(k)}); if(m.length) a.mat=m;
+    const sup=/SUPORTE TEXTIL|TRICOTAD|MALHA|TECIDO|JERSEY|FIBRAS|FIOS/.test(d); if(!solto||sup) a.sup=sup?'TEXTIL':/VAQUETA|RASPA|COURO/.test(d)?'COURO':'POLIMERO';
+    if(/PIGMENT/.test(d)) a.banho='PIGMENTO'; else if(/TOTALMENTE REVESTID|BANHO TOTAL|REVESTIMENTO TOTAL|PALMA,? FACE PALMAR,? (E )?DORSO|PALMA E DORSO|PALMA, DORSO|INTEIRAMENTE/.test(d)) a.banho='TOTAL'; else if(/3\/4|TRES QUARTOS|DORSO DOS DEDOS|DORSO PARCIAL/.test(d)) a.banho='3/4'; else if(/PALMA|FACE PALMAR/.test(d)&&sup&&/BANH|REVEST|IMPREGN|RECOBERT/.test(d)) a.banho='PALMA'; else if(sup&&!/BANH|REVEST/.test(d)&&!solto) a.banho='SEM';
+    if(/FLOCAD|FLOCOS/.test(d)) a.forro='FLOCADO'; else if(/SEM FORRO|SEM REVESTIMENTO INTERNO|INTERIOR LISO|LISA INTERNAMENTE/.test(d)) a.forro='SEM'; else if(/FORRAD|FORRO|SUPORTE TEXTIL|REVESTIMENTO INTERNO/.test(d)) a.forro='SIM';
+    if(/IMPACTO| TPR /.test(d)) a.impac=1; if(/CORTE NIVEL|RESISTENTE A CORTE|ANTICORTE|ALTA DENSIDADE|HPPE|ACO INOX|FIBRA DE VIDRO|ANEIS DE ACO/.test(t)) a.corte=1;
+    if(/NAO.CIRURG|PROCEDIMENTO/.test(t)) a.uso='PROCED'; else if(/CIRURGIC/.test(t)) a.uso='CIRURG';
+    if(!solto||/DESCARTAV|REUTILIZ/.test(t)) a.desc=/DESCARTAV|USO UNICO|PROCEDIMENTO|CIRURGIC| \d+ ?UN |C\/100|POLYBAG|USO GERAL/.test(t)&&!/FORRAD|FLOCAD|SUPORTE|TRICOT|MALHA|VAQUETA|RASPA|REUTILIZ/.test(d)?'DESC':'REUT';
+    if(/ COM PO | C\/ ?PO |AMIDO/.test(t)&&!/SEM AMIDO|SEM PO|ISENTA/.test(t)) a.po='COM'; else if(/SEM PO|S\/ ?PO |SEM AMIDO|ISENTA DE PO/.test(t)) a.po='SEM';
+    const cm=[...t.matchAll(/(\d{2})\s*CM/g)].map(x=>+x[1]); if(cm.length) a.comp=Math.max(...cm); else if(/CANO LONGO|LONGA/.test(t)) a.comp=45;
+    const rs=[]; [['MEC',/ABRASIV|ESCORIANT|CORTANT|PERFURANT|MECANIC/],['QUIM',/QUIMIC/],['BIO',/BIOLOGIC/],['CALOR',/CALOR|CHAMA/],['FRIO',/ FRIO/],['ELET',/ELETRIC/]].forEach(([k,r])=>{if(r.test(ap||(solto?t:''))) rs.push(k)}); if(rs.length) a.risco=rs;
+    if(/ANTIDERRAP|ASPER|RUGOS|CORRUGAD|TEXTURIZ|RANHUR|ONDULAD|RELEVO|PIGMENT/.test(d)) a.acab='ASPERO'; else if(/ LISA /.test(d)&&!/LISA INTERNAMENTE/.test(d)) a.acab='LISO';
+  }
+  const cbr=String(cor||''); const semSol=norm(cbr).replace(/SOLAD[OA]S?\s*(NA COR |NAS CORES |EM |DE COR |NA |COR )?[A-Z]+/g,' ').replace(/\([^)]*\)/g,' ');
+  const cs=cor?(eqCores(semSol).length?eqCores(semSol):eqCores(cbr)):eqCores(solto?t:''); if(cs.length) a.cor=cs.slice(0,4);
+  return a}
+/* ficha padronizada do nosso produto: catálogo (attrs) > descrição > CA do produto; attrs.eqf = correção manual (vale sobre tudo) */
+function eqFicha(p,base){const desc=eqT(p.descricao), at=p.attrs||{}; const x=base&&p.ca?base.get(String(p.ca).replace(/\D/g,'').replace(/^0+/,'')):null;
+  let a=eqLer(p.descricao+(x?' · '+x.n+' · '+x.d:''),p.rep==='marluvas'?(at.cor||''):((x&&x.cor)||p.descricao));
+  if(p.rep==='marluvas'){const tp=at.tipo||(/ PVC /.test(desc)?'PVC':/BOTINA/.test(desc)?'BOTINA':/COTURNO/.test(desc)?'COTURNO':/SAPATO/.test(desc)?'SAPATO':/TENIS/.test(desc)?'TENIS':/ BOTA/.test(desc)?'BOTA':null);
+    if(tp) a.tipo={TENIS:'SAPATO',PVC:'BOTA PVC',SANDALIA:'SANDALIA'}[tp]||tp;
+    const bc=at.bico||(/COMPOSITE/.test(desc)?'COMP':/ ACO /.test(desc)?'ACO':/PLASTIC/.test(desc)?'PLAS':/SEM BICO/.test(desc)?'SEM':null); if(bc) a.bico=bc==='PLAS'?'SEM':bc; /* biqueira plástica Marluvas = conformação (calçado ocupacional) */
+    const fc=at.fech||(/ELASTICO/.test(desc)?'ELASTICO':/CADARCO/.test(desc)?'CADARCO':/VELCRO/.test(desc)?'VELCRO':null); if(fc) a.fech=fc; else if(a.tipo==='BOTA PVC') a.fech='SEM';
+    const mt=/NUBUCK|NOBUCK/.test(desc)?'COURO':at.mat||(/MICROFIBRA/.test(desc)?'MICRO':/COURO|VAQUETA/.test(desc)?'COURO':/ PVC /.test(desc)?'PVC':null); if(mt) a.mat=[{MICRO:'MICROFIBRA'}[mt]||mt];
+    if(a.mat&&a.mat[0]==='COURO') a.acabc=/NUBUCK|NOBUCK|CAMURC|VELUR/.test(desc)?'NOBUCK':'LISO'; else delete a.acabc;
+    const sl=at.sol||(/POLIURETANO/.test(desc)&&/BORRACHA/.test(desc)?'PUBOR':/POLIURETANO/.test(desc)?'PU':null); if(sl) a.sol=sl==='PUBOR'?'PU/BOR':sl==='PU'?(/BIDENSIDADE/.test(desc)?'PU BID':'PU MONO'):sl;
+    const cr=at.cor||(desc.split('·')[2]||''); const cs=eqCores(cr); if(cs.length) a.cor=cs;
+    const f=new Set(at.f||[]); if(/ELETRICISTA/.test(desc)) f.add('ELET'); if(/METATARSO/.test(desc)) f.add('META'); if(/PERFURA/.test(desc)) f.add('PERF');
+    a.elet=f.has('ELET')?1:0; a.meta=f.has('META')?1:0; a.perf=f.has('PERF')?1:0; a.imp=(f.has('HIDRO')||a.tipo==='BOTA PVC')?1:0; a.term=f.has('TERM')?1:0; a.chama=f.has('CHAMA')?1:0;
+    a.esp=/MOTOSS|FRIGOR|ESCARFAD|BOMBEIR|SOLDADOR|FUNDIC/.test(desc)?1:0; a.napol=/NAPOLITANO|CANO BAIXO/.test(desc)?1:0;
+    if(a.tipo==='BOTA PVC') a.cano=/CANO CURTO/.test(desc)?'CURTO':/CANO (ALTO|LONGO)/.test(desc)?'LONGO':'MEDIO';
+    a.mts=/MTS/.test(String(at.est||''))?1:0}
+  const man=at.eqf||{}; for(const k in man) if(man[k]!==null&&man[k]!==''&&k[0]!=='_') a[k]=man[k];
+  return a}
+const EQ_W={tipo:30,mat:25,acabc:14,bico:18,fech:12,cano:10,elet:8,meta:6,perf:6,imp:6,sol:5,cor:14,sup:12,banho:14,forro:8,corte:10,impac:8,uso:15,po:8,desc:18,comp:6,risco:12,acab:5};
+/* travas: proteção que o concorrente tem e o nosso não pode deixar de ter */
+const EQ_TRAVA={bico:1,elet:1,perf:1,meta:1,corte:1,impac:1,uso:1};
+const EQ_RISCO_TRAVA=['QUIM','BIO','CALOR','FRIO','ELET'];
+function eqCmp(q,a){let s=0,mx=0; const lin=[];
+  for(const k in q){const v=q[k]; const w=EQ_W[k]; if(!w||v==null||(Array.isArray(v)&&!v.length)) continue; if(k==='po'&&q.desc==='REUT') continue; const b=a[k]; let st;
+    if(['elet','meta','perf','imp','corte','impac'].includes(k)){if(!v) continue; mx+=w; st=b?'ok':'dif'; s+=b?w:0}
+    else if(Array.isArray(v)){mx+=w; const B=Array.isArray(b)?b:(b?[b]:[]); if(!B.length){s+=k==='mat'?0:w*.3; st='?'} else {const h=v.filter(x=>B.includes(x)).length, u=new Set([...v,...B]).size; let j=h/u; if(k==='cor'&&h) j=1; if(k==='risco') j=h/v.length; s+=w*j; st=j>.99?'ok':h?'parcial':'dif'}}
+    else if(k==='comp'){mx+=w; if(b==null){s+=w*.3; st='?'} else {const dd=Math.abs(v-b), x=dd<=5?1:dd<=12?.5:0; s+=w*x; st=x===1?'ok':x?'parcial':'dif'}}
+    else {mx+=w; if(b==null){s+=w*.3; st='?'} else {const x=b===v?1:(k==='bico'&&v==='SIM'&&b!=='SEM')?1:(k==='bico'&&v==='SEM')?.6:(k==='sol'&&v==='PU MONO'&&(b==='PU BID'||b==='PU/BOR'))?.6:(k==='forro'&&v!=='SEM'&&b!=='SEM')?.6:(k==='bico')?.5:0; s+=w*x; st=x===1?'ok':x?'parcial':'dif'}}
+    let trava=false; if(EQ_TRAVA[k]&&st==='dif') trava=true; if(k==='bico'&&v!=='SEM'&&b==='SEM') trava=true; if(k==='bico'&&v==='SEM'&&b&&b!=='SEM') st='mais';
+    if(k==='risco'&&Array.isArray(b)){const f=v.filter(x=>EQ_RISCO_TRAVA.includes(x)&&!b.includes(x)); if(f.length){trava=true; st='dif'}}
+    lin.push({k,v,b,st,trava})}
+  for(const [k,w] of [['perf',3],['elet',2],['napol',2],['meta',8],['esp',10],['chama',5],['term',4]]) if(a[k]&&!q[k]){mx+=w; lin.push({k,v:0,b:1,st:'mais'})}
+  const tr=lin.filter(l=>l.trava); const pts=(mx?s/mx:0)*(tr.length?.85:1);
+  const selo=tr.length?'nao':pts>=.9&&!lin.some(l=>l.st==='dif')?'eq':pts>=.75?'sem':'prox';
+  return {pts,lin,trava:tr,selo}}
+/* família: o mesmo modelo em outra cor, tamanho ou embalagem vira um resultado só */
+function eqFam(p){if(p.rep==='marluvas'){const ref=norm(p.ref||String(p.descricao).split('—')[0]).trim().replace(/(-(CX|NT))+-?$/,'').replace(/^(\d*[A-Z]+\d+)[A-Z]?(?=-|$)/,'$1').replace(/-(PR|BR|PRA|CNG|CNP|MSP|MSC|MSMC)$/,''); return 'marluvas|'+ref}
+  return p.rep+'|'+(p.ca||'')+'|'+norm(p.descricao).replace(/\bTAM(ANHO)?\.?\s*[A-Z0-9.,]+(\s*\(\d+\))?/g,' ').replace(/\b(PP|P|M|G|GG|XG|EG|EGG|XGG|XP)\b(\s*\(\d+\))?/g,' ').replace(/\(\d+(\.\d)?\)/g,' ').replace(/\b(PRETO|PRETA|BRANCO|BRANCA|AZUL|AMARELA|AMARELO|ROSA|VERDE|LARANJA)\b/g,' ').replace(/\(FARDO\)|\(ENCARTELADO\)|FARDO|ENCARTELADO/g,' ').replace(/\s+/g,' ').trim()}
+/* ranqueia: q = o que se pede; C = catálogo; conf = equivalências indicadas {cod:{tipo,por,motivo}}; n = quantos modelos */
+function eqRank(q,C,base,conf,n,ca){const g=eqGrupo(q.tipo); conf=conf||{}; const res=[];
+  for(const p of C){const cf=conf[p.rep+'|'+p.cod]; if(cf&&cf.tipo==='nao') continue; const a=eqFicha(p,base); if(!cf&&(!g||eqGrupo(a.tipo)!==g)) continue;
+    let r; if(ca&&p.ca&&String(p.ca).replace(/\D/g,'').replace(/^0+/,'')===ca) r={pts:1,lin:[{k:'ca',v:ca,b:ca,st:'ok'}],trava:[],selo:'eq',mesmoCA:true}; else r=eqCmp(q,a);
+    if(cf){r={...r,pts:cf.tipo==='igual'?1.02:1.01,selo:cf.tipo==='igual'?'eq':'sem',ind:cf}}
+    r.pts+=(a.mts?.004:0); res.push({p,a,...r})}
+  res.sort((x,y)=>y.pts-x.pts);
+  const fam=new Map(); for(const r of res){const k=eqFam(r.p); const f=fam.get(k); if(!f){fam.set(k,{...r,vars:[r]})} else f.vars.push(r)}
+  return [...fam.values()].slice(0,n||3)}
+/*EQV-MOTOR-FIM*/
+
+/* tela "⇄ Equivalentes": CA do concorrente (com foto) + o que o cliente escreveu → 3 modelos nossos com ✓/≈/✕, selo, perguntas, indicação do vendedor */
+const EQ_LAB={tipo:'Tipo',mat:'Material',acabc:'Acabamento do couro',bico:'Biqueira',fech:'Fechamento',cano:'Cano',sol:'Solado',cor:'Cor',elet:'Isolante elétrico',meta:'Metatarso',perf:'Antiperfuração',imp:'Impermeável/hidrofugado',esp:'Uso especial (frigorífico, motosserra…)',chama:'Antichama',term:'Térmico',napol:'Napolitano (cano baixo)',
+  sup:'Suporte',banho:'Banho/revestimento',forro:'Forro',corte:'Resistente a corte',impac:'Proteção contra impacto',uso:'Uso em saúde',po:'Pó',desc:'Descartável ou reutilizável',comp:'Comprimento',risco:'Riscos aprovados',acab:'Acabamento da palma',ca:'CA'};
+const EQ_VAL={ACO:'aço',COMP:'composite',SEM:'sem',SIM:'com biqueira',NOBUCK:'nobuck',LISO:'liso','PU BID':'PU bidensidade','PU MONO':'PU monodensidade','PU/BOR':'PU/borracha',BOR:'borracha',ELASTICO:'elástico',CADARCO:'cadarço',VELCRO:'velcro',ZIPER:'zíper',
+  CURTO:'curto',MEDIO:'médio',LONGO:'longo',TEXTIL:'têxtil',POLIMERO:'polímero (sem tecido)',COURO:'couro',PIGMENTO:'pigmentos',TOTAL:'total','3/4':'3/4',PALMA:'palma',FLOCADO:'flocado',PROCED:'procedimento',CIRURG:'cirúrgica',DESC:'descartável',REUT:'reutilizável',COM:'com pó',
+  MEC:'mecânicos',QUIM:'químicos',BIO:'biológicos',CALOR:'calor',FRIO:'frio',ELET:'elétrico',ASPERO:'áspera/antiderrapante',NITRILICA:'nitrílica',LATEX:'látex',NEOPRENE:'neoprene',VAQUETA:'vaqueta',RASPA:'raspa',ALGODAO:'algodão',ARAMIDA:'aramida',HPPE:'anticorte (HPPE/aço/vidro)',NYLON:'nylon/poliéster',MICROFIBRA:'microfibra','BOTA PVC':'bota PVC'};
+const eqV=(k,v)=>k==='forro'&&v==='SIM'?'forrada':k==='bico'&&v==='SEM'?'sem proteção (ocupacional/conformação)':v==null||v===''?'—':Array.isArray(v)?v.map(x=>eqV(k,x)).join(', '):v===1&&k!=='comp'?'sim':v===0?'não':k==='comp'?v+' cm':EQ_VAL[v]||String(v).charAt(0)+String(v).slice(1).toLowerCase();
+const EQ_SELO={eq:['✅ Equivalente','#14532d','#d9f2e3'],sem:['≈ Semelhante: confira','#7a5200','#fff1cc'],prox:['Mais próximo, mas diferente','#555','#eceef5'],nao:['⚠ Não atende','#8a1c10','#ffd9d4']};
+const EQ_ST={ok:['✓','#14532d','#d9f2e3'],parcial:['≈','#7a5200','#fff1cc'],dif:['✕','#8a1c10','#ffd9d4'],'?':['?','#666','#eceef5'],mais:['+','#1d4ed8','#e0ebff']};
+let EQF=null; async function eqFotos(){if(EQF) return EQF; const [a,b]=await Promise.all(['/conversor-ca/caepi_fotos.json','/conversor-ca/caepi_luvas_fotos.json'].map(u=>fetch(u).then(r=>r.json()).catch(()=>({})))); return EQF={...a,...b}}
+const eqFotoCA=(F,ca)=>{const l=(F&&F[ca])||[]; const loc=l.find(x=>!/^https?:/.test(x)); return loc?'/conversor-ca/'+loc:(l[0]||'')};
+async function eqConf(ca){if(!ca) return {}; let rows=[]; try{rows=await api(`equivalencias?select=*&ca=eq.${encodeURIComponent(ca)}&ativo=eq.true&order=criado_em.desc`)}catch(_){rows=[]}
+  const m={}; rows.forEach(r=>{const k=r.rep+'|'+r.cod; if(!m[k]) m[k]=r}); return m}
+async function eqSalvar(d){await api('equivalencias',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({...d,por:meuNome()||null})})}
+/* ✎ Corrigir ficha (gestor): grava produtos.attrs.eqf em todos os tamanhos/cores do modelo (a cor só no produto escolhido) */
+const EQ_OPC={C:[['tipo',['BOTINA','BOTA','BOTA PVC','COTURNO','SAPATO']],['mat',['COURO','MICROFIBRA','PVC','TEXTIL'],1],['acabc',['LISO','NOBUCK']],['bico',['SEM','COMP','ACO']],['fech',['CADARCO','ELASTICO','VELCRO','ZIPER','SEM']],['sol',['PU MONO','PU BID','PU/BOR','BOR','PVC']],['elet',[0,1]],['perf',[0,1]],['meta',[0,1]],['imp',[0,1]],['napol',[0,1]],['cor',EQ_CORES.map(c=>c[0]),1]],
+  L:[['mat',['NITRILICA','LATEX','NEOPRENE','PVC','PU','VAQUETA','RASPA','ALGODAO','ARAMIDA','HPPE','NYLON','TPE'],1],['sup',['TEXTIL','POLIMERO','COURO']],['banho',['SEM','PALMA','3/4','TOTAL','PIGMENTO']],['forro',['SEM','SIM','FLOCADO']],['desc',['DESC','REUT']],['po',['COM','SEM']],['uso',['PROCED','CIRURG']],['corte',[0,1]],['impac',[0,1]],['comp',null],['risco',['MEC','QUIM','BIO','CALOR','FRIO','ELET'],1],['acab',['ASPERO','LISO']],['cor',EQ_CORES.map(c=>c[0]),1]]};
+function eqFixForm(r,fim){const p=r.p, a=r.a||{}, g=eqGrupo(a.tipo)||'C'; const ov=document.createElement('div'); ov.className='ov'; ov.style.zIndex=40;
+  ov.innerHTML=`<div class="sh"><div class="sec" style="font-size:19px">✎ Ficha de ${esc(p.cod)}</div><p class="hint">${esc(p.descricao||'')}</p><p class="hint" style="font-size:12.5px">Vale para ${r.vars.length} código(s) do modelo (${esc(r.vars.map(v=>v.p.cod).join(', '))}); a cor só para ${esc(p.cod)}.</p>
+   <div style="display:grid;grid-template-columns:150px 1fr;gap:8px 10px;align-items:center">${EQ_OPC[g].map(([k,ops,multi])=>{const v=a[k]; return `<span class="hint">${esc(EQ_LAB[k])}</span><div>${ops==null?`<input data-fk="${k}" type="number" value="${v??''}" placeholder="cm" style="max-width:120px">`:multi?ops.map(o=>`<label class="chip" style="display:inline-flex;gap:4px;margin:2px"><input type="checkbox" data-fm="${k}" value="${esc(o)}"${(v||[]).includes(o)?' checked':''}>${esc(eqV(k,o))}</label>`).join(''):`<select data-fk="${k}"><option value="">—</option>${ops.map(o=>`<option value="${o}"${String(v??'')===String(o)?' selected':''}>${esc(k==='elet'||k==='perf'||k==='meta'||k==='imp'||k==='napol'||k==='corte'||k==='impac'?(o?'sim':'não'):eqV(k,o))}</option>`).join('')}</select>`}</div>`}).join('')}</div>
+   <div class="row" style="margin-top:12px"><button class="btn" id="fxOk">Gravar</button><button class="btn ghost" id="fxNo">Cancelar</button></div></div>`;
+  document.body.appendChild(ov); ov.querySelector('#fxNo').onclick=()=>ov.remove();
+  ov.querySelector('#fxOk').onclick=async e=>{const f={}; ov.querySelectorAll('[data-fk]').forEach(el=>{const k=el.dataset.fk, v=el.value; if(v==='') return; f[k]=/^(elet|perf|meta|imp|napol|corte|impac|comp)$/.test(k)?+v:v});
+    const ms={}; ov.querySelectorAll('[data-fm]').forEach(el=>{(ms[el.dataset.fm]=ms[el.dataset.fm]||[]); if(el.checked) ms[el.dataset.fm].push(el.value)}); Object.assign(f,ms);
+    e.target.disabled=true; try{for(const v of r.vars){const q={...f}; if(v.p.id!==p.id) delete q.cor; q._por=meuNome(); q._em=new Date().toISOString().slice(0,10); const at={...(v.p.attrs||{}),eqf:{...((v.p.attrs||{}).eqf||{}),...q}};
+      await api('produtos?id=eq.'+v.p.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({attrs:at,atualizado_em:new Date().toISOString()})}); v.p.attrs=at}
+      ov.remove(); toast('Ficha gravada'); fim()}catch(err){e.target.disabled=false; toast('Erro: '+err.message)}}}
+/* cor predominante da foto (do CA ou a que o vendedor anexou): ignora o fundo branco; ajuda quando o CA lista várias cores ou nenhuma */
+const EQCF=new Map(); function eqCorImg(src){if(!src) return Promise.resolve(null); if(EQCF.has(src)) return EQCF.get(src); const pr=new Promise(res=>{const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>{try{const N=48, c=document.createElement('canvas'); c.width=c.height=N; const g=c.getContext('2d'); g.drawImage(im,0,0,N,N); const d=g.getImageData(0,0,N,N).data, cnt={}; let tot=0;
+      for(let i=0;i<d.length;i+=4){const py=(i/4/N)|0, px=(i/4)%N; if(py<N*.08||py>N*.72||px<N*.08||px>N*.92) continue; const r=d[i]/255,gg=d[i+1]/255,b=d[i+2]/255; if(d[i+3]<128) continue; const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b), v=mx, s=mx?(mx-mn)/mx:0; if(v>.86&&s<.12) continue; let h=0; if(mx!==mn){h=mx===r?((gg-b)/(mx-mn))%6:mx===gg?(b-r)/(mx-mn)+2:(r-gg)/(mx-mn)+4; h=(h*60+360)%360}
+        const k=v<.2?'PRETO':s<.16?(v>.78?'BRANCO':v<.32?'PRETO':'CINZA'):(h<18||h>=340)?(v<.55?'MARROM':'VERMELHO'):h<48?(v<.7?'MARROM':s<.4?'BEGE':'LARANJA'):h<70?(v<.45?'MARROM':'AMARELO'):h<170?'VERDE':h<260?'AZUL':h<300?'ROXO':'ROSA'; cnt[k]=(cnt[k]||0)+1; tot++}
+      const L=Object.entries(cnt).sort((a,b)=>b[1]-a[1]); res(tot?L.filter(([,n],i)=>i===0||n/tot>=.4).slice(0,2).map(([k])=>k):null)}catch(_){res(null)}}; im.onerror=()=>res(null); im.src=src}); EQCF.set(src,pr); return pr}
+async function eqAbrir(rep,o,q0){const st={q:String(q0||'').replace(/^CA\s*/i,'').trim(),extra:'',todas:false,resp:{},foto:'',sug:null};
+  const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh" style="max-width:980px;width:100%;max-height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+   <style>.eqc{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:start}.eqc img{width:110px;height:110px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid var(--line)}.eqt{display:inline-block;border-radius:8px;padding:2px 7px;margin:2px 4px 2px 0;font-size:12.5px;font-weight:600}.eqs{display:inline-block;border-radius:99px;padding:3px 10px;font-weight:800;font-size:13px}.eqx{display:flex;gap:10px;flex-wrap:wrap}.eqx img{width:120px;height:120px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid var(--line)}@media(max-width:600px){.eqc{grid-template-columns:80px 1fr}.eqc img{width:80px;height:80px}}</style>
+   <div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">⇄ Equivalentes · ${esc(repName(rep))}</b><span class="hint" id="eqN"></span><button class="btn sm" id="eqX">Concluir</button></div>
+   <div style="overflow:auto;padding:12px 14px;flex:1" id="eqB">
+    <div class="card" style="display:grid;gap:8px;margin:0 0 10px">
+     <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="eqQ" type="search" autocomplete="off" placeholder="CA do concorrente (ex.: 40677) ou descrição" style="flex:1;min-width:0" value="${esc(st.q)}"><button class="btn sm" id="eqGo">Converter</button></div>
+     <input id="eqE" type="search" autocomplete="off" placeholder="O que o cliente escreveu / nome do produto (opcional) — ex.: botina nobuck marrom">
+     <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><label class="row" style="gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="eqTd" style="width:18px;height:18px"> Procurar em todas as fábricas</label><label class="btn sm ghost" style="cursor:pointer">📷 Foto do produto do cliente<input type="file" id="eqFt" accept="image/*" hidden></label></div></div>
+    <div id="eqR"><p class="hint">Digite o CA e toque em Converter.</p></div></div></div>`;
+  document.body.appendChild(ov); let n=0;
+  const fecha=()=>{ov.remove(); if(CONV_PASTA&&route==='orc') return go('orc',{rep}); repView()};
+  ov.querySelector('#eqX').onclick=fecha;
+  const run=async()=>{const R=ov.querySelector('#eqR'); st.q=ov.querySelector('#eqQ').value.trim(); st.extra=ov.querySelector('#eqE').value.trim(); st.todas=ov.querySelector('#eqTd').checked;
+    if(!st.q&&!st.extra){R.innerHTML='<p class="hint">Digite o CA e toque em Converter.</p>'; return}
+    R.innerHTML='<p class="hint">Comparando…</p>';
+    try{const base=await baseCA(); const ca=/^[\d.\s]{3,9}$/.test(st.q)?caCod(st.q):''; const x=ca?base.get(ca):null; const F=ca?await eqFotos():null;
+      let q=x?eqLer(x.n+' · '+x.d,x.cor):eqLer(st.q+' '+st.extra,'',true); if(x&&st.extra){const e=eqLer(st.extra,'',true); delete e.tipo; Object.assign(q,e)}
+      const fca0=x?eqFotoCA(F,ca):''; const cf=await eqCorImg(st.foto||fca0); st.corFoto=cf; if(cf&&cf.length&&!st.resp.cor&&!(st.extra&&eqLer(st.extra,'',true).cor)){const c0=q.cor||[]; const hit=cf.filter(c=>c0.includes(c)); if(!c0.length||c0.length>1) q.cor=hit.length?hit:c0.length?c0:cf; }
+      Object.assign(q,st.resp);
+      const conf=await eqConf(ca); let C=st.todas?await catalogosTec():await catalog(rep);
+      const outras=[...new Set(Object.values(conf).map(r=>r.rep))].filter(r=>st.todas?false:r!==rep); for(const r of outras){const C2=await catalog(r).catch(()=>[]); C=C.concat(C2.filter(p=>conf[r+'|'+p.cod]))}
+      const res=eqRank(q,C,base,conf,3,ca); st.res=res; st.ca=ca; st.x=x; st.q2=q;
+      const P=o.tabela?await prices(o.tabela).catch(()=>({})):{};
+      const perg=[]; const g=eqGrupo(q.tipo);
+      if(g==='C'&&(q.mat||[]).includes('COURO')&&!q.acabc&&!st.resp._acabc) perg.push(['acabc','O couro é liso ou nobuck/camurça?',['LISO','NOBUCK']]);
+      if((q.cor||[]).length>1&&!st.resp.cor&&!st.resp._cor) perg.push(['cor','Qual cor o cliente usa?',q.cor.map(c=>[c])]);
+      if(g==='L'&&!q.comp&&!st.resp.comp&&!st.resp._comp&&(q.desc==='REUT')) perg.push(['comp','Comprimento (cano) da luva?',[[25],[35],[45],[60]]]);
+      const sit=x?caSit(x):null; const fca=x?eqFotoCA(F,ca):'';
+      const cab=x?`<div class="card" style="margin:0 0 10px"><div class="eqx">${fca?`<img src="${esc(fca)}" data-zoom="${esc(fca)}" data-cap="CA ${esc(ca)}" style="cursor:zoom-in" alt="Foto do CA ${esc(ca)}">`:''}${st.foto?`<img src="${st.foto}" alt="Foto do cliente">`:''}<div style="flex:1;min-width:220px"><b>CA ${esc(ca)} · ${esc(x.f||'')}</b><div class="hint" style="font-size:13px">${esc(x.n||'')}${x.r?' · Ref. '+esc(x.r):''}${x.cor?' · Cor '+esc(x.cor):''}${sit?' · '+esc(sit.t):''}</div>
+          <details><summary class="hint" style="cursor:pointer;font-size:13px">Descrição oficial do CA</summary><p class="hint" style="font-size:13px;margin:4px 0 0">${esc(x.d||'')}</p></details>
+          ${fca?'':`<div class="hint" style="font-size:12px">Sem foto deste CA na base. <a href="https://consultaca.com/${esc(ca)}" target="_blank" rel="noopener">Ver no consultaca</a> · ou anexe a foto do cliente (📷).</div>`}
+          ${st.corFoto&&st.corFoto.length?`<div class="hint" style="font-size:12.5px;margin-top:4px">🎨 Cor predominante na foto${st.foto?' do cliente':''}: <b>${esc(eqV('cor',st.corFoto))}</b></div>`:''}<div style="margin-top:6px">${Object.keys(q).filter(k=>EQ_LAB[k]&&q[k]!=null&&q[k]!==0&&!(Array.isArray(q[k])&&!q[k].length)).map(k=>`<span class="tag">${esc(EQ_LAB[k])}: ${esc(eqV(k,q[k]))}</span>`).join(' ')}</div></div></div></div>`
+        :ca?`<div class="card" style="margin:0 0 10px"><b>CA ${esc(ca)}</b> não está na base oficial (pode ser muito novo ou digitado errado). Escreva a descrição do produto no segundo campo.</div>`
+        :`<div class="card" style="margin:0 0 10px"><b>Pela descrição</b><div style="margin-top:6px">${Object.keys(q).filter(k=>EQ_LAB[k]).map(k=>`<span class="tag">${esc(EQ_LAB[k])}: ${esc(eqV(k,q[k]))}</span>`).join(' ')||'<span class="hint">Não reconheci características. Escreva o tipo (botina, luva…) e o material.</span>'}</div></div>`;
+      const pg=perg.length?`<div class="card" style="margin:0 0 10px;border-left:4px solid var(--accent)"><b>Para acertar o mais próximo:</b>${perg.map(([k,t,ops])=>`<div style="margin-top:6px"><span class="hint">${esc(t)}</span><div class="row" style="gap:6px;margin-top:4px">${ops.map(v=>{const val=Array.isArray(v)?v[0]:v; return `<button class="chip" data-eqp="${k}|${esc(JSON.stringify(Array.isArray(v)&&k==='cor'?v:val))}">${esc(eqV(k,Array.isArray(v)&&k==='cor'?v:val))}</button>`}).join('')}<button class="chip" data-eqp="${k}|null">Não sei</button></div></div>`).join('')}</div>`:'';
+      const card=(r,i)=>{const p=r.p, sl=EQ_SELO[r.selo]||EQ_SELO.prox; const pr=(P[p.id]||{}).liq;
+        const trv=r.trava&&r.trava.length?': falta '+r.trava.map(l=>EQ_LAB[l.k]+(l.k==='risco'?' ('+eqV('risco',(l.v||[]).filter(x=>!(l.b||[]).includes(x)))+')':'')).join(', '):'';
+        const lin=(r.lin||[]).filter(l=>l.k!=='ca').map(l=>{const s=EQ_ST[l.st]||EQ_ST['?']; const tx=l.st==='ok'?`${EQ_LAB[l.k]}: ${eqV(l.k,l.b)}`:l.st==='mais'?`tem a mais: ${EQ_LAB[l.k]}${l.k==='bico'?' '+eqV('bico',l.b):''}`:l.st==='?'?`${EQ_LAB[l.k]}: pedido ${eqV(l.k,l.v)}, sem informação no nosso`:`${EQ_LAB[l.k]}: pedido ${eqV(l.k,l.v)}, o nosso é ${eqV(l.k,l.b)}`; return `<span class="eqt" style="color:${s[1]};background:${s[2]}">${s[0]} ${esc(tx)}</span>`}).join('');
+        const vars=(r.vars||[]).filter(v=>v.p.id!==p.id); const est=String((p.attrs||{}).est||'');
+        return `<div class="card" style="margin:0 0 10px${i===0?';border:2px solid var(--accent)':''}"><div class="eqc"><img src="${esc(p.img||'')}" data-zoom="${esc(p.img||'')}" data-cap="${esc(p.cod)}" style="cursor:zoom-in" loading="lazy" onerror="this.style.visibility='hidden'" alt="Foto ${esc(p.cod)}"><div style="min-width:0">
+          <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap">${i===0?'<b style="color:var(--accent)">1º · O MAIS PRÓXIMO</b>':`<b>${i+1}º</b>`}<span class="eqs" style="color:${sl[1]};background:${sl[2]}">${sl[0]}${esc(trv)}</span><b style="font-size:18px">${Math.min(100,Math.round(r.pts*100))}%</b>${r.ind?`<span class="tag" title="${esc(r.ind.motivo||'')}">👍 ${r.ind.tipo==='igual'?'Equivalente':'Semelhante'} indicado por ${esc(r.ind.por||'vendedor')}</span>`:''}${r.mesmoCA?'<span class="tag">Mesmo CA</span>':''}</div>
+          <div style="margin-top:4px"><b>${esc(repName(p.rep))} ${esc(p.cod)}</b> · ${esc(p.descricao||'')}</div>
+          <div class="hint" style="font-size:12.5px">${[est,pr?brl(pr)+' (tabela do orçamento)':'',r.ind&&r.ind.motivo?'“'+r.ind.motivo+'”':''].filter(Boolean).map(esc).join(' · ')}</div>
+          ${vars.length?`<div class="hint" style="font-size:12.5px;margin-top:2px">Também: ${vars.slice(0,6).map(v=>`<button class="chip" style="padding:3px 8px;font-size:12px" data-eqadd="${v.p.id}" title="${esc(v.p.descricao)}">+ ${esc(v.p.cod)} ${esc(v.p.rep==='medix'&&typeof tamMx==='function'&&tamMx(v.p)?tamMx(v.p).lab:eqV('cor',(v.a&&v.a.cor)||[]))}</button>`).join(' ')}</div>`:''}
+          <div style="margin-top:6px">${lin}</div>
+          <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-eqadd="${p.id}" data-eqi="${i}">+ Orçamento</button>${ca?`<button class="btn sm ghost" data-eqind="igual|${p.id}">👍 É este</button><button class="btn sm ghost" data-eqind="semelhante|${p.id}">≈ Semelhante serve</button><button class="btn sm ghost" data-eqind="nao|${p.id}">👎 Não é</button>`:''}${ehGestor()?`<button class="btn sm ghost" data-eqfix="${p.id}" title="Corrigir as características deste modelo (vale para todos os tamanhos/cores dele)">✎ Corrigir ficha</button>`:''}</div>
+        </div></div></div>`};
+      const vaz=!res.length?`<div class="card" style="margin:0 0 10px"><b>Não temos ${q.tipo?esc(eqV('tipo',q.tipo).toLowerCase()):'esse produto'} ${st.todas?'em nenhuma fábrica':'em '+esc(repName(rep))}.</b> ${st.todas?'':'Marque "Procurar em todas as fábricas" ou '}indique abaixo um produto que sirva.</div>`:'';
+      R.innerHTML=cab+pg+vaz+res.map(card).join('')+`<div class="card" style="margin:0 0 10px"><b>Não é nenhum desses? Indique o equivalente</b><div class="hint" style="font-size:12.5px">Vale para todos na hora: da próxima vez este CA já traz o seu produto em 1º.</div>
+        <div class="row" style="gap:8px;margin-top:6px;flex-wrap:nowrap"><input id="eqIq" type="search" placeholder="Código ou descrição do nosso produto (qualquer fábrica)" style="flex:1;min-width:0"></div><input id="eqIm" placeholder="Motivo (opcional) — ex.: é nobuck marrom" style="margin-top:6px"><div id="eqIr"></div></div>
+        <div class="hint" style="font-size:12px;text-align:center;margin:6px 0 14px">Nota = quanto as características batem com o CA. ✓ igual · ≈ parecido · ✕ diferente · + o nosso tem a mais · ? sem informação. <button class="btn ghost sm" id="eqOld">Abrir o conversor antigo</button></div>`}
+    catch(e){R.innerHTML=`<p class="hint">Erro: ${esc(e.message)}</p>`}};
+  const indicar=async(tipo,p,motivo)=>{if(!st.ca) return toast('Indicação vale para CA: digite o número do CA'); try{await eqSalvar({ca:st.ca,ref:st.extra||null,rep:p.rep,cod:p.cod,produto_id:p.id,tipo,motivo:motivo||null}); toast(tipo==='nao'?'Anotado: não é equivalente':'Gravado: '+p.cod+' é '+(tipo==='igual'?'equivalente':'semelhante')+' ao CA '+st.ca); run()}catch(e){toast('Erro: '+e.message)}};
+  ov.addEventListener('click',async e=>{const t=e.target; if(t.id==='eqGo') return run(); if(t.id==='eqOld'){ov.remove(); return abrirCA(rep,o,st.q?'CA '+st.q:'',false,true)}
+    const pq=t.closest('[data-eqp]'); if(pq){const [k,v]=pq.dataset.eqp.split(/\|(.*)/s); const val=JSON.parse(v); if(val==null){st.resp[k]=undefined; delete st.resp[k]; st.resp['_'+k]=1} else st.resp[k]=val; return run()}
+    const ad=t.closest('[data-eqadd]'); if(ad){const id=+ad.dataset.eqadd; let p=null; for(const r of st.res||[]) for(const v of r.vars||[]) if(v.p.id===id) p=v.p; if(!p) return;
+      if(p.rep!==rep) return toast(`${p.cod} é da ${repName(p.rep)}: abra a pasta ${repName(p.rep)} para incluir no orçamento dela`);
+      let it=o.itens.find(i=>i.pid===p.id); if(!it){it={pid:p.id,qt:0}; o.itens.push(it)} it.qt+=p.mult||1; saveQ(o); badge(); n++; ov.querySelector('#eqN').textContent=`${n} adicionado(s) · último: ${p.cod}`; toast(p.cod+' no orçamento');
+      const i=+(ad.dataset.eqi||-1), r0=(st.res||[])[0]; if(st.ca&&r0&&!(r0.vars||[]).some(v=>v.p.id===p.id)&&!(st.res.find(r=>r.vars.some(v=>v.p.id===p.id))||{}).ind){
+        const b=document.createElement('div'); b.className='toast'; b.style.cssText='pointer-events:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap'; b.innerHTML=`Gravar ${esc(p.cod)} como equivalente do CA ${esc(st.ca)}? <button class="btn sm" data-q="igual">Sim</button><button class="btn sm ghost" data-q="semelhante">Semelhante</button><button class="btn sm ghost" data-q="">Agora não</button>`;
+        document.body.appendChild(b); b.onclick=ev=>{const q=ev.target.dataset.q; if(q==null) return; b.remove(); if(q) indicar(q,p)}; setTimeout(()=>b.remove(),12000)} return}
+    const fx=t.closest('[data-eqfix]'); if(fx){const r=(st.res||[]).find(r=>r.p.id===+fx.dataset.eqfix); if(r) eqFixForm(r,run); return}
+    const ind=t.closest('[data-eqind]'); if(ind){const [tp,id]=ind.dataset.eqind.split('|'); let p=null; for(const r of st.res||[]) if(r.p.id===+id) p=r.p; if(!p&&st.sug) p=st.sug.find(x=>x.id===+id); if(!p) return; const mv=tp==='nao'?prompt('Por que não é? (opcional)')||'':(ov.querySelector('#eqIm')||{}).value||''; return indicar(tp,p,mv)}});
+  ov.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.target.id==='eqQ'||e.target.id==='eqE')){e.preventDefault(); run()}});
+  ov.addEventListener('change',e=>{if(e.target.id==='eqTd') run(); if(e.target.id==='eqFt'){const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{st.foto=rd.result; run()}; rd.readAsDataURL(f)}});
+  let tI=0; ov.addEventListener('input',e=>{if(e.target.id!=='eqIq') return; clearTimeout(tI); tI=setTimeout(async()=>{const w=norm(e.target.value).trim().split(/\s+/).filter(Boolean); const box=ov.querySelector('#eqIr'); if(!w.length){box.innerHTML=''; return}
+    const C=await catalogosTec(); const L=C.filter(p=>{const s=norm(p.cod+' '+(p.ref||'')+' '+p.descricao); return w.every(x=>s.includes(x))}).slice(0,8); st.sug=L;
+    box.innerHTML=L.length?L.map(p=>`<div class="row" style="gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span style="min-width:0"><b>${esc(repName(p.rep))} ${esc(p.cod)}</b> · <span class="hint">${esc(String(p.descricao||'').slice(0,110))}</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-eqind="igual|${p.id}">Igual</button><button class="btn sm ghost" data-eqind="semelhante|${p.id}">Semelhante</button></span></div>`).join(''):'<p class="hint">Nada encontrado.</p>'},250)});
+  if(st.q) run(); else ov.querySelector('#eqQ').focus()}
+/*EQV-FIM*/
+async function abrirCA(rep,o,q,refinar,antigo){if(EQV_ON&&!refinar&&!antigo) return eqAbrir(rep,o,q); await garantirTp(); const tab=(TABS[rep]||[]).find(t=>t.id==o.tabela); const nm=tab?norm(tab.nome):''; const canal=rep==='medix'?((nm.match(/SUDESTE (\d)/)||[])[1]||''):(nm==='TABELA GERAL SP'?'0':nm.replace(/^TABELA\s+/,''));
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh" style="max-width:960px;width:100%;height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"><div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">⇄ Converter CA · ${esc(repName(rep))}</b><span class="hint" id="caN">Toque em “+ orçamento” no produto escolhido</span><button class="btn sm" id="caX">Concluir</button></div><iframe title="Conversor de CA" src="${EXTERNAL[rep]}?embed=1&canal=${encodeURIComponent(canal)}${q?'&q='+encodeURIComponent(q):''}" style="flex:1;border:0;width:100%;background:#fff"></iframe></div>`;
   document.body.appendChild(ov); if(refinar) ov.querySelector('iframe').dataset.refinar='1'; if(CONV_PASTA) caSoBusca(ov.querySelector('iframe')); let n=0;
   const onm=async e=>{if(e.origin!==location.origin||!e.data||e.data.t!=='chamae-add'||e.data.rep!==rep) return; const C=await catalog(rep); const P=await prices(o.tabela); const lst=e.data.items||[{ref:e.data.ref,cod:e.data.cod,qt:null}]; const falta=[];

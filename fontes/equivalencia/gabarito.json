@@ -1,0 +1,16 @@
+{"_leia":"Casos que o motor de semelhança (chamae/app.js, bloco EQV-MOTOR) tem de acertar SEM as indicações dos vendedores. 'top' = posição máxima aceita; 'aceita' = códigos do modelo certo (qualquer tamanho/cor). Rodar: node teste_equivalencia.js (precisa produtos.json, ver LEIA-ME.md).",
+"casos":[
+ {"ca":"38530","aceita":["700209","700294"],"top":1,"obs":"botina elástico microfibra composite isolante"},
+ {"ca":"45599","aceita":["700196","700231","700283","700209","700294"],"top":3,"obs":"botina elástico microfibra ocupacional"},
+ {"ca":"42291","aceita":["700446","700447","700448","700453"],"top":1,"obs":"CA da própria Marluvas (bota PVC)"},
+ {"ca":"40677","extra":"botina nobuck marrom","aceita":["700312","700323","700457","700314","701925","701924"],"top":1,"obs":"PS-139 nobuck marrom ocupacional"},
+ {"ca":"40677","aceita":["700305","700097","700136","700260","700399","700312"],"top":1,"obs":"sem dizer nobuck: botina couro ocupacional cadarço"},
+ {"ca":"38396","aceita":["700215","700190","700712","700539"],"top":3,"obs":"botina cadarço microfibra composite isolante antiperfurante"},
+ {"ca":"37931","aceita":["10383","13613","13614"],"top":1,"obs":"tricotada com pigmentos"},
+ {"ca":"43392","aceita":["11356","11357","11358","11359"],"top":1,"obs":"látex + neoprene flocada"},
+ {"ca":"5774","aceita":["11356","11357","11358","11359"],"top":1,"obs":"látex + neoprene flocada"},
+ {"ca":"16779","aceita":["11356","11357","11358","11359"],"top":1,"obs":"látex + neoprene flocada"},
+ {"ca":"41019","aceita":["17","29","30","42"],"top":1,"obs":"procedimento látex com pó"},
+ {"ca":"42979","aceita":["10393","10394","10395","10396","14322","14323","14324","14325"],"top":2,"obs":"nitrílica sem forro"},
+ {"ca":"25313","aceita":["10393","10394","10395","10396","14322","14323","14324","14325"],"top":2,"obs":"nitrílica texturizada"}
+]}

@@ -266,3 +266,17 @@
  .opl-cmp .opl-h{display:inline}
 }
 @media(max-width:760px){.opl-cmp .opl-tam .btn,.opl-cmp .opl-tam .qty button{min-height:34px!important;height:34px;padding:0 12px}.opl-cmp .opl-tam .qty input{min-height:34px!important;height:34px}.opl-cmp .opl-tam{padding:1px 2px}}
+
+/* mudar a ordem dos itens do orçamento (24/11): ▲ ▼ ao lado do ✕; alça ⠿ para arrastar só no PC (mouse) */
+.oord-w{display:flex;gap:6px;align-items:center;flex:none}
+.oord{display:inline-flex;gap:4px;align-items:center}
+.oord .chip{min-width:36px;min-height:36px;padding:0 8px;justify-content:center;font-size:13px}
+.oord .chip[disabled]{opacity:.3;cursor:default}
+.oord-h{display:none;cursor:grab;font-size:20px;line-height:1;padding:4px 6px;color:var(--muted,#8a94a6);user-select:none}
+.oord-h:active{cursor:grabbing}
+@media (hover:hover) and (pointer:fine){.oord-h{display:inline-block}}
+[data-oit]{transition:background .3s}
+.oord-flash{background:rgba(244,180,0,.14)!important}
+.oord-drop-a{box-shadow:inset 0 3px 0 var(--accent,#f4b400)}
+.oord-drop-b{box-shadow:inset 0 -3px 0 var(--accent,#f4b400)}
+.mlv-ac .oord-w{margin-left:auto}

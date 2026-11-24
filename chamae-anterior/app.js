@@ -1266,8 +1266,10 @@ async function buscaOrcsTudo(q,lim){q=String(q||'').trim(); if(q.length<2) retur
   let O=[]; try{O=await apiAll(`orcamentos?select=*&or=(${ors.join(',')})&order=atualizado_em.desc`)}catch(e){try{O=await api(`orcamentos?select=*&or=(${ors.join(',')})&order=atualizado_em.desc&limit=300`)}catch(e2){}}
   /* orçamentos/pedidos antigos do Reprio (gravados em pedidos, origem reprio): desde que o Reprio foi desligado não aparecem na lista do mês, mas a busca acha */
   try{const pr=[`num.ilike.${x}`,`oc.ilike.${x}`,`num_fabrica.ilike.${x}`,`cliente.ilike.${x}`]; if(dg.length>=4) pr.push(`cnpj.like.*${dg}*`);
-    const R=await apiAll(`pedidos?select=id,num,oc,representada,cnpj,cliente,data,valor,vendedor,status,itens,num_fabrica,situacao_fabrica&origem=eq.reprio&or=(${pr.join(',')})&order=data.desc`);
-    R.forEach(r=>{if(!O.some(o=>o.dados&&o.dados.num&&o.dados.num===r.num&&o.cnpj===r.cnpj)) O.push(rpOrc(r))})}catch(e){}
+    const R=await apiAll(`pedidos?select=${HCAMPOS}&status=neq.duplicado&or=(${pr.join(',')})&order=data.desc`);
+    if(t.length>=3&&/\d/.test(t)&&!/\s/.test(t)){const it=await api(`pedido_itens?select=pedido_id&cod=ilike.${encodeURIComponent(t)}*&limit=600`).catch(()=>[]); const ids=[...new Set(it.map(i=>i.pedido_id))].filter(i=>!R.some(r=>r.id===i)).slice(0,300);
+      for(let k=0;k<ids.length;k+=80) R.push(...await api(`pedidos?select=${HCAMPOS}&status=neq.duplicado&id=in.(${ids.slice(k,k+80).map(i=>'"'+encodeURIComponent(i)+'"').join(',')})`).catch(()=>[]))}
+    semSisDup(O,semDupLeg(R).map(rpOrc)).forEach(r=>{if(!O.some(o=>o.dados&&o.dados.num&&o.dados.num===r.num&&o.cnpj===r.cnpj)) O.push(r)})}catch(e){}
   if(!O.length&&dg.length===14&&cnpjOk(dg)){try{O=await api(`orcamentos?select=*&cnpj=like.${dg.slice(0,8)}*&order=atualizado_em.desc&limit=300`); O._raiz=1}catch(e){}} /* CNPJ da matriz/outra filial: mostra os da mesma empresa */
   O.forEach(fixTotOrc); return lim?O.slice(0,lim):O}
 const orcTxt=o=>{const d=o.dados||{}; return [o.cliente,o.cnpj,d.cli&&d.cli.fa,repName(o.app),stLbl(stOf(o)),d.oc,d.num,d.num_fabrica,d.copiado_de,d.sigma&&d.sigma.orv,(d.linhas||[]).map(l=>l.cod+' '+(l.desc||'')).join(' ')].join(' ')};
@@ -1645,14 +1647,22 @@ const RSTAT={rascunho:'orcamento',em_digitacao:'orcamento',aprovado:'aprovado_tr
 const REPID=Object.fromEntries(Object.entries(HIST_REP).map(([k,v])=>[v,k]));
 async function reprioOrcs(de,ate){if(!REPRIO_ON) return []; try{const q=c=>apiAll(`pedidos?select=id,num,oc,representada,cnpj,cliente,data,valor,vendedor,status,itens${c}&origem=eq.reprio&data=gte.${de}&data=lte.${ate}&order=data.desc`); const r=await q(',num_fabrica,situacao_fabrica').catch(()=>q(''));
   return r.map(rpOrc)}catch(e){return []}}
-function rpOrc(x){return {id:'rp:'+x.id,origem:'reprio',num:x.num,app:REPID[x.representada]||x.representada,cliente:x.cliente,cnpj:x.cnpj,total:x.valor,itens:x.itens,status:RSTAT[x.status]||'orcamento',atualizado_em:x.data+'T12:00:00',vend:x.vendedor,num_fabrica:x.num_fabrica,situacao_fabrica:x.situacao_fabrica,dados:{num:x.num,oc:x.oc,num_fabrica:x.num_fabrica,rep:REPID[x.representada]}}}
-async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:L('pedAba')||'orc',y:now.getFullYear(),mo:now.getMonth(),st:'',view:L('pedView')||undefined},L('pedF')||{}); const V=await vendedores();
+/* 24/11/2026 (Victor: "deixar tudo em um único"): pedidos do sistema antigo (origem planilha), do Reprio e as vendas do Sistema (sis-) entram na mesma lista dos orçamentos.
+   Aprovado do sistema antigo / finalizado = pedido transmitido na fábrica. Tocar abre o detalhe do pedido. */
+const HSTAT=s=>/^APROVADO/i.test(String(s||''))?'transmitido':(RSTAT[s]||'orcamento');
+const HCAMPOS='id,num,oc,representada,cnpj,cliente,cidade,data,valor,vendedor,status,itens,num_fabrica,situacao_fabrica,origem,prazo';
+async function histOrcs(de,ate){try{return semDupLeg(await apiAll(`pedidos?select=${HCAMPOS}&status=neq.duplicado&data=gte.${de}&data=lte.${ate}&order=data.desc`)).map(rpOrc)}catch(e){return []}}
+/* venda do Sistema (sis-<id do orçamento>) só entra se o orçamento não estiver na lista (senão apareceria duas vezes) */
+const porData=a=>a.sort((x,y)=>String(y.atualizado_em||'').localeCompare(String(x.atualizado_em||'')));
+const semSisDup=(O,H)=>{const ids=new Set(O.map(o=>'rp:sis-'+o.id)); return H.filter(x=>!ids.has(x.id))};
+function rpOrc(x){return {id:'rp:'+x.id,ped:true,origem:x.origem==='planilha'?'historico':(x.origem||'reprio'),num:x.num,app:REPID[x.representada]||x.representada,cliente:x.cliente,cidade:x.cidade,prazo:x.prazo,cnpj:x.cnpj,total:x.valor,itens:x.itens,status:HSTAT(x.status),atualizado_em:x.data+'T12:00:00',vend:x.vendedor,num_fabrica:x.num_fabrica,situacao_fabrica:x.situacao_fabrica,dados:{num:x.num,oc:x.oc,num_fabrica:x.num_fabrica,rep:REPID[x.representada]}}}
+async function ped(){const m=$('#main'); const now=new Date(); const f=Object.assign({q:'',rep:'',vend:'',de:'',ate:'',tipo:'orc',y:now.getFullYear(),mo:now.getMonth(),st:'',view:L('pedView')||undefined},L('pedF')||{}); f.tipo='orc'; f.lim=300; const V=await vendedores();
   /* Meus x Todos: abre com os do vendedor logado; o vendedor volta para "Meus" sempre que entra na tela, o gestor fica com a última escolha */
   const ges=ehGestor(), eu=ehAssist(meuVend())?'':meuVend(); if(!f.quem) f.quem=ges?(L('pedQuem')||'meu'):'meu'; const so=f.quem==='meu'&&!!eu;
   const euN=eu?eu.charAt(0)+eu.slice(1).toLowerCase():'', euL=[eu,...Object.keys(EXV).filter(k=>EXV[k]===eu)];
   const nF=(f.q?1:0)+(f.rep?1:0)+(f.vend&&!so?1:0), perTxt=f.de||f.ate?`${f.de?f.de.split('-').reverse().join('/'):'…'} a ${f.ate?f.ate.split('-').reverse().join('/'):'hoje'}`:f.mo==-1?`Ano ${f.y}`:`${MESES[f.mo]} ${f.y}`;
   m.innerHTML=`<div class="row" style="justify-content:space-between"><div class="sec" style="margin:0">Pedidos e orçamentos</div>${REPRIO_ON?'<button class="chip" id="psync">↻ Sincronizar Reprio</button>':''}${ehGestor()?'<button class="chip" id="plix">🗑 Lixeira</button>':''}</div>
-   <div class="row" style="margin:10px 0"><button class="chip${f.tipo==='orc'?' on':''}" data-tp="orc">Orçamentos</button><button class="chip${f.tipo==='ped'?' on':''}" data-tp="ped">Pedidos faturados (histórico + Reprio)</button></div>
+   <p class="hint" style="margin:6px 0 10px">Orçamentos e pedidos juntos: os feitos no Sistema, os do Reprio e o histórico do sistema antigo.</p>
    ${eu?`<div class="row pquem" style="margin:0 0 10px;gap:6px"><span class="hint">Mostrar:</span><button class="chip${so?' on':''}" data-quem="meu" title="Só os de ${esc(euN)}">👤 Só os meus</button><button class="chip${so?'':' on'}" data-quem="todos">👥 Todos</button></div>`:''}
    <div id="balls"></div>
    <details class="card pfil" style="margin-top:10px"${!CEL()||nF?' open':''}><summary><b>🔎 Buscar e filtrar</b> <span class="hint">· ${esc(perTxt)}${nF?` · ${nF} filtro${nF>1?'s':''}`:''}</span></summary><div class="grid" style="margin-top:10px"><input id="pq" type="search" placeholder="Ordem de compra, nº do pedido, cliente, CNPJ ou código de produto" value="${esc(f.q)}">
@@ -1678,8 +1688,8 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
   $('#pq').onkeydown=e=>{if(e.key==='Enter'){read(); buscar()}};
   async function buscar(modo){const r=$('#pres'); if(modo!=='filtro') r.innerHTML='<p class="hint">Buscando…</p>'; const [de,ate]=range();
     try{if(f.tipo==='orc'){/* a lista do período fica guardada: trocar a situação, a representada ou o vendedor só filtra o que já veio (não busca de novo) */ const k=de+'|'+ate; const usa=PEDC&&PEDC.k===k&&modo!=='forca'&&(modo==='filtro'||Date.now()-PEDC.t<60000);
-        if(!usa){let p=`orcamentos?select=*&order=atualizado_em.desc&atualizado_em=gte.${de}&atualizado_em=lte.${ate}T23:59:59&limit=1000`; const [Oa,Ob,Pf]=await Promise.all([api(p),reprioOrcs(de,ate),api('perfis?select=id,nome').catch(()=>[])]); Oa.forEach(fixTotOrc); PEDC={k,t:Date.now(),O0:Oa.concat(Ob),P:Pf}}
-        const O0=f.q?await buscaOrcsTudo(f.q):PEDC.O0, P=PEDC.P; /* com texto na busca: todo o histórico, sem mês e sem 'só os meus' */ const nmM={}; P.forEach(x=>nmM[x.id]=x.nome); const nm=id=>nmM[id]||'';
+        if(!usa){let p=`orcamentos?select=*&order=atualizado_em.desc&atualizado_em=gte.${de}&atualizado_em=lte.${ate}T23:59:59&limit=1000`; const [Oa,Ob,Pf]=await Promise.all([api(p),histOrcs(de,ate),api('perfis?select=id,nome').catch(()=>[])]); Oa.forEach(fixTotOrc); PEDC={k,t:Date.now(),O0:porData(Oa.concat(semSisDup(Oa,Ob))),P:Pf}}
+        const O0=f.q?porData(await buscaOrcsTudo(f.q)):PEDC.O0, P=PEDC.P; /* com texto na busca: todo o histórico, sem mês e sem 'só os meus' */ const nmM={}; P.forEach(x=>nmM[x.id]=x.nome); const nm=id=>nmM[id]||'';
         /* é meu: feito com o meu login, ou com o meu nome de vendedor (inclui a carteira herdada de quem saiu) */
         const meuOrc=o=>{const v=vendDoOrc(o,nm); if(v) return vAt(v).startsWith(eu); return !!(sess&&o.user_id&&o.user_id===sess.uid)};
         const O1=O0.filter(o=>(!f.rep||APPNOME[o.app]===f.rep)&&(so&&!f.q?meuOrc(o):!f.vend||norm(vendDoOrc(o,nm)).includes(norm(f.vend))));
@@ -1687,17 +1697,19 @@ async function ped(){const m=$('#main'); const now=new Date(); const f=Object.as
         const O=O1.filter(o=>!f.st||stCard(o)===f.st); r._O=O;
         
         await mapaFotos(O.map(o=>(o.dados&&o.dados.rep)||o.app));
-        const ORIG=o=>o.origem==='reprio'?'<span class="tg tg-r">Reprio</span>':o.dados&&o.dados.origem==='b2b'?'<span class="tg tg-b">Portal</span>':'<span class="tg tg-s">Sistema</span>'+estSelo(o.dados);
-        r.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><p class="hint" style="margin:0">${O.length} registro(s) · <b>${brl(O.reduce((s,o)=>s+(+o.total||0),0))}</b>${f.q?' · busca em todo o histórico (nº, cliente, CNPJ, Sigma/fábrica, OC, produto)':''}</p></div>
+        const ORIG=o=>o.origem==='reprio'?'<span class="tg tg-r">Reprio</span>':o.origem==='historico'?'<span class="tg">Histórico</span>':o.dados&&o.dados.origem==='b2b'?'<span class="tg tg-b">Portal</span>':'<span class="tg tg-s">Sistema</span>'+(o.ped?'':estSelo(o.dados));
+        r.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><p class="hint" style="margin:0">${O.length} registro(s) · <b>${brl(O.reduce((s,o)=>s+(+o.total||0),0))}</b>${f.q?' · busca em todo o histórico (nº, cliente, CNPJ, Sigma/fábrica, OC, produto)':''}${O.length>f.lim?` · mostrando ${f.lim}`:''}</p><button class="chip" id="pcsv">Exportar</button></div>
          <div class="ptab"><div class="ph"><span>Nº / Data</span><span>Representada</span><span>Cliente</span><span>Vendedor</span><span class="n">Valor</span><span>Situação</span></div>
-         ${O.map(o=>{const d=o.dados||{}; const rep=d.rep||o.app; const nf=d.num_fabrica||o.num_fabrica; const c=d.cli||{};
+         ${O.slice(0,f.lim).map(o=>{const d=o.dados||{}; const rep=d.rep||o.app; const nf=d.num_fabrica||o.num_fabrica; const c=d.cli||{};
            return `<button class="pr" data-od="${esc(o.id)}" style="--sc:${stCor(stOf(o))}">
-            <span class="c-num"><b>${esc(o.origem==='reprio'?(o.num||String(o.id).replace(/^rp:rep-/,'')):(d.num||nf||'—'))}</b>${o.origem!=='reprio'&&nf&&d.num?`<small>Fábrica ${esc(nf)}</small>`:''}<small>${new Date(o.atualizado_em).toLocaleDateString('pt-BR')}</small>${d.oc?`<small class="lk">OC ${esc(d.oc)}</small>`:''}</span>
+            <span class="c-num"><b>${esc(o.ped?(o.num||String(o.id).replace(/^rp:\w+-/,'')):(d.num||nf||'—'))}</b>${nf&&(o.ped||d.num)?`<small>Fábrica ${esc(nf)}</small>`:''}<small>${new Date(o.atualizado_em).toLocaleDateString('pt-BR')}</small>${d.oc?`<small class="lk">OC ${esc(d.oc)}</small>`:''}</span>
             <span class="c-rep">${repIcon(rep,22)}<span>${esc(repName(rep))}</span></span>
-            <span class="c-cli"><b>${esc(o.cliente||'Sem cliente')}</b>${c.fa?`<small>${esc(c.fa)}</small>`:''}<span class="row" style="gap:4px;margin-top:2px">${ORIG(o)}${nf&&o.origem!=='reprio'?`<span class="tg">Fábrica ${esc(nf)}</span>`:''}${d.programado?`<span class="tg">📅 ${esc(d.programado.split('-').reverse().join('/'))}</span>`:''}</span></span>
+            <span class="c-cli"><b>${esc(o.cliente||'Sem cliente')}</b>${c.fa?`<small>${esc(c.fa)}</small>`:''}${o.ped&&(o.cidade||o.prazo)?`<small>${esc([o.cidade,o.prazo].filter(Boolean).join(' · '))}</small>`:''}<span class="row" style="gap:4px;margin-top:2px">${ORIG(o)}${nf&&!o.ped?`<span class="tg">Fábrica ${esc(nf)}</span>`:''}${d.programado?`<span class="tg">📅 ${esc(d.programado.split('-').reverse().join('/'))}</span>`:''}</span></span>
             <span class="c-ven">${esc(vendDoOrc(o,nm)||nm(o.user_id)||'—')}${d.transmitido_por&&ehAssist(d.transmitido_por)?`<small>transmitido por ${esc(d.transmitido_por)} (assistente)</small>`:''}</span>
             <span class="c-val n"><b>${brl(o.total)}</b><small>${o.itens||0} itens</small></span>
-            <span class="c-st">${stPill(stOf(o))}${d.motivo_perda?`<small class="bad">${esc(d.motivo_perda)}</small>`:''}</span></button>`}).join('')}</div>`; return}
+            <span class="c-st">${stPill(stOf(o))}${d.motivo_perda?`<small class="bad">${esc(d.motivo_perda)}</small>`:''}</span></button>`}).join('')}</div>${O.length>f.lim?`<div style="text-align:center;margin-top:10px"><button class="btn ghost" id="pmais">Mostrar mais (${O.length-f.lim} restantes)</button></div>`:''}`;
+        if($('#pmais')) $('#pmais').onclick=()=>{f.lim+=500; buscar('filtro')};
+        $('#pcsv').onclick=()=>csv('pedidos-e-orcamentos',[['Data','Representada','Nº','OC','Pedido na fábrica','Cliente','CNPJ','Cidade','Vendedor','Prazo','Situação','Origem','Valor s/ IPI'],...O.map(o=>{const d=o.dados||{}; return [new Date(o.atualizado_em).toLocaleDateString('pt-BR'),repName(d.rep||o.app),o.ped?o.num:(d.num||''),d.oc||'',d.num_fabrica||o.num_fabrica||'',o.cliente||'',o.cnpj||'',o.cidade||(d.cli&&d.cli.cid)||'',vendDoOrc(o,nm)||nm(o.user_id)||'',o.prazo||d.prazo||'',(STATUS.find(x=>x[0]===stOf(o))||[,stOf(o)])[1],o.origem==='historico'?'Histórico':o.origem==='reprio'?'Reprio':'Sistema',String(Math.round(vOrc(o)*100)/100).replace('.',',')]})]); return}
       $('#balls').innerHTML='';
       let ids=null; if(f.q&&/[A-Z]/i.test(f.q)&&/\d/.test(f.q)&&!/\s/.test(f.q)){const it=await api(`pedido_itens?select=pedido_id&cod=ilike.${encodeURIComponent(f.q)}*&limit=500`).catch(()=>[]); if(it.length) ids=[...new Set(it.map(x=>x.pedido_id))].slice(0,150)}
       const ef='or(status.is.null,status.eq.finalizado,status.like.APROVADO*)'; let cond=[ef]; let p='pedidos?select=id,num,oc,num_fabrica,representada,cnpj,cliente,cidade,data,valor,prazo,vendedor,status,itens,origem&order=data.desc';
@@ -5492,7 +5504,7 @@ const TUT={
   ['[data-ab="atr"]','Atrasadas aparecem em vermelho. Abra para concluir ou adiar.'],
   ['[data-quem]','"Minhas" mostra só as suas; "Equipe" mostra as de todos.']]},
  ped:{t:'Pedidos e situação',d:'Achar um pedido e entender cada situação.',r:'ped',p:[
-  ['[data-tp]','"Orçamentos" são os feitos no Sistema e no Reprio. "Pedidos faturados" é o histórico que a fábrica faturou.'],
+  ['#balls','Orçamentos e pedidos ficam juntos: os do Sistema, os do Reprio e o histórico do sistema antigo. Toque num quadro para filtrar pela situação.'],
   ['#balls','Cada cartão é uma situação: toque para ver só aquela. Orçamento → aguardando aprovação → aprovado para transmissão → transmitido na fábrica.'],
   ['.pfil','Busque pelo nº do pedido, OC, cliente, CNPJ ou código de produto, e escolha o período.'],
   ['#pres','Toque num pedido para ver os itens, mudar a situação ou gerar o PDF.']]},

@@ -806,9 +806,10 @@ function eqCmp(q,a){let s=0,mx=0; const lin=[];
 function eqFam(p){if(p.rep==='marluvas'){const ref=norm(p.ref||String(p.descricao).split('—')[0]).trim().replace(/(-(CX|NT))+-?$/,'').replace(/^(\d*[A-Z]+\d+)[A-Z]?(?=-|$)/,'$1').replace(/-(PR|BR|PRA|CNG|CNP|MSP|MSC|MSMC)$/,''); return 'marluvas|'+ref}
   return p.rep+'|'+(p.ca||'')+'|'+norm(p.descricao).replace(/\bTAM(ANHO)?\.?\s*[A-Z0-9.,]+(\s*\(\d+\))?/g,' ').replace(/\b(PP|P|M|G|GG|XG|EG|EGG|XGG|XP)\b(\s*\(\d+\))?/g,' ').replace(/\(\d+(\.\d)?\)/g,' ').replace(/\b(PRETO|PRETA|BRANCO|BRANCA|AZUL|AMARELA|AMARELO|ROSA|VERDE|LARANJA)\b/g,' ').replace(/\(FARDO\)|\(ENCARTELADO\)|FARDO|ENCARTELADO/g,' ').replace(/\s+/g,' ').trim()}
 /* ranqueia: q = o que se pede; C = catálogo; conf = equivalências indicadas {cod:{tipo,por,motivo}}; n = quantos modelos */
+let EQ_FC=null; /* cache das fichas durante a conversão de lista */
 function eqRank(q,C,base,conf,n,ca){const g=eqGrupo(q.tipo); conf=conf||{}; const res=[];
-  for(const p of C){const cf=conf[p.rep+'|'+p.cod]; if(cf&&cf.tipo==='nao') continue; const a=eqFicha(p,base); if(!cf&&(!g||eqGrupo(a.tipo)!==g)) continue;
-    let r; if(ca&&p.ca&&String(p.ca).replace(/\D/g,'').replace(/^0+/,'')===ca) r={pts:1,lin:[{k:'ca',v:ca,b:ca,st:'ok'}],trava:[],selo:'eq',mesmoCA:true}; else r=eqCmp(q,a);
+  for(const p of C){const cf=conf[p.rep+'|'+p.cod]; if(cf&&cf.tipo==='nao') continue; let a=EQ_FC&&EQ_FC.get(p); if(!a){a=eqFicha(p,base); if(EQ_FC) EQ_FC.set(p,a)} if(!cf&&(!g||eqGrupo(a.tipo)!==g)) continue;
+    let r; if(ca&&p.ca&&String(p.ca).replace(/\D/g,'').replace(/^0+/,'')===ca) r={pts:1+eqCmp(q,a).pts*.01,lin:[{k:'ca',v:ca,b:ca,st:'ok'}],trava:[],selo:'eq',mesmoCA:true}; /* mesmo CA: a cor/variação mais parecida vem antes */ else r=eqCmp(q,a);
     if(cf){r={...r,pts:cf.tipo==='igual'?1.02:1.01,selo:cf.tipo==='igual'?'eq':'sem',ind:cf}}
     r.pts+=(a.mts?.004:0); res.push({p,a,...r})}
   res.sort((x,y)=>y.pts-x.pts);
@@ -847,6 +848,74 @@ function eqLado(st,addBtn){const R=(st.res||[]).slice(0,3), q=st.q2||{}; if(!R.l
   ov.onclick=async e=>{const t=e.target; if(t===ov||t.closest('[data-x]')) return ov.remove(); const ad=t.closest('[data-lado-add]'); if(ad){ov.remove(); return addBtn(ad.dataset.ladoAdd,ad.dataset.i)}
     if(t.id==='eqLw'){const tx=(st.ca?`*CA ${st.ca}* ${x.f||''}\n`:'')+ks.map(k=>`${EQ_LAB[k]}: ${(R.map(r=>(r.lin||[]).find(l=>l.k===k)).find(Boolean)||{}).v!=null?eqV(k,(R.map(r=>(r.lin||[]).find(l=>l.k===k)).find(Boolean)).v):'—'}`).join('\n')+'\n\n'+R.map((r,i)=>`*${i+1}º ${repName(r.p.rep)} ${r.p.cod}* (${Math.min(100,Math.round(r.pts*100))}%)\n${r.p.descricao||''}\n`+(r.lin||[]).filter(l=>l.k!=='ca'&&l.st!=='ok'&&EQ_LAB[l.k]).map(l=>`${(EQ_ST[l.st]||EQ_ST['?'])[0]} ${EQ_LAB[l.k]}: ${l.b==null?'sem informação':eqV(l.k,l.b)}`).join('\n')).join('\n\n');
       try{await navigator.clipboard.writeText(tx); toast('Comparação copiada')}catch(_){toast('Não consegui copiar')}}}}
+/* 📋 Converter lista (pedido do Victor 23/11): cola a lista / sobe o Excel do cliente → cada item com o nosso mais próximo, planilha igual à da AGB, mensagem, orçamento e indicações */
+const eqNum=s=>{if(typeof s==='number') return s; s=String(s==null?'':s).trim(); if(!s) return null; s=s.replace(/\s/g,''); if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s=s.replace(/\./g,''); s=s.replace(',','.'); const v=parseFloat(s); return isNaN(v)?null:v};
+const eqCAs=s=>{const t=String(s||''); const out=[]; for(const m of t.matchAll(/\bC\.?\s?A\.?\s*(?:N[ºO°.]?\s*)?[:\-]?\s*(\d[\d.]{2,7})\b/gi)) out.push(m[1].replace(/\D/g,'')); return out};
+function eqLinha(s){const raw=String(s||'').trim(); if(!raw) return null; const cols=raw.split(/\t|;|\s\|\s/).map(x=>x.trim()).filter(Boolean); let cas=eqCAs(raw); let qtd=null, cod='';
+  const mq=raw.match(/(?:qtd?e?|quant(?:idade)?)\.?\s*[:\-]?\s*(\d[\d.,]*)/i)||raw.match(/(\d[\d.,]*)\s*(?:un\b|und|unid|pares?\b|prs?\b|p[çc]s?\b|cx\b|caixas?|fardos?|kits?)/i); if(mq) qtd=eqNum(mq[1]);
+  if(cols.length>1){if(!cas.length){const cc=cols.filter(c=>/^\d{4,6}(\s*\/\s*\d{4,6})*$/.test(c)); if(cc.length&&cols.some(c=>/[a-z]{3}/i.test(c))&&(qtd!=null||cc.length<cols.filter(c=>/^\d[\d.,]*$/.test(c)).length)) cas=cc[0].split('/').map(x=>x.trim())}
+    if(qtd==null){const nums=cols.filter(c=>/^\d[\d.,]*$/.test(c)&&!cas.includes(c.replace(/\D/g,''))); if(nums.length) qtd=eqNum(nums[nums.length-1])}
+    if(/\d/.test(cols[0])&&/^[A-Z0-9][\w.\-\/]{2,}$/i.test(cols[0])&&!cas.includes(cols[0].replace(/\D/g,''))&&eqNum(cols[0])!==qtd) cod=cols[0]}
+  let desc=(cols.length>1?cols.filter(c=>/[a-z]{2}/i.test(c)).sort((a,b)=>b.length-a.length)[0]||'':raw).replace(/\bC\.?\s?A\.?\s*(?:N[ºO°.]?\s*)?[:\-]?\s*\d[\d.]{2,7}\b/gi,' ');
+  if(mq&&cols.length<2) desc=desc.replace(mq[0],' '); desc=desc.replace(/^[\s\-–•*\d.)]+(?=[A-Za-zÀ-ú])/,'').replace(/[\s\-–—:,;]+$/,'').replace(/\s{2,}/g,' ').trim();
+  if(!desc&&!cas.length) return null; return {cod,desc,cas:[...new Set(cas)],qtd}}
+function eqPlanilhaItens(rows){let h=-1, M={}; for(let i=0;i<Math.min(rows.length,12);i++){const r=rows[i].map(x=>norm(String(x||''))); const ca=r.findIndex(x=>/(^| )C\.?A( |$|\.)|CERTIFICADO/.test(x)), de=r.findIndex(x=>/DESCRI|^ITEM|PRODUTO|MATERIAL/.test(x));
+    if(ca>=0||de>=0){h=i; M={ca,de,cod:r.findIndex((x,j)=>j!==ca&&/^C[OÓ]D/.test(x)),qt:-1}; r.forEach((x,j)=>{if(/QTD|QUANT/.test(x)) M.qt=j}); break}}
+  if(h<0) return rows.map(r=>eqLinha(r.join('\t'))).filter(Boolean);
+  return rows.slice(h+1).map(r=>{const g=j=>j>=0?String(r[j]==null?'':r[j]).trim():''; const desc=g(M.de), cs=g(M.ca); if(!desc&&!cs) return null; const cas=(cs.match(/\d[\d.]{2,7}/g)||[]).map(x=>x.replace(/\D/g,'')).concat(eqCAs(desc));
+    return {cod:g(M.cod),desc,cas:[...new Set(cas)],qtd:eqNum(g(M.qt))}}).filter(Boolean)}
+const EQ_CONF={eq:'Alta',sem:'Média',prox:'Baixa',nao:'Não atende',txt:'Baixa (pela descrição)'};
+const eqDifTx=r=>(r&&r.lin||[]).filter(l=>l.k!=='ca'&&EQ_LAB[l.k]&&!['ok','mais'].includes(l.st)).map(l=>`${(EQ_ST[l.st]||EQ_ST['?'])[0]} ${EQ_LAB[l.k]}: ${eqV(l.k,l.v)} → ${l.b==null||(Array.isArray(l.b)&&!l.b.length)?'sem informação':eqV(l.k,l.b)}`).join('; ');
+async function eqLista(rep,o,abrirUm){const st={its:[],todas:true};
+  const ov=document.createElement('div'); ov.className='ov'; ov.style.zIndex=42; ov.innerHTML=`<div class="sh" style="max-width:1150px;width:100%;max-height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+   <div class="row" style="justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">📋 Converter lista</b><button class="chip" data-x>✕</button></div>
+   <div style="overflow:auto;padding:12px 14px;flex:1"><div class="card" style="display:grid;gap:8px;margin:0 0 10px">
+    <div class="hint" style="font-size:13px">Cole a lista do cliente (WhatsApp, e-mail ou copiado do Excel), uma linha por item: descrição, CA e quantidade. Ex.: <i>Botina microfibra CA 45599 – 300 pares</i>. Ou suba a planilha dele.</div>
+    <textarea id="elT" rows="7" placeholder="410.0029	Botina Microfibra	45599	4350&#10;Luva nitrílica CA 33334 - 500 pares&#10;Bota PVC cano médio CA 42291 qtd 120"></textarea>
+    <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><label class="btn sm ghost" style="cursor:pointer">📎 Subir Excel/CSV<input type="file" id="elF" accept=".xlsx,.xls,.csv" hidden></label><label class="row" style="gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="elTd" checked style="width:18px;height:18px"> Todas as fábricas</label><button class="btn sm" id="elGo">Converter lista</button><span class="hint" id="elS"></span></div></div>
+    <div id="elR"></div></div></div>`;
+  document.body.appendChild(ov);
+  const P0=o&&o.tabela?await prices(o.tabela).catch(()=>({})):{};
+  const sel=it=>(it.res||[])[it.sel||0];
+  const linha=(it,i)=>{const r=sel(it), p=r&&r.p, sl=r?(r.selo==='txt'?['🔤 Pela descrição: confira','#555','#eceef5']:EQ_SELO[r.selo]||EQ_SELO.prox):['Sem equivalente','#555','#eceef5']; const dif=eqDifTx(r);
+    return `<tr data-i="${i}"><td>${i+1}</td><td><b>${esc(it.desc||'—')}</b>${it.cod?`<div class="hint">Cód. ${esc(it.cod)}</div>`:''}</td><td>${it.cas.length?it.cas.map(c=>esc(c)).join(' / '):'<span class="hint">—</span>'}${it.x?`<div class="hint">${esc(it.x.f||'')}</div>`:it.cas.length?'<div class="hint">CA não achado</div>':''}</td><td style="text-align:right">${it.qtd!=null?esc(String(it.qtd).replace('.',',')):'—'}</td>
+     <td style="min-width:260px">${it.res&&it.res.length?`<select data-elsel="${i}" style="width:100%">${it.res.map((x,j)=>`<option value="${j}"${j===(it.sel||0)?' selected':''}>${esc(repName(x.p.rep))} ${esc(x.p.cod)} · ${esc(String(x.p.descricao||'').slice(0,70))}${x.selo==='txt'?'':' ('+Math.min(100,Math.round(x.pts*100))+'%)'}</option>`).join('')}</select>`:'<span class="hint">Nada parecido no catálogo</span>'}
+      ${dif?`<div style="font-size:12px;color:${/✕/.test(dif)?'#8a1c10':'#7a5200'};margin-top:3px">${esc(dif)}</div>`:''}${r&&r.ind?`<div class="hint" style="font-size:12px">👍 indicado por ${esc(r.ind.por||'vendedor')}</div>`:''}</td>
+     <td><span class="eqs" style="color:${sl[1]};background:${sl[2]};font-size:12px">${sl[0]}</span></td>
+     <td style="white-space:nowrap">${it.cas.length&&p?`<label title="Gravar como equivalente deste CA (vale para todos)" style="cursor:pointer"><input type="checkbox" data-elgr="${i}"${it.gr?' checked':''}> 👍</label>`:''} ${it.cas.length?`<button class="chip" data-elum="${i}" title="Abrir este CA no conversor com comparação">🔎</button>`:''}</td></tr>`};
+  const pinta=()=>{const R=ov.querySelector('#elR'); const N=st.its.length; if(!N){R.innerHTML=''; return} const c={}; st.its.forEach(it=>{const r=sel(it); const k=r?r.selo:'none'; c[k]=(c[k]||0)+1});
+    R.innerHTML=`<div class="row" style="gap:8px;flex-wrap:wrap;margin:0 0 8px;align-items:center"><b>${N} itens</b><span class="hint">${[['eq','✅ equivalentes'],['sem','≈ semelhantes'],['prox','mais próximos'],['txt','pela descrição'],['nao','⚠ não atendem'],['none','sem equivalente']].filter(([k])=>c[k]).map(([k,l])=>c[k]+' '+l).join(' · ')}</span><span style="flex:1"></span>
+      <button class="btn sm" id="elXls">⬇ Baixar Excel</button><button class="btn sm ghost" id="elMsg">📋 Copiar mensagem</button>${o?`<button class="btn sm ghost" id="elOrc">+ Incluir no orçamento (${esc(repName(rep))})</button>`:''}<button class="btn sm ghost" id="elGr">👍 Gravar marcados</button></div>
+     <div style="overflow-x:auto"><table class="t" style="font-size:13px"><tr><th>#</th><th>Item do cliente</th><th>CA</th><th>Qtde</th><th>Nosso mais próximo</th><th>Nota</th><th></th></tr>${st.its.map(linha).join('')}</table></div>
+     <p class="hint" style="font-size:12px">Troque o produto na lista quando o 1º não servir. Marque 👍 para gravar como equivalente: da próxima vez o CA já vem com ele em 1º para todos.</p>`};
+  const converter=async its=>{const S=ov.querySelector('#elS'), R=ov.querySelector('#elR'); if(!its.length){S.textContent='Não achei itens na lista'; return} st.todas=ov.querySelector('#elTd').checked; st.its=its;
+    R.innerHTML='<p class="hint">Convertendo…</p>'; const base=await baseCA(); const C0=st.todas?await catalogosTec():await catalog(rep); const cc={}; EQ_FC=new Map(); const nossos=new Set(C0.map(p=>p.ca?String(p.ca).replace(/\D/g,'').replace(/^0+/,''):'').filter(Boolean));
+    try{for(let i=0;i<its.length;i++){const it=its[i]; S.textContent=`Convertendo ${i+1} de ${its.length}…`; if(i%3===0) await new Promise(r=>setTimeout(r,0));
+      it.cas=it.cas.map(c=>caCod(c)).filter(Boolean); const ca=it.cas.find(c=>nossos.has(c))||it.cas.find(c=>base.get(c))||it.cas[0]||''; /* se um dos CAs já é nosso, usa ele */ const x=ca?base.get(ca):null; it.x=x; it.ca=ca;
+      let q=x?eqLer(x.n+' · '+x.d,x.cor):eqLer(it.desc,'',true); if(x&&it.desc){const e=eqLer(it.desc,'',true); delete e.tipo; Object.assign(q,e)}
+      const conf={}; for(const c of it.cas){if(!cc[c]) cc[c]=await eqConf(c); for(const k in cc[c]) if(!conf[k]) conf[k]=cc[c][k]}
+      let C=C0; if(!st.todas){const outras=[...new Set(Object.values(conf).map(r=>r.rep))].filter(r=>r!==rep); for(const r2 of outras){const C2=await catalog(r2).catch(()=>[]); C=C.concat(C2.filter(p=>conf[r2+'|'+p.cod]))}}
+      let res=(eqGrupo(q.tipo)||Object.keys(conf).length)?eqRank(q,C,base,conf,3,ca):[];
+      if(!res.length){const tx=it.desc||(x&&x.n)||''; if(tx){const B=buscaProd(C0,tx,st.todas?null:rep).slice(0,3); res=B.map(p=>({p,pts:0,selo:'txt',lin:[],vars:[]}))}}
+      it.res=res; it.sel=0}}
+    finally{EQ_FC=null}
+    S.textContent=''; pinta()};
+  const linhasXls=()=>[['Cód. cliente','Item do cliente','Qtde','CA cliente','Fabricante do CA','Representada','Nosso código','Nossa descrição','Nosso CA','Embalagem / múltiplo','Preço tabela (R$)','Nota %','Confiança','Diferenças','Alternativas'],
+    ...st.its.map(it=>{const r=sel(it), p=r&&r.p; const pr=p&&(P0[p.id]||{}).liq; return [it.cod||'',it.desc||'',it.qtd??'',it.cas.join(' / '),it.x?it.x.f||'':'',p?repName(p.rep):'—',p?p.cod:'—',p?p.descricao||'':'Sem equivalente',p&&p.ca||'',p?`${(p.un||'un').toLowerCase()}${p.mult>1?' · múlt. '+p.mult:''}`:'',pr||'',r&&r.selo!=='txt'?Math.min(100,Math.round(r.pts*100)):'',r?(r.ind?'Alta (indicado)':EQ_CONF[r.selo]||''):'Sem equivalente',[eqDifTx(r),r&&r.ind&&r.ind.motivo?'Indicação: '+r.ind.motivo:''].filter(Boolean).join(' · '),(it.res||[]).filter((_,j)=>j!==(it.sel||0)).map(y=>`${y.p.cod} ${String(y.p.descricao||'').slice(0,50)}${y.selo==='txt'?'':' ('+Math.min(100,Math.round(y.pts*100))+'%)'}`).join(' | ')]})];
+  ov.addEventListener('change',async e=>{const t=e.target; if(t.dataset.elsel!=null){const it=st.its[+t.dataset.elsel]; it.sel=+t.value; const tr=t.closest('tr'); tr.outerHTML=linha(it,+t.dataset.elsel); return}
+    if(t.dataset.elgr!=null){st.its[+t.dataset.elgr].gr=t.checked; return}
+    if(t.id==='elF'){const f=t.files[0]; if(!f) return; const S=ov.querySelector('#elS'); S.textContent='Lendo planilha…'; try{await loadXLSX(); const wb=XLSX.read(await f.arrayBuffer()); const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}); await converter(eqPlanilhaItens(rows))}catch(err){S.textContent='Não consegui ler: '+err.message} t.value=''}});
+  ov.addEventListener('click',async e=>{const t=e.target; if(t===ov||t.closest('[data-x]')) return ov.remove();
+    if(t.id==='elGo') return converter(ov.querySelector('#elT').value.split(/\r?\n/).map(eqLinha).filter(Boolean));
+    const um=t.closest('[data-elum]'); if(um){const it=st.its[+um.dataset.elum]; if(abrirUm){ov.remove(); abrirUm(it.ca||it.cas[0],it.desc)} return}
+    if(t.id==='elXls'){await loadXLSX(); const ws=XLSX.utils.aoa_to_sheet(linhasXls()); ws['!cols']=[10,34,8,16,24,12,12,60,10,16,12,8,14,50,50].map(w=>({wch:w})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Conversão'); XLSX.writeFile(wb,'Conversao_EPIs_'+new Date().toISOString().slice(0,10)+'.xlsx'); return}
+    if(t.id==='elMsg'){const tx='*Conversão dos itens*\n\n'+st.its.map((it,i)=>{const r=sel(it), p=r&&r.p; return `${i+1}. ${it.desc||'Item'}${it.cas.length?' (CA '+it.cas.join('/')+')':''}${it.qtd!=null?' – '+String(it.qtd).replace('.',',')+(p&&p.un?' '+p.un.toLowerCase():''):''}\n➡ ${p?`${repName(p.rep)} ${p.cod} – ${p.descricao||''}${r.selo==='eq'?' ✅ equivalente':r.selo==='sem'?' ≈ semelhante':''}`:'sem equivalente na nossa linha'}${eqDifTx(r)?'\n   Diferença: '+eqDifTx(r):''}`}).join('\n\n');
+      try{await navigator.clipboard.writeText(tx); toast('Mensagem copiada')}catch(_){toast('Não consegui copiar')} return}
+    if(t.id==='elOrc'&&o){let n=0, fora=0; for(const it of st.its){const r=sel(it), p=r&&r.p; if(!p) continue; if(p.rep!==rep){fora++; continue} let q=+it.qtd||p.mult||1; if(p.mult>1) q=Math.ceil(q/p.mult)*p.mult; let x=o.itens.find(i=>i.pid===p.id); if(!x){x={pid:p.id,qt:0}; o.itens.push(x)} x.qt+=q; n++}
+      saveQ(o); badge(); toast(`${n} item(ns) no orçamento${fora?` · ${fora} de outras fábricas ficam na planilha`:''}`); return}
+    if(t.id==='elGr'){const L=st.its.filter(it=>it.gr&&sel(it)&&(it.ca||it.cas[0])); if(!L.length) return toast('Marque 👍 nos itens que quer gravar'); let k=0;
+      for(const it of L){const r=sel(it); try{await eqSalvar({ca:it.ca||it.cas[0],ref:it.desc||null,rep:r.p.rep,cod:r.p.cod,produto_id:r.p.id,tipo:r.selo==='eq'?'igual':'semelhante',motivo:'Conversão de lista'+(it.desc?': '+it.desc:'')}); k++; it.gr=false}catch(err){toast('Erro: '+err.message)}}
+      toast(`${k} equivalência(s) gravada(s)`); pinta()}})}
 let EQF=null; async function eqFotos(){if(EQF) return EQF; const [a,b]=await Promise.all(['/conversor-ca/caepi_fotos.json','/conversor-ca/caepi_luvas_fotos.json'].map(u=>fetch(u).then(r=>r.json()).catch(()=>({})))); return EQF={...a,...b}}
 const eqFotoCA=(F,ca)=>{const l=(F&&F[ca])||[]; const loc=l.find(x=>!/^https?:/.test(x)); return loc?'/conversor-ca/'+loc:(l[0]||'')};
 async function eqConf(ca){if(!ca) return {}; let rows=[]; try{rows=await api(`equivalencias?select=*&ca=eq.${encodeURIComponent(ca)}&ativo=eq.true&order=criado_em.desc`)}catch(_){rows=[]}
@@ -878,7 +947,7 @@ async function eqAbrir(rep,o,q0){const st={q:String(q0||'').replace(/^CA\s*/i,''
     <div class="card" style="display:grid;gap:8px;margin:0 0 10px">
      <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="eqQ" type="search" autocomplete="off" placeholder="CA do concorrente (ex.: 40677) ou descrição" style="flex:1;min-width:0" value="${esc(st.q)}"><button class="btn sm" id="eqGo">Converter</button></div>
      <input id="eqE" type="search" autocomplete="off" placeholder="O que o cliente escreveu / nome do produto (opcional) — ex.: botina nobuck marrom">
-     <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><label class="row" style="gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="eqTd" style="width:18px;height:18px"> Procurar em todas as fábricas</label><label class="btn sm ghost" style="cursor:pointer">📷 Foto do produto do cliente<input type="file" id="eqFt" accept="image/*" hidden></label></div></div>
+     <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><label class="row" style="gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="eqTd" style="width:18px;height:18px"> Procurar em todas as fábricas</label><label class="btn sm ghost" style="cursor:pointer">📷 Foto do produto do cliente<input type="file" id="eqFt" accept="image/*" hidden></label><button class="btn sm ghost" id="eqLst" title="Converter vários itens de uma vez (lista do cliente ou Excel)">📋 Converter lista</button></div></div>
     <div id="eqR"><p class="hint">Digite o CA e toque em Converter.</p></div></div></div>`;
   document.body.appendChild(ov); let n=0;
   const fecha=()=>{ov.remove(); if(CONV_PASTA&&route==='orc') return go('orc',{rep}); repView()};
@@ -925,7 +994,7 @@ async function eqAbrir(rep,o,q0){const st={q:String(q0||'').replace(/^CA\s*/i,''
         <div class="hint" style="font-size:12px;text-align:center;margin:6px 0 14px">Nota = quanto as características batem com o CA. ✓ igual · ≈ parecido · ✕ diferente · + o nosso tem a mais · ? sem informação. <button class="btn ghost sm" id="eqOld">Abrir o conversor antigo</button></div>`}
     catch(e){R.innerHTML=`<p class="hint">Erro: ${esc(e.message)}</p>`}};
   const indicar=async(tipo,p,motivo)=>{if(!st.ca) return toast('Indicação vale para CA: digite o número do CA'); try{await eqSalvar({ca:st.ca,ref:st.extra||null,rep:p.rep,cod:p.cod,produto_id:p.id,tipo,motivo:motivo||null}); toast(tipo==='nao'?'Anotado: não é equivalente':'Gravado: '+p.cod+' é '+(tipo==='igual'?'equivalente':'semelhante')+' ao CA '+st.ca); run()}catch(e){toast('Erro: '+e.message)}};
-  ov.addEventListener('click',async e=>{const t=e.target; if(t.id==='eqGo') return run(); if(t.id==='eqLado') return eqLado(st,(id,i)=>{const b=ov.querySelector(`[data-eqadd="${id}"][data-eqi="${i}"]`); if(b) b.click()}); if(t.id==='eqOld'){ov.remove(); return abrirCA(rep,o,st.q?'CA '+st.q:'',false,true)}
+  ov.addEventListener('click',async e=>{const t=e.target; if(t.id==='eqGo') return run(); if(t.id==='eqLst') return eqLista(rep,o,(ca,desc)=>{ov.querySelector('#eqQ').value=ca||desc||''; ov.querySelector('#eqE').value=ca?(desc||''):''; run()}); if(t.id==='eqLado') return eqLado(st,(id,i)=>{const b=ov.querySelector(`[data-eqadd="${id}"][data-eqi="${i}"]`); if(b) b.click()}); if(t.id==='eqOld'){ov.remove(); return abrirCA(rep,o,st.q?'CA '+st.q:'',false,true)}
     const pq=t.closest('[data-eqp]'); if(pq){const [k,v]=pq.dataset.eqp.split(/\|(.*)/s); const val=JSON.parse(v); if(val==null){st.resp[k]=undefined; delete st.resp[k]; st.resp['_'+k]=1} else st.resp[k]=val; return run()}
     const ad=t.closest('[data-eqadd]'); if(ad){const id=+ad.dataset.eqadd; let p=null; for(const r of st.res||[]) for(const v of r.vars||[]) if(v.p.id===id) p=v.p; if(!p) return;
       if(p.rep!==rep) return toast(`${p.cod} é da ${repName(p.rep)}: abra a pasta ${repName(p.rep)} para incluir no orçamento dela`);

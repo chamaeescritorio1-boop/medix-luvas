@@ -381,6 +381,16 @@ body.com-barra .jarvis-bt { bottom: 96px; }
 .vd-barras a em { position: absolute; bottom: -18px; left: 0; right: 0; text-align: center; font-style: normal; font-size: 11px; color: var(--texto-3); white-space: nowrap; }
 .vd-tab th, .vd-tab td { padding: 8px 12px 8px 0; vertical-align: top; }
 .vd-tab td:last-child, .vd-tab th:last-child { padding-right: 0; }
+.pr-tab { min-width: 1180px; font-size: 13.5px; }
+.pr-tab th { font-size: 12px; color: var(--texto-3); font-weight: 600; white-space: nowrap; }
+.pr-tab .v { text-align: right; white-space: nowrap; }
+.pr-tab td:nth-child(2) { min-width: 190px; }
+.pr-tab tr.pr-l { cursor: pointer; border-top: 1px dashed var(--linha); }
+.pr-tab tr.pr-l:hover, .pr-tab tr.pr-l.aberta { background: #ffffff0d; }
+.pr-tab tr.pr-sem { border-top: 1px dashed var(--linha); opacity: .7; }
+.pr-tab tr.total td { border-top: 1px solid var(--linha); font-weight: 700; }
+.pr-det-in { border: 1px solid var(--linha); border-radius: 12px; padding: 10px 14px; margin: 2px 0 10px; background: #00000026; max-width: 720px; }
+.pr-det-in .vd-tab { width: 100%; min-width: 0; }
 
 /* propostas da Groner na ficha */
 .gr-lista { display: grid; gap: 10px; margin-top: 10px; }

@@ -293,3 +293,18 @@ details.item .explica { padding: 0 16px 16px 70px; color: var(--tinta-2); font-s
 .motivos span { display: block; font-size: .86rem; color: var(--tinta-2); line-height: 1.4; margin-top: 2px; }
 .consultor-fim { margin-top: 18px; }
 .consultor-fim .tel a { color: inherit; font-weight: 700; }
+
+/* 3D em tela cheia (apresentação na TV / notebook) */
+.v3d-titulo { display: none; }
+.v3d-cheia { margin-left: auto; flex: 0 0 auto; min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--borda); background: #fff; color: var(--tinta); font: 700 .95rem var(--f-texto); cursor: pointer; }
+.v3d-palco.cheia { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; gap: 14px; padding: 18px 24px 22px; background: #13263a; color: #fff; }
+.v3d-palco.cheia .v3d-titulo { display: block; margin: 0; font: 800 clamp(1.1rem, 2.2vw, 1.8rem) var(--f-titulo, var(--f-texto)); color: #fff; }
+.v3d-palco.cheia .v3d { flex: 1; min-height: 0; aspect-ratio: auto; border-radius: 14px; }
+.v3d-palco.cheia .v3d-ctl { margin-top: 0; font-size: 1.1rem; }
+.v3d-palco.cheia .v3d-dias button { min-height: 52px; font-size: 1.1rem; }
+.v3d-palco.cheia .v3d-play { width: 56px; height: 56px; }
+.v3d-palco.cheia #v3dTxt { color: #c9d2db; }
+.v3d-palco.cheia .v3d-linha b { color: #fff; }
+.v3d-palco.cheia .v3d-cheia { background: #f7b500; border-color: #f7b500; color: #13263a; }
+html.com-3d-cheio, html.com-3d-cheio body { overflow: hidden; }
+html.com-3d-cheio .zap-fixo, html.com-3d-cheio #zap-fixo { display: none !important; }

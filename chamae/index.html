@@ -88,6 +88,11 @@ nav button svg{width:22px;height:22px} nav button.on{color:var(--ink)} nav butto
 .agev.semh{position:static} .agev.feita{opacity:.45} .agev.feita b{text-decoration:line-through} .agev.cf{outline:2px solid var(--bad);outline-offset:-1px} .agev.cf small:last-child{color:var(--bad)}
 .agnow{position:absolute;left:0;right:0;height:2px;background:var(--bad);pointer-events:none} .agnow::before{content:'';position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
 .agdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin:0 4px 0 8px;vertical-align:middle}
+.tcl{display:grid;gap:4px;margin-top:8px} .tci{display:flex;align-items:center;gap:6px;font-size:14px;border-top:1px solid var(--line);padding-top:4px;min-width:0} .tci .agdot{margin:0} .tci-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .tci-q{white-space:nowrap;font-size:13px}
+.tcaviso{background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-left:4px solid var(--accent);border-radius:8px;padding:8px 10px;font-size:14px}
+.tcjs{display:grid;gap:6px} .tcj{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface)} .tcj.off{opacity:.55} .tcj .chip{padding:6px 10px;min-height:0} .tcj-ck{padding-top:2px} .tcj-ck input,.tcreg-l input{width:20px;height:20px;margin:0;accent-color:var(--accent)} .tcj-obs{font-size:13px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcreg{display:grid;gap:4px;border:1px dashed var(--accent);border-radius:10px;padding:8px 10px} .tcreg-l{display:flex;gap:8px;align-items:flex-start;font-size:14px;cursor:pointer} .tcreg-l span{min-width:0}
+.agev .tcag{display:inline-block;background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:0 4px;font-weight:700}
 @media(min-width:1000px){body{padding-bottom:0;padding-left:96px} nav{top:0;bottom:0;right:auto;width:96px;flex-direction:column;justify-content:flex-start;padding-top:80px;border-top:0;border-right:1px solid var(--line)} nav button{flex:0 0 auto;padding:14px 4px}
  main,.hrow{max-width:1320px} .reps{grid-template-columns:repeat(6,minmax(0,1fr))} .pl{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))} .toast{bottom:24px} .ov .sh{max-width:1100px}}
 @media(max-width:600px){.hrow .lbl{display:none}}
@@ -165,7 +170,7 @@ table.tpt{min-width:760px}table.tpt td{vertical-align:middle}table.tpt input[typ
  <div style="font-family:var(--display);font-size:26px;text-transform:uppercase">Sistema Chamae</div><div class="hint">Versão de teste · entre com seu usuário</div>
  <input id="le" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail"><input id="ls" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
  <button class="btn" type="submit">Entrar</button><button class="chip" type="button" id="lcria">Criar meu acesso (equipe)</button><div id="lerr" class="bad" style="font-size:13px;min-height:18px"></div></form></div>
-<script src="app.js?v=202611251800incltodos"></script>
+<script src="app.js?v=202611251930tarcli"></script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{})</script>
 </body>
 </html>

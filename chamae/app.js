@@ -4077,6 +4077,7 @@ async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje
     if(t.id==='tnova') return formTarefa(ag?{vence:AG.dia<hoje()?hoje():AG.dia}:{});
     const ck=t.closest('[data-tok]'); if(ck){const tt=(rows||[]).find(x=>x.id==ck.dataset.tok); if(tt&&tt.orcamento_id) return abrirTarefa(tt); const fr=await formulario('Concluir tarefa',[{k:'r',l:'Como foi? (opcional)',ph:'ex.: pediu orçamento, ligar semana que vem'}],'Concluir'); if(!fr) return; const res=fr.r||''; await api(`tarefas?id=eq.${ck.dataset.tok}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({feita:true,feita_em:new Date().toISOString(),resultado:res||null})}); toast('Concluída'); contaTarefas(); return tarefasView()}
     const ad=t.closest('[data-tadia]'); if(ad){await api(`tarefas?id=eq.${ad.dataset.tadia}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+ad.dataset.d)})}); toast('Reagendada'); contaTarefas(); return tarefasView()}
+    const tg=t.closest('[data-tcg]'); if(tg){const T=(m._tcm||{})[tg.dataset.tcg]; if(T){const t0=(rows||[]).find(x=>tcKey(x)===tg.dataset.tcg&&!x.feita)||T[0]; return abrirTarefaCliente(t0,T)}}
     const cl=t.closest('[data-tcli]'); if(cl) return go('cli',{cnpj:cl.dataset.tcli});
     const oo=t.closest('[data-torc]'); if(oo){const tt=(rows||[]).find(x=>x.id==oo.closest('[data-tid]').dataset.tid); return detOrc(tt.orcamento_id)}
     const cd=t.closest('[data-tid]'); if(cd&&!t.closest('button')){const tt=(rows||[]).find(x=>x.id==cd.dataset.tid); if(tt) return abrirTarefa(tt)}
@@ -4087,28 +4088,30 @@ async function tarefasView(){const m=$('#main'); const f=Object.assign({ab:'hoje
     $('#agt').textContent=f.modo==='semana'?`${dLbl(d0,{day:'2-digit',month:'2-digit'})} a ${dLbl(d1,{day:'2-digit',month:'short'})}`:dLbl(d0,{weekday:'long',day:'2-digit',month:'long'})+(d0===h?' · hoje':'');
     let atr=[]; try{[rows,atr]=await Promise.all([api(`tarefas?select=*&vence=gte.${d0}&vence=lte.${d1}${quem}&order=hora&limit=500`),api(`tarefas?select=id&feita=eq.false&vence=lt.${h}${quem}`)])}catch(e){$('#tl').innerHTML=`<p class="warn">${SQL6}</p>`;return}
     if(!m.isConnected) return; $('#agatr').innerHTML=atr.length?`<div class="card" style="border-color:var(--bad);margin-bottom:10px;padding:10px 14px"><div class="row" style="justify-content:space-between;align-items:center"><span class="bad">⚠️ ${atr.length} atividade${atr.length>1?'s':''} atrasada${atr.length>1?'s':''}</span><button class="chip" data-ab="atr">Ver atrasadas ›</button></div></div>`:'';
+    {const TM=await tcMapa(rows); if(!m.isConnected) return; rows.forEach(t=>{const k=!t.feita&&tcKey(t); t._tc=k&&TM[k]?TM[k].length:0})}
     const dias=[]; for(let d=d0;d<=d1;d=addD(d,1)) dias.push(d); $('#tl').innerHTML=gradeAgenda(dias,rows,f.quem==='todos'); const sc=$('#tl .agscroll'); if(sc){const ag0=rows.filter(t=>t.hora&&!t.feita).map(t=>hm(t.hora)); const alvo=dias.includes(h)?new Date().getHours()*60-60:ag0.length?Math.min(...ag0)-30:8*60; sc.scrollTop=Math.max(0,(alvo-AGH0*60)*AGK)} return}
   let p=`tarefas?select=*&order=vence,hora&limit=300`+quem;
   p+=f.ab==='feitas'?'&feita=eq.true&order=feita_em.desc':f.ab==='atr'?`&feita=eq.false&vence=lt.${h}`:f.ab==='hoje'?`&feita=eq.false&vence=eq.${h}`:`&feita=eq.false&vence=gt.${h}`;
   try{rows=await api(p.replace('&order=vence,hora&limit=300'+quem+'&feita=eq.true&order=feita_em.desc',quem+'&feita=eq.true&order=feita_em.desc&limit=100'))}catch(e){$('#tl').innerHTML=`<p class="warn">${SQL6}</p>`;return}
   if(!m.isConnected) return;
-  $('#tl').innerHTML=rows.map(t=>`<div class="card" data-tid="${t.id}" style="cursor:pointer;margin-bottom:8px;${t.vence<h&&!t.feita?'border-color:var(--bad)':''}"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(TT[t.tipo]||t.tipo||'')} · ${esc(tTit(t))}</b>
+  const TM=f.ab==='feitas'?{}:await tcMapa(rows), TO=await tcOrcs([].concat(...Object.values(TM))); if(!m.isConnected) return; m._tcm=TM; const tcVis=new Set();
+  $('#tl').innerHTML=rows.map(t=>{const k=!t.feita&&tcKey(t); if(k&&TM[k]){if(tcVis.has(k)) return ''; tcVis.add(k); return tcCard(TM[k],TO)} return `<div class="card" data-tid="${t.id}" style="cursor:pointer;margin-bottom:8px;${t.vence<h&&!t.feita?'border-color:var(--bad)':''}"><div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><b>${esc(TT[t.tipo]||t.tipo||'')} · ${esc(tTit(t))}</b>
      <div class="hint">${esc(t.vence.split('-').reverse().join('/'))}${t.hora?' '+esc(t.hora)+'–'+mh(tFim(t)):''}${t.rep?' · '+esc(repName(t.rep)):''}${f.quem==='todos'&&t.responsavel_nome?' · '+esc(t.responsavel_nome):''}${t.feita&&t.resultado?' · '+esc(t.resultado):''}</div>${t.obs?`<div style="font-size:13px">${esc(t.obs)}</div>`:''}
      <div class="row" style="margin-top:6px">${t.cnpj?`<button class="chip" data-tcli="${esc(t.cnpj)}">${esc(t.cliente||'Cliente')} ›</button>`:''}${t.orcamento_id?`<button class="chip" data-torc="1" data-q="${esc(t.cliente||'')}">Ver orçamento</button>`:''}</div></div>
-     ${t.feita?'<span class="tag ok">feita</span>':`<div class="grid" style="gap:4px;justify-items:end"><button class="btn sm" data-tok="${t.id}">✓ Concluir</button><div class="row" style="gap:4px"><button class="chip" data-tadia="${t.id}" data-d="1">+1d</button><button class="chip" data-tadia="${t.id}" data-d="7">+7d</button></div></div>`}</div></div>`).join('')||'<p class="hint">Nada aqui. 🎉</p>'}
+     ${t.feita?'<span class="tag ok">feita</span>':`<div class="grid" style="gap:4px;justify-items:end"><button class="btn sm" data-tok="${t.id}">✓ Concluir</button><div class="row" style="gap:4px"><button class="chip" data-tadia="${t.id}" data-d="1">+1d</button><button class="chip" data-tadia="${t.id}" data-d="7">+7d</button></div></div>`}</div></div>`}).join('')||'<p class="hint">Nada aqui. 🎉</p>'}
 /* grade de horários: uma coluna por dia, blocos posicionados pela hora e altura pela duração; sobrepostos lado a lado, conflito (mesma pessoa) em vermelho */
 let AGH0=7; const AGK=0.9;
 function gradeAgenda(dias,rows,equipe){const h=hoje(); const com=rows.filter(t=>t.hora&&hm(t.hora)!=null), sem=rows.filter(t=>!t.hora||hm(t.hora)==null);
   let h0=7,h1=20; com.forEach(t=>{h0=Math.min(h0,Math.floor(hm(t.hora)/60)); h1=Math.max(h1,Math.ceil(tFim(t)/60))}); h1=Math.min(h1,24); AGH0=h0; const alt=(h1-h0)*60*AGK;
-  const bloco=t=>`<div class="agev${t.feita?' feita':''}${t._cf?' cf':''}" data-tid="${t.id}" style="--c:${TCOR[t.tipo]||'#7d8597'};top:${(hm(t.hora)-h0*60)*AGK}px;height:${Math.max((+t.duracao||30)*AGK-2,20)}px;left:calc(${t._l*100/t._n}% + 2px);width:calc(${100/t._n}% - 4px)" title="${esc(t.hora+'–'+mh(tFim(t))+' '+t.titulo+(t.cliente?' · '+t.cliente:''))}"><b>${esc(t.hora)} ${esc((TT[t.tipo]||'').split(' ')[0])} ${esc(t.titulo)}</b>${t.cliente&&!t.titulo.includes(t.cliente)?`<small>${esc(t.cliente)}</small>`:''}${equipe&&t.responsavel_nome?`<small>👤 ${esc(t.responsavel_nome)}</small>`:''}${t._cf?'<small>⚠️ conflito de horário</small>':''}</div>`;
+  const bloco=t=>`<div class="agev${t.feita?' feita':''}${t._cf?' cf':''}" data-tid="${t.id}" style="--c:${TCOR[t.tipo]||'#7d8597'};top:${(hm(t.hora)-h0*60)*AGK}px;height:${Math.max((+t.duracao||30)*AGK-2,20)}px;left:calc(${t._l*100/t._n}% + 2px);width:calc(${100/t._n}% - 4px)" title="${esc(t.hora+'–'+mh(tFim(t))+' '+t.titulo+(t.cliente?' · '+t.cliente:''))}"><b>${esc(t.hora)} ${t._tc?`<span class="tcag" title="${t._tc} tarefas abertas deste cliente">👥${t._tc}</span> `:''}${esc((TT[t.tipo]||'').split(' ')[0])} ${esc(t.titulo)}</b>${t.cliente&&!t.titulo.includes(t.cliente)?`<small>${esc(t.cliente)}</small>`:''}${equipe&&t.responsavel_nome?`<small>👤 ${esc(t.responsavel_nome)}</small>`:''}${t._cf?'<small>⚠️ conflito de horário</small>':''}</div>`;
   const col=d=>{const ev=com.filter(t=>t.vence===d).map(t=>Object.assign(t,{_s:hm(t.hora),_e:tFim(t)})).sort((a,b)=>a._s-b._s||b._e-a._e);
     let cl=[],cur=[],fim=-1; for(const x of ev){if(cur.length&&x._s>=fim){cl.push(cur); cur=[]} cur.push(x); fim=Math.max(fim,x._e)} if(cur.length) cl.push(cur);
     for(const c of cl){const ln=[]; for(const x of c){let i=ln.findIndex(e=>e<=x._s); if(i<0){i=ln.length; ln.push(0)} ln[i]=x._e; x._l=i} c.forEach(x=>{x._n=ln.length})}
-    ev.forEach(x=>{x._cf=!x.feita&&ev.some(y=>y!==x&&!y.feita&&(y.responsavel||'')===(x.responsavel||'')&&y._s<x._e&&x._s<y._e)});
+    ev.forEach(x=>{x._cf=!x.feita&&ev.some(y=>y!==x&&!y.feita&&(y.responsavel||'')===(x.responsavel||'')&&!(x.cnpj&&tcKey(x)===tcKey(y))&&y._s<x._e&&x._s<y._e)});
     const ag=new Date(); const now=d===h&&ag.getHours()>=h0&&ag.getHours()<h1?`<div class="agnow" style="top:${(ag.getHours()*60+ag.getMinutes()-h0*60)*AGK}px"></div>`:'';
     return `<div class="agcol${d===h?' hj':''}" data-slot="${d}" style="height:${alt}px">${ev.map(bloco).join('')}${now}</div>`};
   const semana=dias.length>1, hrs=[]; for(let x=h0;x<h1;x++) hrs.push(`<div style="height:${60*AGK}px">${p2(x)}:00</div>`);
-  const semH=sem.length?`<div class="agsem"><div></div>${dias.map(d=>{const s=sem.filter(t=>t.vence===d); return `<div>${s.map(t=>`<div class="agev semh${t.feita?' feita':''}" data-tid="${t.id}" style="--c:${TCOR[t.tipo]||'#7d8597'}"><b>${esc((TT[t.tipo]||'').split(' ')[0])} ${esc(t.titulo)}</b></div>`).join('')}</div>`}).join('')}</div>`:'';
+  const semH=sem.length?`<div class="agsem"><div></div>${dias.map(d=>{const s=sem.filter(t=>t.vence===d); return `<div>${s.map(t=>`<div class="agev semh${t.feita?' feita':''}" data-tid="${t.id}" style="--c:${TCOR[t.tipo]||'#7d8597'}"><b>${t._tc?`<span class="tcag">👥${t._tc}</span> `:''}${esc((TT[t.tipo]||'').split(' ')[0])} ${esc(t.titulo)}</b></div>`).join('')}</div>`}).join('')}</div>`:'';
   return `<div class="agwrap${semana?' sem7':''}">${semana?`<div class="aghd"><div></div>${dias.map(d=>`<button class="chip${d===h?' on':''}" data-agdia="${d}">${esc(dLbl(d))}</button>`).join('')}</div>`:''}
     ${sem.length?`<div class="aglab hint">Sem horário definido</div>`:''}${semH}
     <div class="agscroll"><div class="aggrid"><div class="aghr">${hrs.join('')}</div>${dias.map(col).join('')}</div></div></div>
@@ -4404,7 +4407,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-fach
   else{mapsAbrir(mapsUrl(q),w); toast('Abri o endereço no Maps: toque na foto do lugar (ou no bonequinho) para ver a fachada.')}});
 async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promise.all([clientes(),reps().catch(()=>null)]); const idx=lista?lista.indexOf(cnpj):-1; const c=C.find(x=>x.cnpj===cnpj)||{cnpj,n:cnpj,reps:{}}; cliAtual(c,opt.reps);
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML='<div class="sh"><p class="hint">Carregando…</p></div>'; document.body.appendChild(ov);
-  const [pes,ativ,tar,peds]=await Promise.all([api(`cliente_pessoas?select=*&cnpj=eq.${cnpj}&order=principal.desc,nome&limit=40`).catch(()=>[]),api(`contatos?select=*&cnpj=eq.${cnpj}&order=criado_em.desc&limit=3`).catch(()=>[]),api(`tarefas?select=*&cnpj=eq.${cnpj}&feita=eq.false&order=vence&limit=3`).catch(()=>[]),
+  const [pes,ativ,tar,peds]=await Promise.all([api(`cliente_pessoas?select=*&cnpj=eq.${cnpj}&order=principal.desc,nome&limit=40`).catch(()=>[]),api(`contatos?select=*&cnpj=eq.${cnpj}&order=criado_em.desc&limit=3`).catch(()=>[]),tcAbertas(grpCnpjs(cnpj)),
     api(`pedidos?select=id,num,data,cnpj,valor,representada,prazo,tabela,pedido_itens(cod,descricao,qtd,preco)&cnpj=${grpCnpjs(cnpj).length>1?`in.(${grpCnpjs(cnpj).join(',')})`:'eq.'+cnpj}&or=(status.is.null,status.eq.finalizado,status.like.APROVADO*)&order=data.desc&limit=60`).catch(()=>[]).then(P=>pedsGrade(P))]);
   const tel=String(c.tel||'').replace(/\D/g,'');
   const u0=ativ[0]; const UP=[], vistos={}; peds.forEach(p=>{if(!vistos[p.representada]){vistos[p.representada]=1; UP.push(p)}});
@@ -4412,7 +4415,7 @@ async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promis
   const TOP=Object.values(ag).sort((a,b)=>b.n-a.n||b.q-a.q).slice(0,8); TOP.forEach(a=>a.qm=Math.max(1,Math.round(a.q/a.n)));
   const sel={}; const prazoDe=r=>{const p=UP.find(x=>x.representada===r)||{}; return {prazo:p.prazo,tabela:p.tabela}};
   const desenhaSel=()=>{ov.querySelector('#pcsel').innerHTML=Object.entries(sel).filter(([,l])=>l.length).map(([r,l])=>`<button class="btn sm" data-abrsel="${esc(r)}">Abrir orçamento ${esc(RCURTO[r]||r)} (${l.length}) ›</button>`).join('')};
-  let tipo='ligacao', res='', ret=null, dh=false, bate=[];
+  let tipo='ligacao', res='', ret=null, dh=false, bate=[]; const tcOn=new Set(opt.tarIds?tar.filter(t=>opt.tarIds.some(i=>i==t.id)).map(t=>t.id):tar.map(t=>t.id));
   const dhVer=async()=>{const d=ov.querySelector('#pcdd').value, h=ov.querySelector('#pcdhh').value, el=ov.querySelector('#pcdc'); bate=[]; if(!d){el.textContent='Escolha o dia.'; return} const dl=d.split('-').reverse().join('/'); if(!h){el.innerHTML=`Retorno em <b>${dl}</b>, sem horário.`; return}
     const r=await conflitos(d,h,30); bate=r.bate; el.innerHTML=bate.length?`<span class="warn">⚠️ Nesse horário você já tem: ${bate.map(x=>esc(String(x.hora).slice(0,5)+' '+x.titulo)).join(' · ')}</span>`:`Retorno em <b>${dl} às ${esc(h)}</b> · horário livre ✓`};
   const dhOff=()=>{dh=false; ov.querySelector('#pcdh').hidden=true; ov.querySelector('[data-pdh]').classList.remove('on')};
@@ -4423,7 +4426,7 @@ async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promis
    ${plDicaHtml(cnpj)}
    <div id="pcct" class="pcb ctbox" hidden>${ctLista(c,pes)}</div>
    <div class="tags" style="margin:6px 0">${repTags({reps:grpReps(c,C)})||'<span class="hint">Nunca comprou</span>'}</div>
-   ${tar.length?`<div class="hint">Pendente: ${tar.map(t=>esc(t.titulo)+' ('+esc(t.vence.split('-').reverse().join('/'))+(t.hora?' '+esc(String(t.hora).slice(0,5)):'')+')').join(' · ')}</div>`:''}
+   ${tar.length?`<div class="hint">Tarefas abertas: ${tar.length} · ${esc(tcResumo(tar))} <span style="font-size:12px">(marque no Registrar contato)</span></div>`:''}
    <div class="pcb"><div class="row" style="justify-content:space-between"><b>Último contato</b>${u0?'<button class="chip" data-hist>📝 ver todas as conversas ›</button>':''}</div>
     ${u0?`<div class="hint">${dbr(u0.criado_em)} (há ${dias(String(u0.criado_em).slice(0,10))}d) · ${esc(TT[u0.tipo]||u0.tipo||'')}${u0.usuario_nome?' · '+esc(u0.usuario_nome):''}</div><div>${repTagsTxt(u0.representada)} ${u0.resultado?`<span class="tag">${esc(u0.resultado)}</span> `:''}${u0.texto&&u0.texto!==u0.resultado?esc(String(u0.texto).slice(0,240)):''}</div>`:'<div class="hint">Nenhum contato registrado ainda.</div>'}</div>
    <details class="pcb"><summary><b>Último pedido por fábrica</b> <span class="hint">${UP.length?UP.slice(0,3).map(p=>esc(RCURTO[p.representada]||p.representada)+' '+dbr(p.data).slice(0,5)+' '+brl(p.valor)).join(' · ')+(UP.length>3?' …':''):'nenhum pedido'}</span></summary>
@@ -4433,6 +4436,7 @@ async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promis
    <div class="card grid" style="margin-top:10px;background:var(--surface2)"><b>Registrar contato</b>
     <div class="row">${['ligacao','whatsapp','visita','email'].map(k=>`<button class="chip${k===tipo?' on':''}" data-rt2="${k}">${TT[k]}</button>`).join('')}</div>
     <div data-pcrep></div>
+    <div data-tcregb>${tcRegHtml(tar,tcOn)}</div>
     <div class="row">${['Pediu orçamento','Vai comprar','Sem demanda agora','Não atendeu','Retornar depois'].map(k=>`<button class="chip" data-rr2="${k}">${k}</button>`).join('')}</div>
     <textarea id="pcx" rows="2" placeholder="Anotação rápida (o que foi falado, próximo passo)"></textarea><span class="hint" style="margin-top:-6px">Fica salvo na ficha do cliente, em 📝 Conversas.</span>
     <div class="row"><span class="hint">Próximo contato:</span>${[[0,'Nenhum'],[1,'Amanhã'],[3,'3d'],[7,'7d'],[15,'15d'],[30,'30d']].map(([d,l])=>`<button class="chip${d===0?' on':''}" data-pn="${d}">${l}</button>`).join('')}<button class="chip" data-pdh>📅 Dia e hora</button></div>
@@ -4440,10 +4444,11 @@ async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promis
     <button class="btn" id="pcs">Salvar registro</button></div>
    <div class="row" style="margin-top:10px"><button class="btn ghost" id="pco">+ Orçamento</button><button class="btn ghost" id="pcf">Ficha completa</button>${lista&&idx>=0&&idx<lista.length-1?'<button class="btn ghost" id="pcn">Próximo cliente ›</button>':''}</div>`;
   /* representada já marcada quando a tela de onde veio é de uma fábrica só (pasta do plano do dia, filtro do Bater carteira, Vai inativar) */
-  const rIni=(PL_DICA[cnpj]&&PL_DICA[cnpj].r)?[PL_DICA[cnpj].r]:(opt.reps||[]).length===1?opt.reps:[];
+  let rIni=(PL_DICA[cnpj]&&PL_DICA[cnpj].r)?[PL_DICA[cnpj].r]:(opt.reps||[]).length===1?opt.reps:[];
+  if(!rIni.length) rIni=(opt.tarReps&&opt.tarReps.length)?opt.tarReps:[...new Set(tar.filter(t=>tcOn.has(t.id)&&t.rep).map(t=>repName(t.rep)))];
   const RE=repEscMount(ov.querySelector('[data-pcrep]'),c,rIni,opt.reps);
   grpMontar(ov.querySelector('[data-grpbox]'),c,()=>{ov.remove(); painelCliente(cnpj,lista,opt)});
-  ov.addEventListener('change',e=>{if(e.target.id==='pcdd'||e.target.id==='pcdhh') dhVer()});
+  ov.addEventListener('change',e=>{if(e.target.id==='pcdd'||e.target.id==='pcdhh') dhVer(); const k=e.target.closest('[data-tcr]'); if(k){const t=tar.find(x=>String(x.id)===k.dataset.tcr); if(t) k.checked?tcOn.add(t.id):tcOn.delete(t.id)}});
   ov.onclick=async e=>{const t=e.target; if(t.closest('[data-x]')||t===ov) return ov.remove();
     if(t.closest('[data-pltroca]')){const d=PL_DICA[cnpj]; ov.remove(); if(d&&d.troca) d.troca(); return}
     if(t.closest('[data-ltel]')) ligMarcarLigacao(c); if(t.closest('[data-lia]')){ov.remove(); return ligIA(c)}
@@ -4459,8 +4464,9 @@ async function painelCliente(cnpj,lista,opt){opt=opt||{}; const [C]=await Promis
       if(dh&&hh){await dhVer(); if(bate.length&&!confirm(`Nesse horário você já tem: ${bate.map(x=>String(x.hora).slice(0,5)+' '+x.titulo).join('; ')}. Marcar mesmo assim?`)) return}
       const vence=dh?dd:(ret?maisDias(ret):null); t.disabled=true;
       try{await api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo,texto:tx||res,resultado:res||null,retorno:vence,representada:RE.txt(),usuario_nome:meuNome()})}).catch(()=>api('contatos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({cnpj,tipo,texto:(res?res+'. ':'')+tx,retorno:vence})}));
-        if(vence) await novaTarefa({titulo:`Retornar ${c.fa||c.n}${res?' – '+res:''}${RE.txt()?' ('+RE.st.sel.map(r=>RCURTO[r]||r).join(', ')+')':''}`,tipo,cnpj,cliente:c.n,vence,...(hh?{hora:hh,duracao:30}:{}),obs:tx||null}).catch(()=>{});
-        toast('Registrado'+(vence?' + tarefa '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):'')); contaTarefas(); if(res==='Pediu orçamento'){ov.remove(); return orcParaCliente(c)} if(lista&&idx<lista.length-1){ov.remove(); return painelCliente(lista[idx+1],lista,{reps:opt.reps})} ov.remove()}catch(err){toast('Erro: '+err.message); t.disabled=false} return}
+        const nT=await tcRegSalvar(tar,tcOn,{vence,hh,texto:tx,res}).catch(()=>0);
+        if(vence&&!nT) await novaTarefa({titulo:`Retornar ${c.fa||c.n}${res?' – '+res:''}${RE.txt()?' ('+RE.st.sel.map(r=>RCURTO[r]||r).join(', ')+')':''}`,tipo,cnpj,cliente:c.n,vence,...(hh?{hora:hh,duracao:30}:{}),obs:tx||null}).catch(()=>{});
+        toast('Registrado'+(nT?` · ${nT} tarefa${nT>1?'s':''} ${vence?(nT>1?'mudaram':'mudou')+' para '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):(nT>1?'concluídas':'concluída')}`:vence?' + tarefa '+vence.split('-').reverse().join('/')+(hh?' '+hh:''):'')); contaTarefas(); if(opt.aoSalvar) try{opt.aoSalvar()}catch(_){} if(res==='Pediu orçamento'){ov.remove(); return orcParaCliente(c)} if(lista&&idx<lista.length-1){ov.remove(); return painelCliente(lista[idx+1],lista,{reps:opt.reps})} ov.remove()}catch(err){toast('Erro: '+err.message); t.disabled=false} return}
     if(t.closest('[data-hist]')){ov.remove(); return go('cli',{cnpj,aba:'n'})}
     const vp=t.closest('[data-vped]'); if(vp) return detalhe(vp.dataset.vped);
     const rp=t.closest('[data-rped]'); if(rp){const p=UP[+rp.dataset.rped]; rp.disabled=true; if(await itensParaOrc(p.representada,c,(p.pedido_itens||[]).map(i=>({cod:i.cod,desc:i.descricao,qt:+i.qtd,pu:+i.preco,gq:i.gq})),{prazo:p.prazo,tabela:p.tabela})) ov.remove(); else rp.disabled=false; return}
@@ -5654,8 +5660,108 @@ async function eaConcluir(ov,t,ea,fim){const res=(ov.querySelector('#tres')||{})
     toast('Concluída · próximo retorno '+vence.split('-').reverse().join('/')+(hh?' '+hh:'')); return fim()}
   await feita(r); toast('Tarefa concluída'); return fim()}
 /*EAGORA-FIM*/
+/*TARCLI-INICIO*/
+/* Tarefas do mesmo cliente juntas (25/11, pedido do Victor): o cliente tinha retorno de 3 orçamentos (Marluvas, Sigma, Medix), o vendedor
+   falava de um só e o cliente voltava a aparecer nas tarefas. Agora:
+   - Lista/Agenda: as tarefas abertas do mesmo cliente (ou do mesmo grupo de empresas) aparecem juntas, com os orçamentos lado a lado.
+   - Abrir qualquer uma delas abre a janela do cliente com todas; "E agora?" e "Não conseguiu falar" valem para as marcadas.
+   - Registrar contato (ficha rápida) pergunta de quais tarefas falou, todas marcadas: conclui ou muda todas para o próximo contato. */
+const tcKey=t=>{const g=t&&t.cnpj?grpCnpjs(t.cnpj):[]; return g.length>1?'g:'+g.slice().sort()[0]:t&&t.cnpj?'c:'+t.cnpj:''};
+async function tcAbertas(cnpjs){cnpjs=[...new Set((cnpjs||[]).filter(Boolean))]; if(!cnpjs.length) return [];
+  const R=[]; for(let i=0;i<cnpjs.length;i+=60){const p=cnpjs.slice(i,i+60).map(encodeURIComponent).join(','); try{R.push(...await api(`tarefas?select=*&feita=eq.false&cnpj=in.(${p})&order=vence,hora&limit=500`))}catch(e){}} return R}
+/* orçamentos das tarefas: nº, valor e data, para mostrar lado a lado */
+async function tcOrcs(T){const ids=[...new Set(T.map(t=>t.orcamento_id).filter(x=>x&&!String(x).startsWith('rp:')))]; if(!ids.length) return {};
+  try{const O=await api(`orcamentos?select=id,app,total,status,criado_em,atualizado_em,num:dados->>num&id=in.(${ids.map(i=>'"'+encodeURIComponent(i)+'"').join(',')})`); const m={}; O.forEach(o=>m[o.id]=o); return m}catch(e){return {}}}
+/* pega as tarefas abertas de cada cliente da tela (de qualquer dia) e devolve {chave:[tarefas]} só para quem tem 2 ou mais */
+async function tcMapa(rows){await clientes().catch(()=>null); const cn=new Set(); (rows||[]).filter(t=>t.cnpj&&!t.feita).forEach(t=>grpCnpjs(t.cnpj).forEach(x=>cn.add(x)));
+  const A=await tcAbertas([...cn]); const M={}; A.forEach(t=>{const k=tcKey(t); if(k) (M[k]=M[k]||[]).push(t)}); Object.keys(M).forEach(k=>{if(M[k].length<2) delete M[k]}); return M}
+const tcRepCurto=t=>t.rep?(RCURTO[repName(t.rep)]||repName(t.rep)):'';
+const tcValTit=t=>{const m=String(t.titulo||'').match(/\((R\$\s?[\d.,]+)\)\s*$/); return m?m[1]:''};
+const tcCliNome=T=>{const c=(CLIS||[]).find(x=>x.cnpj===T[0].cnpj); const g=c&&c.grp&&grpCnpjs(c.cnpj).length>1?c.grp:''; return {n:g||(c&&(c.fa||c.n))||T[0].cliente||'Cliente',grp:g}};
+function tcResumo(T){const r=[...new Set(T.map(tcRepCurto).filter(Boolean))]; const no=T.filter(t=>t.orcamento_id).length;
+  return (no?`${no} orçamento${no>1?'s':''}`:`${T.length} tarefas`)+(no&&T.length>no?` + ${T.length-no} tarefa${T.length-no>1?'s':''}`:'')+(r.length?` (${r.join(', ')})`:'')}
+const tcQuando=t=>{const h=hoje(); return t.vence<h?`<span class="bad">atrasada ${esc(t.vence.split('-').reverse().join('/').slice(0,5))}</span>`:t.vence===h?`<b>hoje</b>${t.hora?' '+esc(String(t.hora).slice(0,5)):''}`:esc(dLbl(t.vence))+(t.hora?' '+esc(String(t.hora).slice(0,5)):'')};
+/* cartão da Lista: o cliente numa linha, com cada orçamento/tarefa embaixo */
+function tcCard(T,O){const {n,grp}=tcCliNome(T); const atr=T.some(t=>t.vence<hoje());
+  return `<div class="card tcg" data-tcg="${esc(tcKey(T[0]))}" style="cursor:pointer;margin-bottom:8px;border-left:4px solid var(--accent);${atr?'border-color:var(--bad);':''}"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px"><div style="min-width:0"><b>👥 ${esc(n)}</b> <span class="hint">· ${esc(tcResumo(T))}</span>${grp?`<div class="hint" style="font-size:12px">${esc([...new Set(T.map(t=>t.cliente).filter(Boolean))].join(' · '))}</div>`:''}</div><button class="btn sm" data-tcab>Abrir juntas ›</button></div>
+   <div class="tcl">${T.map(t=>{const o=O[t.orcamento_id]; return `<div class="tci"><span class="agdot" style="background:${TCOR[t.tipo]||'#7d8597'}"></span><span class="tci-t">${t.rep?`<b>${esc(tcRepCurto(t))}</b>`:esc((TT[t.tipo]||'').replace(/^\S+ /,''))}${o?` · ${brl(+o.total||0)}`:tcValTit(t)?' · '+esc(tcValTit(t)):''}${!t.orcamento_id?` · <span class="hint">${esc(tTit(t))}</span>`:''}</span><span class="hint tci-q">${tcQuando(t)}</span></div>`}).join('')}</div></div>`}
+/* janela do cliente com todas as tarefas abertas */
+async function abrirTarefaCliente(t0,T){{const v=$('#tarvolta'); if(v) v.remove()}
+  T=T.slice().sort((a,b)=>(a.id===t0.id?-1:b.id===t0.id?1:0)||String(a.vence).localeCompare(b.vence)||String(a.hora||'').localeCompare(String(b.hora||'')));
+  const O=await tcOrcs(T); const {n,grp}=tcCliNome(T); const marc=new Set(T.map(t=>t.id)), ov2={}; const ea={k:T.some(t=>t.orcamento_id)?'ret':'nada',d:3,dh:false,dd:'',hh:''};
+  const temOrc=T.some(t=>t.orcamento_id);
+  const ov=document.createElement('div'); ov.className='ov';
+  const linha=t=>{const o=O[t.orcamento_id], on=marc.has(t.id), x=ov2[t.id]||'';
+    return `<div class="tcj${on?'':' off'}" data-tcj="${t.id}"><label class="tcj-ck"><input type="checkbox" data-tck="${t.id}"${on?' checked':''}></label><div style="min-width:0;flex:1">
+      <div class="row" style="justify-content:space-between;gap:6px;flex-wrap:nowrap"><b style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((TT[t.tipo]||'').split(' ')[0])} ${t.rep?esc(repName(t.rep)):esc(tTit(t))}</b><span class="hint" style="white-space:nowrap">${tcQuando(t)}</span></div>
+      ${o?`<div class="hint">Orçamento${o.num?' nº '+esc(o.num):''} · <b style="color:var(--ink)">${brl(+o.total||0)}</b> · de ${esc(dbr(o.criado_em||o.atualizado_em))}${o.status&&o.status!=='aberto'?' · '+esc(stLbl(o.status)):''}</div>`:t.orcamento_id&&tcValTit(t)?`<div class="hint">Orçamento · ${esc(tcValTit(t))}</div>`:t.rep?`<div class="hint">${esc(tTit(t))}</div>`:''}
+      ${grp&&t.cliente?`<div class="hint" style="font-size:12px">${esc(t.cliente)}</div>`:''}
+      ${t.obs?`<div class="tcj-obs">${esc(String(t.obs).split('\n').slice(-2).join(' · '))}</div>`:''}
+      <div class="row" style="gap:6px;margin-top:4px">${t.orcamento_id?`<button class="chip" data-tco="${t.id}">📄 Abrir</button>${on?`<button class="chip${x==='fechou'?' on':''}" data-tcx="fechou" data-id="${t.id}">✅ Fechou</button><button class="chip${x==='perdeu'?' on':''}" data-tcx="perdeu" data-id="${t.id}">❌ Perdeu</button>`:''}`:''}</div></div></div>`};
+  const nM=()=>marc.size;
+  const eaTxt=()=>{const dl=ea.dh?(ea.dd?ea.dd.split('-').reverse().join('/')+(ea.hh?' '+ea.hh:''):'…'):maisDias(ea.d).split('-').reverse().join('/'); return ea.k==='ret'?`✓ Concluir ${nM()} e retornar ${dl}`:`✓ Concluir ${nM()} marcada${nM()>1?'s':''}`};
+  const pinta=()=>{const res=(ov.querySelector('#tres')||{}).value||'';
+    ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><b style="font-size:18px">👥 ${esc(n)}</b><div class="hint">${T.length} tarefas abertas deste ${grp?'grupo':'cliente'} · ${esc(tcResumo(T))}</div></div><button class="chip" data-x>✕</button></div>
+     <div class="tcaviso">Fale de <b>todos</b> numa ligação só. O que você fizer aqui vale para as tarefas marcadas.</div>
+     <div class="tcjs">${T.map(linha).join('')}</div>
+     <div class="row">${t0.cnpj?'<button class="btn" data-tr>📞 Registrar contato</button><button class="btn ghost" data-tf>👤 Ficha do cliente</button>':''}</div>
+     <label class="f">Como foi? (opcional)<input id="tres" placeholder="ex.: vai fechar a Sigma, Marluvas ainda comparando" value="${esc(res)}"></label>
+     <div class="card" style="background:var(--surface2);padding:10px 12px;display:grid;gap:8px"><b>E agora? <span class="hint" style="font-weight:400">· vale para as ${nM()} marcadas</span></b>
+      <div class="row"><button class="chip${ea.k==='nada'?' on':''}" data-ea="nada">🤝 Sem próximo passo</button></div>
+      <div class="row" style="align-items:center"><span class="hint">Retornar de novo:</span>${[[1,'Amanhã'],[3,'3 dias'],[7,'7 dias']].map(([d,l])=>`<button class="chip${ea.k==='ret'&&!ea.dh&&ea.d===d?' on':''}" data-ean="${d}">${l}</button>`).join('')}<button class="chip${ea.k==='ret'&&ea.dh?' on':''}" data-eadh>📅 Dia e hora</button></div>
+      ${ea.k==='ret'&&ea.dh?`<div class="r2"><label class="f">Dia<input data-ead type="date" min="${hoje()}" value="${esc(ea.dd)}"></label><label class="f">Hora<input data-eah type="time" step="300" value="${esc(ea.hh)}"></label></div>`:''}
+      <span class="hint">${ea.k==='ret'?'Conclui as marcadas e já deixa o próximo retorno de cada uma na Agenda, no mesmo dia.':'Só conclui, sem nova tarefa.'}${temOrc?' ✅ Fechou / ❌ Perdeu em cada orçamento valem só para ele.':''}</span>
+      <div class="row"><button class="btn" data-tcok${nM()?'':' disabled'}>${esc(eaTxt())}</button></div></div>
+     <details class="hint"><summary style="cursor:pointer">Não conseguiu falar? Só mudar a data das marcadas</summary><div class="row" style="margin-top:6px"><button class="chip" data-ad="1">Amanhã</button><button class="chip" data-ad="3">+3 dias</button><button class="chip" data-ad="7">+7 dias</button><input id="tnd" type="date" style="width:auto"><input id="tnh" type="time" style="width:auto"><button class="chip" data-rag>Reagendar</button></div></details></div>`};
+  document.body.appendChild(ov); pinta();
+  const fim=()=>{ov.remove(); contaTarefas(); if(route==='tar') tarefasView()};
+  const sel=()=>T.filter(t=>marc.has(t.id));
+  const lerDH=()=>{const d=ov.querySelector('[data-ead]'), h=ov.querySelector('[data-eah]'); if(d) ea.dd=d.value; if(h) ea.hh=h.value};
+  ov.addEventListener('change',e=>{const c=e.target.closest('[data-tck]'); if(c){const id=isNaN(+c.dataset.tck)?c.dataset.tck:+c.dataset.tck; c.checked?marc.add(id):marc.delete(id); return pinta()} if(e.target.matches('[data-ead],[data-eah]')){lerDH(); pinta()}});
+  const patch=(id,b)=>api(`tarefas?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(b)});
+  ov.onclick=async e=>{const x=e.target; if(x.closest('[data-x]')||x===ov) return ov.remove(); let b;
+    try{
+    if(b=x.closest('[data-tco]')){const t=T.find(y=>String(y.id)===b.dataset.tco); return tarPorCima(ov,t0,()=>detOrc(t.orcamento_id))}
+    if(b=x.closest('[data-tcx]')){const id=T.find(y=>String(y.id)===b.dataset.id).id; ov2[id]=ov2[id]===b.dataset.tcx?'':b.dataset.tcx; return pinta()}
+    if(x.closest('[data-tf]')){ov.remove(); go('cli',{cnpj:t0.cnpj}); return tarVoltaPill(t0)}
+    if(x.closest('[data-tr]')){const S=sel(); return tarPorCima(ov,t0,()=>painelCliente(t0.cnpj,null,{tarIds:S.map(t=>t.id),tarReps:[...new Set(S.map(t=>t.rep&&repName(t.rep)).filter(Boolean))],aoSalvar:()=>{ov.remove(); contaTarefas(); if(route==='tar') tarefasView()}}))}
+    if(b=x.closest('[data-ea]')){lerDH(); ea.k=b.dataset.ea; ea.dh=false; return pinta()}
+    if(b=x.closest('[data-ean]')){lerDH(); ea.k='ret'; ea.d=+b.dataset.ean; ea.dh=false; return pinta()}
+    if(x.closest('[data-eadh]')){lerDH(); ea.k='ret'; ea.dh=true; if(!ea.dd) ea.dd=maisDias(ea.d); return pinta()}
+    const ad=x.closest('[data-ad]'), rag=x.closest('[data-rag]');
+    if(ad||rag){const S=sel(); if(!S.length) return toast('Marque pelo menos uma tarefa'); let d=ad?maisDias(+ad.dataset.ad):ov.querySelector('#tnd').value, h=rag?ov.querySelector('#tnh').value:''; if(rag&&!d&&!h) return toast('Escolha data ou hora');
+      for(const t of S) await patch(t.id,ad?{vence:d}:{vence:d||t.vence,...(h?{hora:h}:{})}); toast(`${S.length} tarefa${S.length>1?'s':''} reagendada${S.length>1?'s':''}`); return fim()}
+    if(!(b=x.closest('[data-tcok]'))) return;
+    lerDH(); const S=sel(); if(!S.length) return toast('Marque pelo menos uma tarefa'); const r=(ov.querySelector('#tres').value||'').trim();
+    const vence=ea.k==='ret'?(ea.dh?ea.dd:maisDias(ea.d)):null, hh=ea.k==='ret'&&ea.dh?ea.hh:''; if(ea.k==='ret'&&!vence) return toast('Escolha o dia do retorno');
+    const vaoRet=S.filter(t=>!ov2[t.id]);
+    if(hh&&vaoRet.length){const c=await conflitos(vence,hh,30,t0.responsavel); const bate=c.bate.filter(y=>!T.some(z=>z.cnpj===y.cnpj&&y.cnpj)); if(bate.length&&!confirm(`Nesse horário já tem: ${bate.map(y=>String(y.hora).slice(0,5)+' '+y.titulo).join('; ')}. Marcar mesmo assim?`)) return}
+    b.disabled=true; const feita=(t,res)=>patch(t.id,{feita:true,feita_em:new Date().toISOString(),resultado:res||null});
+    const dt=new Date().toLocaleDateString('pt-BR').slice(0,5), outros=S.length>1?' (falado junto: '+[...new Set(S.map(t=>tcRepCurto(t)||tTit(t)))].join(', ')+')':'';
+    const fechou=[]; let nRet=0, nOk=0;
+    try{for(const t of S){const o=ov2[t.id];
+      if(o==='perdeu'){try{await setStatus(t.orcamento_id,'cancelado')}catch(err){toast(err.message); continue} await feita(t,'Perdeu'+(r?' · '+r:'')); nOk++; continue}
+      if(o==='fechou'){await feita(t,'Fechou pedido'+(r?' · '+r:'')); fechou.push(t); nOk++; continue}
+      if(ea.k==='ret'){const obs=[t.obs||'',`${dt}: ${r||'Retornar de novo'}${outros}`].filter(Boolean).join('\n');
+        await novaTarefa({titulo:t.titulo,tipo:t.tipo,cnpj:t.cnpj||null,cliente:t.cliente||null,rep:t.rep||null,orcamento_id:t.orcamento_id||null,vence,...(hh?{hora:hh,duracao:+t.duracao||30}:{}),obs,...(t.responsavel?{responsavel:t.responsavel,responsavel_nome:t.responsavel_nome}:{})});
+        await feita(t,(r||'Retornar de novo')+outros); nRet++; continue}
+      await feita(t,(r||'Concluída')+outros); nOk++}}catch(err){b.disabled=false; return toast('Erro: '+err.message)}
+    toast(`${nOk+nRet} concluída${nOk+nRet>1?'s':''}`+(nRet?` · ${nRet} retorno${nRet>1?'s':''} em ${vence.split('-').reverse().join('/')}${hh?' '+hh:''}`:'')); fim();
+    if(fechou.length===1){try{const o=(await api(`orcamentos?select=*&id=eq.${encodeURIComponent(fechou[0].orcamento_id)}`))[0]; if(o) return transmitir(o)}catch(err){} return detOrc(fechou[0].orcamento_id)}
+    if(fechou.length>1){toast(`${fechou.length} pedidos fechados · transmita cada um em Pedidos`); return detOrc(fechou[0].orcamento_id)}
+    }catch(err){toast('Erro: '+err.message)}}}
+/* ficha rápida: quadro "De quais tarefas você falou?" (todas marcadas) */
+function tcRegHtml(T,on){if(!T.length) return '';
+  return `<div class="tcreg"><b>De quais tarefas você falou?</b> <span class="hint">· ${T.length} aberta${T.length>1?'s':''}</span>${T.map(t=>`<label class="tcreg-l"><input type="checkbox" data-tcr="${t.id}"${on.has(t.id)?' checked':''}><span><b>${esc((TT[t.tipo]||'').split(' ')[0])} ${t.rep?esc(tcRepCurto(t)):''}</b> ${esc(t.rep?tcValTit(t)||tTit(t):tTit(t))} <span class="hint">· ${tcQuando(t)}</span></span></label>`).join('')}
+   <span class="hint" style="font-size:12px">Ao salvar, as marcadas mudam para o dia do próximo contato. Com “Nenhum”, ficam concluídas.</span></div>`}
+async function tcRegSalvar(T,on,{vence,hh,texto,res}){const S=T.filter(t=>on.has(t.id)); if(!S.length) return 0; const dt=new Date().toLocaleDateString('pt-BR').slice(0,5);
+  for(const t of S){const obs=[t.obs||'',`${dt}: ${texto||res||'Contato registrado'}`].filter(Boolean).join('\n');
+    const b=vence?{vence,hora:hh||null,obs,...(hh?{duracao:+t.duracao||30}:{})}:{feita:true,feita_em:new Date().toISOString(),resultado:(res||texto||'Contato registrado').slice(0,200)};
+    await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(b)})} return S.length}
+/*TARCLI-FIM*/
 async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?select=*&id=eq.${t}`))[0]}catch(e){} if(!t) return}
   {const v=$('#tarvolta'); if(v) v.remove()}
+  if(t.cnpj&&!t.feita){await clientes().catch(()=>null); const A=(await tcAbertas(grpCnpjs(t.cnpj))).filter(x=>x.id!=t.id); if(A.length) return abrirTarefaCliente(t,[t,...A])}
   const ov=document.createElement('div'); ov.className='ov'; ov.innerHTML=`<div class="sh grid"><div class="row" style="justify-content:space-between;align-items:flex-start"><b style="font-size:18px">${esc(TT[t.tipo]||'✔️ Tarefa')} · ${esc(tTit(t))}</b><button class="chip" data-x>✕</button></div>
    ${fichaTopo([['Quando',t.vence.split('-').reverse().join('/')+(t.hora?' · '+t.hora+'–'+mh(tFim(t)):''),0],['Responsável',t.responsavel_nome||'Equipe'],['Cliente',t.cliente||'—'],['Representada',t.rep?repName(t.rep):'—']])}
    ${t.obs?`<div class="card" style="white-space:pre-wrap">${esc(t.obs)}</div>`:'<p class="hint" style="margin:0">Sem observações.</p>'}
@@ -5666,7 +5772,7 @@ async function abrirTarefa(t){if(typeof t!=='object'){try{t=(await api(`tarefas?
   const ea={k:t.tipo==='followup'||t.orcamento_id?'ret':'nada',d:3,dh:false,dd:'',hh:''}; const eab=ov.querySelector('[data-eab]'); if(eab){eab.innerHTML=eaHtml(t,ea); eab.addEventListener('change',()=>{const d=eab.querySelector('[data-ead]'), h=eab.querySelector('[data-eah]'); if(d) ea.dd=d.value; if(h) ea.hh=h.value; eab.innerHTML=eaHtml(t,ea)})}
   const fim=()=>{ov.remove(); contaTarefas(); if(route==='tar') tarefasView()};
   ov.onclick=async e=>{const x=e.target; if(x.closest('[data-x]')||x===ov) return ov.remove();
-    try{if(eaClick(x,ov,t,ea)) return; if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')) return tarPorCima(ov,t,()=>detOrc(t.orcamento_id)); if(x.closest('[data-tf]')){ov.remove(); go('cli',{cnpj:t.cnpj}); return tarVoltaPill(t)} if(x.closest('[data-tr]')) return tarPorCima(ov,t,()=>painelCliente(t.cnpj))
+    try{if(eaClick(x,ov,t,ea)) return; if(x.closest('[data-ted]')){ov.remove(); return formTarefa(t)} if(x.closest('[data-to]')) return tarPorCima(ov,t,()=>detOrc(t.orcamento_id)); if(x.closest('[data-tf]')){ov.remove(); go('cli',{cnpj:t.cnpj}); return tarVoltaPill(t)} if(x.closest('[data-tr]')) return tarPorCima(ov,t,()=>painelCliente(t.cnpj,null,{tarIds:[t.id],tarReps:t.rep?[repName(t.rep)]:[],aoSalvar:fim}))
       if(x.closest('[data-tok]')) return eaConcluir(ov,t,ea,fim);
       const a=x.closest('[data-ad]'); if(a){await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:maisDias(+a.dataset.ad)})}); toast('Reagendada'); return fim()}
       if(x.closest('[data-rag]')){const d=ov.querySelector('#tnd').value, h=ov.querySelector('#tnh').value; if(!d&&!h) return toast('Escolha data ou hora'); if(h){const c=await conflitos(d||t.vence,h,+t.duracao||30,t.responsavel,t.id); if(c.bate.length&&!confirm(`Esse horário já tem: ${c.bate.map(x=>x.hora+' '+x.titulo).join('; ')}. Reagendar mesmo assim?`)) return} await api(`tarefas?id=eq.${t.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({vence:d||t.vence,hora:h||null})}); toast('Reagendada'); return fim()}}catch(err){toast('Erro: '+err.message)}}}

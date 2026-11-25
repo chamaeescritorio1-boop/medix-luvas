@@ -534,3 +534,14 @@ input.lido-doc { border-color: var(--verde-claro) !important; box-shadow: 0 0 0 
 /* preço na hora: o valor não quebra; no celular um embaixo do outro */
 #nahora .preco { white-space: nowrap; }
 @media (max-width: 600px) { #nahora .grade { grid-template-columns: 1fr; } }
+/* arranjos da estrutura (passo Kit): uma linha por arranjo, como no "Adicionar arranjo" do portal */
+.arranjos .arr-lista { display: grid; gap: 8px; margin-top: 8px; }
+.arranjos .arr-l { display: grid; grid-template-columns: 90px 16px 120px minmax(120px, 160px) auto 28px; gap: 8px; align-items: end; }
+.arranjos .arr-l .campo { margin: 0; }
+.arranjos .arr-x { text-align: center; padding-bottom: 10px; opacity: .6; }
+.arranjos .arr-t { padding-bottom: 10px; }
+.arranjos .arr-del { padding-bottom: 10px; font-size: 16px; }
+.arranjos .arr-soma { font-size: 13px; font-weight: 600; margin-left: 6px; align-self: center; }
+.arranjos .arr-soma.ok { color: #2fb36b; }
+.arranjos .arr-soma.ruim { color: #e5533d; }
+@media (max-width: 600px) { .arranjos .arr-l { grid-template-columns: 1fr 12px 1fr; padding-bottom: 8px; border-bottom: 1px solid var(--linha-forte); } .arranjos .arr-l label:nth-of-type(3) { grid-column: 1 / 3; } .arranjos .arr-del { grid-column: 3; justify-self: end; } .arranjos .arr-t { grid-column: 1 / -1; order: 9; padding: 0; } }

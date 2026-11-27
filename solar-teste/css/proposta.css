@@ -308,3 +308,17 @@ details.item .explica { padding: 0 16px 16px 70px; color: var(--tinta-2); font-s
 .v3d-palco.cheia .v3d-cheia { background: #f7b500; border-color: #f7b500; color: #13263a; }
 html.com-3d-cheio, html.com-3d-cheio body { overflow: hidden; }
 html.com-3d-cheio .zap-fixo, html.com-3d-cheio #zap-fixo { display: none !important; }
+/* unidades beneficiárias: cada conta, hoje × com a usina */
+.contas-uc { margin-top: 22px; }
+.uc-lista { display: grid; gap: 10px; margin-top: 12px; }
+.uc { border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; background: #fff; }
+.uc.total { background: var(--bom-fundo); border-color: color-mix(in srgb, var(--bom) 35%, transparent); }
+.uc-cab { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.uc-cab span { color: var(--tinta-2); font-size: .85rem; }
+.uc-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.uc-vals span { font-size: .8rem; color: var(--tinta-2); display: grid; }
+.uc-vals b { font: 800 1.25rem/1.15 var(--f-num); color: var(--tinta); }
+.uc-vals b.riscado { color: var(--ruim); text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 700; }
+.uc.total .uc-vals span:last-child b { color: var(--bom); }
+.uc small { color: var(--tinta-2); font-size: .78rem; }
+@media (min-width: 720px) { .uc-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } .uc.total { grid-column: 1 / -1; } }

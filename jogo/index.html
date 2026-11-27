@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chamae ⚽ A bola tá com você</title>
+<meta name="robots" content="noindex,nofollow">
+<meta property="og:title" content="⚽ Chamae × você: a bola tá com você!">
+<meta property="og:description" content="Seu orçamento está em campo. Um toque e pronto, sem compromisso.">
+<meta property="og:image" content="https://chamaeescritorio1-boop.github.io/medix-luvas/jogo/capa.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#1c2340">
+<link rel="icon" href="../chamae/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1c2340;--navy2:#121833;--gold:#f2b632;--gold2:#e0a21a;--ok:#22b45f;--ink:#18213a;--muted:#5b6580}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#eef1f6}
+body{font-family:Inter,system-ui,sans-serif;color:var(--ink);padding:14px 12px 28px;min-height:100vh}
+.wrap{max-width:560px;margin:0 auto}
+button{font:inherit;cursor:pointer;border:0}
+.A{background:radial-gradient(120% 80% at 50% 0%,#2b3563 0%,var(--navy) 45%,var(--navy2) 100%);border-radius:24px;overflow:hidden;color:#fff;box-shadow:0 18px 40px rgba(20,25,50,.35)}
+.lights{height:12px;background:repeating-linear-gradient(90deg,#fff8 0 10px,transparent 10px 22px);opacity:.25}
+.top{padding:16px 18px 4px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.top img{height:38px;border-radius:6px}
+.live{background:#e53935;color:#fff;font-weight:800;font-size:12px;padding:5px 11px;border-radius:999px;letter-spacing:.06em}
+.live:before{content:"● "}
+.board{margin:10px 18px;background:#05070f;border:4px solid #2e3866;border-radius:18px;padding:14px 10px;box-shadow:inset 0 0 30px #000}
+.teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;text-align:center}
+.team{font-family:Anton,Impact,sans-serif;font-size:20px;letter-spacing:.04em;text-transform:uppercase;line-height:1.05;word-break:break-word}
+.team small{display:block;font-family:Inter;font-size:10.5px;letter-spacing:.12em;color:#9aa4c8;margin-top:5px;font-weight:700}
+.score{font-family:Anton,Impact,sans-serif;font-size:54px;line-height:1;color:var(--gold);text-shadow:0 0 18px #f2b63299;white-space:nowrap}
+.clock{text-align:center;margin-top:10px;font-family:Orbitron,monospace;color:#ff5a4e;font-size:11.5px;letter-spacing:.06em;text-shadow:0 0 10px #ff5a4e88}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 18px 0}
+.stat{background:#ffffff12;border:1px solid #ffffff22;border-radius:12px;padding:8px 10px}
+.stat b{display:block;font-size:15px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat span{font-size:10px;color:#b9c1dd;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.msg{margin:18px 18px 14px;font-size:16.5px;line-height:1.45}
+.msg strong{color:var(--gold)}
+.btns{display:grid;gap:12px;margin:0 18px}
+.btn{display:flex;align-items:center;gap:12px;text-align:left;border-radius:14px;padding:13px 15px;font-weight:800;font-size:17px;line-height:1.15;box-shadow:0 4px 0 rgba(0,0,0,.18);width:100%}
+.btn small{display:block;font-weight:600;font-size:13px;opacity:.85;margin-top:3px}
+.btn .e{font-size:26px}
+.g{background:var(--ok);color:#fff}.y{background:var(--gold);color:#1c1600}.w{background:#ffffff14;color:#fff;border:2px solid #ffffff40}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.foot{margin:18px 18px 0;padding:14px 0 18px;border-top:1px dashed #ffffff30;font-size:13px;color:#b9c1dd;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.grass{height:14px;background:repeating-linear-gradient(90deg,#1f8a47 0 40px,#25a055 40px 80px)}
+/* telas */
+.S{background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 18px 40px rgba(20,25,50,.2)}
+.S .hd{background:radial-gradient(120% 90% at 50% 0%,#2b3563,var(--navy) 55%,var(--navy2));color:#fff;padding:14px 16px 16px}
+.S .hd img{height:32px;border-radius:6px}
+.mb{margin-top:12px;background:#05070f;border:3px solid #2e3866;border-radius:14px;padding:10px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center;gap:8px}
+.mb b{font-family:Anton;font-size:16px;letter-spacing:.04em;text-transform:uppercase;font-weight:400}
+.mb .sc{font-family:Anton;font-size:30px;color:var(--gold);text-shadow:0 0 12px #f2b63288}
+.bd{padding:20px 18px 22px}
+h2{font-family:Anton;font-weight:400;font-size:30px;line-height:1.05;color:var(--navy);letter-spacing:.01em}
+h2 span{color:var(--gold2)}
+.bd p{font-size:15.5px;line-height:1.45;color:#2b3450;margin:8px 0 14px}
+.lbl{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin:16px 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid #d5dae6;border-radius:999px;padding:10px 14px;font-weight:700;font-size:15px;color:var(--ink);background:#fff}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip.on:before{content:"✓ ";color:var(--gold)}
+textarea{width:100%;min-height:96px;border:2px solid #d5dae6;border-radius:14px;padding:12px;font:inherit;font-size:16px;resize:vertical;color:var(--ink)}
+textarea:focus{outline:none;border-color:var(--navy)}
+.big{margin-top:20px;background:var(--ok);color:#fff;border-radius:14px;padding:15px;text-align:center;font-weight:900;font-size:18px;box-shadow:0 4px 0 rgba(0,0,0,.18);width:100%}
+.big[disabled]{opacity:.6}
+.back{margin-top:10px;background:none;color:var(--muted);font-weight:700;width:100%;padding:10px}
+.err{color:#c62828;font-weight:700;margin-top:10px;font-size:14.5px}
+.goal{text-align:center;padding:26px 18px 28px}
+.gg{font-family:Anton;font-size:min(64px,12.5vw);line-height:1;color:var(--gold2);letter-spacing:.02em}
+.goal .ball{font-size:60px;margin:6px 0}
+.goal p{text-align:center}
+.card{background:#f5f7fb;border:1px solid #e3e8f0;border-radius:14px;padding:12px 14px;text-align:left;font-size:14.5px;line-height:1.5;margin-top:8px}
+.ftr{font-size:12.5px;color:var(--muted);text-align:center;margin-top:14px}
+.load{text-align:center;padding:80px 20px;color:var(--muted);font-weight:700}
+</style></head>
+<body><div class="wrap" id="app"><div class="load">⚽ Carregando…</div></div>
+<script>
+const SB='https://jmpvmyyokikpwphwylob.supabase.co', KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptcHZteXlva2lrcHdwaHd5bG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyMTc1MzEsImV4cCI6MjEwNzc5MzUzMX0.e5XT2R7eOj3x-ZYcRFkY4OFg0QEr3_guxT6-W0xpnfY';
+const LOGO='../chamae/logo.jpg';
+const T=new URLSearchParams(location.search).get('t')||'';
+const $=s=>document.querySelector(s), app=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const REPN={sigma:'Sigma',marluvas:'Marluvas',medix:'Medix',marcon:'Marcon'};
+const rep=r=>REPN[(r||'').toLowerCase()]||(r||'');
+const nome1=s=>String(s||'').trim().split(/\s+/)[0]||'';
+async function rpc(fn,body){const r=await fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},body:JSON.stringify(body)}); const tx=await r.text(); let j=null; try{j=tx?JSON.parse(tx):null}catch(e){} if(!r.ok){const m=(j&&(j.message||j.hint))||tx||('HTTP '+r.status); throw new Error(m)} return j}
+let D=null;
+const hdr=(sc)=>`<div class="hd"><img src="${LOGO}" alt="Chamae"><div class="mb"><b>Chamae</b><span class="sc">${sc||'0 × 0'}</span><b>${esc(D.cliente||'Você')}</b></div></div>`;
+function placar(){
+  const oi=nome1(D.comprador);
+  app.innerHTML=`<div class="A"><div class="lights"></div>
+  <div class="top"><img src="${LOGO}" alt="Chamae"><span class="live">AO VIVO</span></div>
+  <div class="board"><div class="teams"><div class="team">Chamae<small>VISITANTE</small></div><div class="score">0 × 0</div><div class="team">${esc(D.cliente||'Seu time')}<small>MANDANTE</small></div></div>
+  <div class="clock">⏱ 2º TEMPO · ORÇAMENTO EM CAMPO</div></div>
+  <div class="stats"><div class="stat"><span>Orçamento</span><b>${D.num?'Nº '+esc(String(D.num).replace(/^\d{4}-0*/,'')):'—'}</b></div><div class="stat"><span>Valor</span><b>${D.total?brl(D.total):'—'}</b></div><div class="stat"><span>${D.rep?'Time':'Itens'}</span><b>${D.rep?esc(rep(D.rep)):(D.itens||'—')}</b></div></div>
+  <p class="msg">E aí${oi?', '+esc(oi):''}! O jogo tá empatado e a bola tá com você ⚽<br>Sem pressão nenhuma, só queremos saber <strong>qual vai ser a jogada</strong>:</p>
+  <div class="btns">
+    <button class="btn g" data-r="fechar"><span class="e">⚽</span><div>GOL! Pode fechar<small>Aprovar o orçamento</small></div></button>
+    <button class="btn y" data-r="ajustar"><span class="e">🔄</span><div>Pedir substituição<small>Quero ajustar algo</small></div></button>
+    <button class="btn w" data-r="nao"><span class="e">🤝</span><div>Fica pro próximo jogo<small>Dessa vez não</small></div></button>
+  </div>
+  <div class="foot"><span>${D.vendedor?esc(D.vendedor)+' · ':''}Grupo Chamae</span><span>Responder leva 5 segundos 😉</span></div>
+  <div class="grass"></div></div>`;
+  app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>tela(b.dataset.r));
+}
+function chipsSel(box,multi){box.onclick=e=>{const c=e.target.closest('.chip'); if(!c) return; if(!multi) box.querySelectorAll('.chip').forEach(x=>x!==c&&x.classList.remove('on')); c.classList.toggle('on')}}
+const sel=box=>[...box.querySelectorAll('.chip.on')].map(c=>c.dataset.v||c.textContent.trim());
+function tela(r){
+  const oi=nome1(D.comprador);
+  let body='';
+  if(r==='fechar') body=`<h2>⚽ Bora <span>fechar!</span></h2><p>Show${oi?', '+esc(oi):''}! Quer mandar algum recado junto? (opcional)</p>
+    <div class="lbl">Recado (opcional)</div><textarea id="tx" maxlength="600" placeholder="Ex.: nº da O.C., data de entrega, quem recebe…"></textarea>
+    <button class="big" id="ok">Confirmar o gol ⚽</button>`;
+  if(r==='ajustar') body=`<h2>🔄 Pedir <span>substituição</span></h2><p>Sem problema! O que você quer mudar?</p>
+    <div class="lbl">Pode marcar vários</div><div class="chips" id="ch"><button class="chip">Preço</button><button class="chip">Prazo de pagamento</button><button class="chip">Quantidade</button><button class="chip">Trocar item</button><button class="chip">Frete / entrega</button></div>
+    <div class="lbl">Conta pra gente (opcional)</div><textarea id="tx" maxlength="600" placeholder="Ex.: preciso do item X no tamanho 9…"></textarea>
+    <button class="big" id="ok" style="background:var(--gold);color:#1c1600">Enviar pedido de ajuste 🔄</button>`;
+  if(r==='nao') body=`<h2>🤝 Tranquilo${oi?', <span>'+esc(oi)+'!</span>':'!'}</h2><p>Fica pro próximo jogo. Se quiser, conta o motivo. Ajuda a gente a melhorar.</p>
+    <div class="lbl">Motivo (opcional)</div><div class="chips" id="ch"><button class="chip">Preço</button><button class="chip">Prazo de entrega</button><button class="chip">Já comprei de outro</button><button class="chip">Era só cotação</button><button class="chip">Projeto adiado</button></div>
+    <div class="lbl">Me chama de novo daqui a</div><div class="chips" id="dd"><button class="chip" data-v="15">15 dias</button><button class="chip on" data-v="30">30 dias</button><button class="chip" data-v="60">60 dias</button><button class="chip" data-v="90">90 dias</button></div>
+    <button class="big" id="ok" style="background:var(--navy)">Combinado 🤝</button>`;
+  app.innerHTML=`<div class="S">${hdr()}<div class="bd">${body}<div class="err" id="er"></div><button class="back" id="vt">‹ Voltar</button><div class="ftr">Grupo Chamae Representações</div></div></div>`;
+  const ch=$('#ch'), dd=$('#dd'); if(ch) chipsSel(ch,true); if(dd) chipsSel(dd,false);
+  $('#vt').onclick=placar; window.scrollTo(0,0);
+  $('#ok').onclick=async()=>{const b=$('#ok'); b.disabled=true; $('#er').textContent='';
+    const det={}; const tx=$('#tx'); if(tx&&tx.value.trim()) det.texto=tx.value.trim().slice(0,600);
+    if(ch){const v=sel(ch); if(v.length) det[r==='nao'?'motivo':'itens']=v.join(', '); if(r==='ajustar'&&v.length) det.texto=(v.join(', ')+(det.texto?' — '+det.texto:''))}
+    if(dd){const v=sel(dd); det.dias=+(v[0]||30)}
+    try{await rpc('retorno_responder',{p_token:T,p_resposta:r,p_detalhe:det}); D.resposta=r; D.detalhe=det; fim(r)}
+    catch(e){b.disabled=false; $('#er').textContent='Não consegui enviar ('+e.message+'). Tente de novo em instantes.'}};
+}
+function fim(r){
+  const oi=nome1(D.comprador), v=esc(D.vendedor||'nosso vendedor');
+  const M={fechar:['1 × 0','⚽🥅','GOOOL!',`Valeu${oi?', '+esc(oi):''}! Recado recebido.`,`🏆 O <b>${v}</b> já vai te chamar para confirmar o pedido.`],
+    ajustar:['0 × 0','🔄','SUBSTITUIÇÃO!',`Anotado${oi?', '+esc(oi):''}!`,`✏️ O <b>${v}</b> vai ajustar e te manda a nova escalação.`],
+    nao:['0 × 0','🤝','FAIR PLAY!',`Obrigado pela resposta${oi?', '+esc(oi):''}!`,`📅 A gente volta a falar daqui a ${(D.detalhe&&D.detalhe.dias)||30} dias. Precisando antes, é só chamar o <b>${v}</b>.`]}[r];
+  app.innerHTML=`<div class="S">${hdr(M[0])}<div class="goal"><div class="ball">${M[1]}</div><div class="gg">${M[2]}</div><p>${M[3]}</p><div class="card">${M[4]}</div>
+  <button class="back" id="mud">Mudar minha resposta</button><div class="ftr">Pode fechar esta página 😉</div></div></div>`;
+  $('#mud').onclick=placar; window.scrollTo(0,0);
+}
+(async()=>{
+  if(!T){app.innerHTML='<div class="load">Link incompleto. Peça um novo ao seu vendedor Chamae.</div>'; return}
+  try{D=await rpc('retorno_ver',{p_token:T})}catch(e){app.innerHTML='<div class="load">Não consegui abrir agora. Tente de novo em instantes.</div>'; return}
+  if(!D){app.innerHTML='<div class="load">Esse link não existe mais. Peça um novo ao seu vendedor Chamae.</div>'; return}
+  if(D.resposta) fim(D.resposta); else placar();
+})();
+</script>
+</body></html>

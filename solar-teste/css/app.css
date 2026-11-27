@@ -550,3 +550,63 @@ input.lido-doc { border-color: var(--verde-claro) !important; box-shadow: 0 0 0 
 .tab-uc th { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-2); font-weight: 700; padding: 6px 8px; text-align: right; white-space: nowrap; }
 .tab-uc td { padding: 8px; border-top: 1px solid var(--linha); text-align: right; vertical-align: top; white-space: nowrap; }
 .tab-uc tr:last-child td { border-top: 2px solid var(--linha); }
+
+/* ===== ficha: ações debaixo do nome, faixa de propostas, preço explicado (26/11/2026) ===== */
+.ficha-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0 102px; }
+.ficha-acoes .btn { padding: 7px 12px; font-size: 13px; }
+.props-cli { margin-top: 14px; }
+.props-fila { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(290px, 340px); gap: 10px; overflow-x: auto; padding: 8px 2px 6px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.prop-c { scroll-snap-align: start; text-align: left; cursor: pointer; display: grid; gap: 6px; align-content: start; background: var(--vidro); border: 1.5px solid var(--linha-forte); border-radius: 16px; padding: 14px; color: var(--texto); font: inherit; transition: border-color .15s, transform .15s; }
+.prop-c:hover { border-color: color-mix(in srgb, var(--laranja) 60%, transparent); transform: translateY(-1px); }
+.prop-c.sel { border-color: var(--laranja); box-shadow: var(--brilho-laranja); cursor: default; transform: none; }
+.prop-precos { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 4px 0 2px; }
+.prop-precos > div { display: grid; background: color-mix(in srgb, #000 22%, transparent); border-radius: 10px; padding: 8px 10px; }
+.prop-precos span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-2); }
+.prop-precos b { font: 800 18px var(--f-num); }
+.prop-precos small { font-size: 11px; color: var(--texto-2); }
+.prop-bts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.prop-bts .btn { padding: 6px 10px; font-size: 12.5px; }
+.prop-aberta { font-size: 12px; color: var(--laranja); font-weight: 700; margin-left: auto; }
+.prop-nova { border-style: dashed; place-content: center; justify-items: center; text-align: center; min-height: 150px; color: var(--texto-2); }
+.prop-nova .mais { font-size: 28px; color: var(--sol); line-height: 1; }
+.prop-nova b { color: var(--texto); }
+.prop-nova small { font-size: 12px; max-width: 220px; }
+.aviso.dup { border-color: var(--sol); }
+details.dobra > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+details.dobra > summary::-webkit-details-marker { display: none; }
+details.dobra > summary::after { content: '▾'; color: var(--texto-2); }
+details.dobra[open] > summary::after { content: '▴'; }
+.dobra-res { font-size: 14px; color: var(--texto-2); margin-left: auto; }
+.dobra-res b { color: var(--texto); font-family: var(--f-num); }
+details.dobra > .painel { border: 0; background: none; box-shadow: none; padding: 10px 0 0; margin: 0; }
+.pv-fundo { position: fixed; inset: 0; z-index: 90; background: #000a; display: grid; place-items: center; padding: 14px; overflow: auto; }
+.pv-caixa { width: min(940px, 100%); max-height: 94vh; overflow: auto; }
+.pv-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+.pv-col { border: 1px solid var(--linha-forte); border-radius: 14px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+.pv-total { display: grid; background: color-mix(in srgb, var(--laranja) 14%, transparent); border-radius: 12px; padding: 10px 12px; }
+.pv-total span { font-size: 12px; color: var(--texto-2); }
+.pv-total b { font: 800 26px var(--f-num); }
+.pv-total small { font-size: 12px; color: var(--texto-2); }
+.pv-barra { display: flex; height: 14px; border-radius: 8px; overflow: hidden; gap: 2px; }
+.pv-barra i { display: block; height: 100%; }
+.pv-leg { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 13.5px; }
+.pv-leg li { display: grid; grid-template-columns: 12px 1fr auto 38px; gap: 8px; align-items: center; }
+.pv-leg li > i { width: 12px; height: 12px; border-radius: 4px; }
+.pv-leg b { font-family: var(--f-num); }
+.pv-leg em { font-style: normal; color: var(--texto-2); text-align: right; font-size: 12px; }
+.pv-det summary { cursor: pointer; font-size: 13px; color: var(--texto-2); }
+.pv-det table { width: 100%; margin-top: 6px; font-size: 13px; }
+.pv-sobra { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px dashed var(--linha-forte); padding-top: 8px; }
+.pv-sobra b { font: 800 19px var(--f-num); color: var(--verde-claro); }
+.pv-sobra.ruim b { color: var(--vermelho); }
+@media (max-width: 560px) {
+  .props-fila { grid-auto-columns: 86%; }
+  .ficha-topo2 { gap: 10px 12px; }
+  .ficha-topo2 .anel { width: 58px; height: 58px; font-size: 15px; }
+  .ficha-topo2 .anel small { font-size: 8px; }
+  .ficha-bts { width: 100%; }
+  .ficha-bts .btn { flex: 1 1 auto; }
+  .ficha-acoes { margin: 12px 0 0; display: grid; grid-template-columns: 1fr 1fr; }
+  .ficha-acoes .btn:first-child { grid-column: 1 / -1; }
+  .ficha-acoes .btn { justify-content: center; text-align: center; }
+}
